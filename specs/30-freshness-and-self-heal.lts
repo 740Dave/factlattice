@@ -1,0 +1,468 @@
+---
+title: "Freshness and self-heal — correctness guarantees on the query path"
+id: "SPEC:FL-FRESHNESS"
+domain: MET.FACTLATTICE
+scope: "The invariants that make a FactLattice answer trustworthy — never serve stale, content hash is the oracle, fail closed, derived never stored, no inference on the query path — and the mechanisms that enforce each"
+boundary: "Specifies the correctness contract and its enforcement. What the engine answers is specified in FL-ENGINE; what a document means is specified in FL-MODEL."
+not-this: "Not a performance specification. The incremental design exists to make the correctness check affordable enough to run on every query, not to hit a latency target."
+status: draft
+created: 2026-07-23
+updated: 2026-07-23
+---
+# Freshness and self-heal [SPEC:FL-FRESHNESS]
+
+> Freshness is treated as a correctness property, not an operational nicety. The
+> guarantee is not "the index is usually current". It is: **a stale corpus yields a loud
+> stale marker, never a wrong answer** — and, because staleness is transient, usually
+> yields a correct answer a few milliseconds later instead.
+
+---
+
+## [INV-FRESH] Freshness — the invariant behind every served answer
+
+- part-of: [FL-FRESHNESS]
+- status: draft
+- importance: foundational
+
+If the engine cannot prove that its index matches the corpus on disk, it refuses the
+query and says why. It never answers from an index it cannot certify.
+
+This is the invariant that makes every other claim in this corpus worth anything. A query
+engine that occasionally answers from an old index is worse than no query engine: it is
+correct often enough to be trusted and wrong often enough to mislead. A refusal is
+actionable; a plausible wrong answer is not.
+
+The refusal is structured, not an exception: it carries the corpus id, the index hash, the
+live hash, and the reason. A consumer can tell "this corpus moved under me" from "this
+corpus does not exist" without parsing an error string.
+
+---
+
+## [INV-CONTENT-ORACLE] The content hash is the oracle — never mtime
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [INV-FRESH]
+- see-also: [DEC-CONTENT-HASH-ORACLE]
+- status: draft
+- importance: foundational
+
+Freshness is decided by comparing a hash over file **contents** against the hash the index
+was stamped with. Modification time and file size are never a verdict.
+
+Modification time is unreliable in exactly the cases that matter: a checkout, a `cp -p`, a
+restore from backup, or a clock adjustment can move content without moving mtime, or move
+mtime without moving content. Either error is fatal in a different direction — one serves
+stale data, the other declares a fresh corpus stale and refuses to work.
+
+mtime and size are still used, but only as a **hint** for *which* files to re-hash. The
+content hash is then computed and compared, and only a genuine content change flips the
+verdict. A `touch` with identical bytes therefore produces no false staleness.
+
+---
+
+## [INV-FAIL-CLOSED] Fail closed
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [INV-FRESH]
+- status: draft
+- importance: high
+
+Every failure mode resolves to refusal, never to a best-effort answer. An unreadable
+corpus root, an unparseable file, a file rewritten during a rebuild, a rebuild that
+completes but still does not certify fresh, or a corpus with no rebuild recipe at all: all
+leave the served index untouched and return the stale marker with a diagnostic explaining
+what was attempted.
+
+Nothing propagates out of the repair path. A malformed corpus degrades the engine to
+refusal; it cannot crash the process serving other corpora.
+
+---
+
+## [INV-DERIVED] Derived, never stored
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [INV-FRESH]
+- see-also: [DEC-DERIVED-NOT-STORED]
+- status: draft
+- importance: foundational
+
+Diagrams are rendered from the graph at query time and written nowhere.
+
+A diagram embedded in a document is a copy of a fact. Copies drift, and the drift is
+undetectable without machinery to police it — a freshness marker on the diagram, a check
+that re-derives it, a review step that compares it to the text. Every one of those is a
+process that fails quietly.
+
+Deriving the diagram from the graph removes the failure mode instead of policing it. There
+is no second copy, so there is nothing to keep in sync. The same reasoning applies to any
+other projection of the graph: a documentation site, an interface table, a dependency
+list. If it can be derived on request, it should not be stored.
+
+This inverts an earlier convention in which diagrams were hand-embedded in documents and
+treated as static snapshots. Hand-embedded diagrams are now deprecated — see
+[DEC-DERIVED-NOT-STORED].
+
+---
+
+## [INV-DETERMINISTIC] No inference anywhere on the query path
+
+- part-of: [FL-FRESHNESS]
+- see-also: [DEC-NO-LLM]
+- status: draft
+- importance: foundational
+
+Parse, index, traverse, aggregate, lint and render contain zero model inference. The same
+corpus and the same query produce byte-identical results, on any machine, in any order,
+forever.
+
+The contrast with retrieval-augmented approaches is the substantive design claim, not a
+marketing one. An embedding index computes similarity at query time: it answers "what
+looks related to this" with a ranked, probabilistic, model-version-dependent result. Its
+recall depends on phrasing, and a relationship nobody happened to phrase similarly is not
+found.
+
+FactLattice moves the work to authoring time. The author — human-directed or an
+Intelligence — **declares** that A depends on B. At query time the engine follows that
+declaration. The answer to "what depends on B" is then complete and exact with respect to
+what was declared, and its failure mode is visible: an undeclared relationship is missing
+from the graph, and a reference to a node that does not exist is a lint error.
+
+The two approaches answer different questions and the honest framing is that FactLattice
+trades recall-on-undeclared-relationships for exactness and reproducibility. That trade is
+right for specifications, requirements, decisions, and process flows — artifacts where
+being confidently approximate is the failure — and wrong for open-ended discovery over an
+unstructured document pile.
+
+---
+
+## [MECH-KERNEL] The incremental freshness kernel
+
+- part-of: [FL-FRESHNESS]
+- implements: [INV-CONTENT-ORACLE]
+- see-also: [GATE-FRESH]
+- status: draft
+- importance: high
+
+Validating freshness naively means re-hashing the whole corpus on every query — an
+I/O cost proportional to corpus size, paid on every call, on the correctness path. At that
+price the check gets sampled, cached, or turned off, and the guarantee evaporates.
+
+The kernel keeps the guarantee and removes the price. Per-file content hashes are the
+leaves; a combined root is maintained over them Merkle-style. On a change, only the
+affected leaves are re-hashed and the root recombined; unchanged files are never re-read.
+The query-path check becomes an O(1) comparison of the maintained root against the hash
+the index was stamped with — no file I/O at all.
+
+Three entry points maintain it: a full **seat** at startup or reconnect; a dependency-free
+polling **watch** that uses mtime and size to decide which leaves to re-check; and the
+periodic full re-verify specified in [MECH-BACKSTOP].
+
+---
+
+## [MECH-BACKSTOP] The periodic full re-verify
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [MECH-KERNEL]
+- implements: [INV-FRESH]
+- status: draft
+- importance: high
+
+At a bounded interval, every leaf is re-hashed unconditionally and the root recomputed,
+regardless of what the mtime hint said.
+
+This exists to close one specific hole. The hint-driven fast path can miss a change whose
+mtime and size are unchanged — `cp -p`, `touch -r`, a restore, a clock skew. Without a
+backstop, a missed filesystem event would leave the engine serving a stale index while
+believing it fresh, which violates [INV-FRESH] in the one way the fast path cannot detect
+by itself.
+
+The backstop turns "a missed event is a silent correctness failure" into "a missed event
+is a bounded latency". The worst case is that the corpus is served as fresh for at most one
+backstop interval past the change, and the interval is a deployment knob.
+
+---
+
+## [MECH-INCREMENTAL] Surgical re-index
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [MECH-KERNEL]
+- status: draft
+- importance: high
+
+When the corpus has moved, only the files whose content hash changed are re-parsed. The
+per-file parse results are cached; each cache entry certifies the content hash of the bytes
+it was parsed from, and a file that changes mid-parse invalidates the attempt rather than
+producing a cache entry that cannot be attributed to any content state.
+
+Every **cross-file** property is then recomputed in full from the cache: the node map,
+first-definition-wins id collisions, the alias index, the dangling flag on every edge, all
+per-layer adjacency, and all statistics. Only the parse is incremental; the resolution is
+total.
+
+That distinction is the determinism argument. A node deleted in one file must re-flag every
+inbound edge from files that were never re-parsed. There is no targeted re-resolution
+heuristic to get subtly wrong, because there is no targeted re-resolution: the fold is
+re-run over everything, and it is cheap because it is in-memory list and dict work with no
+I/O. The result is byte-identical to a cold rebuild of the same content.
+
+---
+
+## [MECH-SELFHEAL] Stale is transient, not terminal
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [MECH-INCREMENTAL]
+- implements: [INV-FAIL-CLOSED]
+- see-also: [GATE-FRESH]
+- status: draft
+- importance: foundational
+
+Detecting staleness and refusing is safe and useless on its own. A corpus that is written
+and queried by the same agent would blind that agent to everything it had just written,
+permanently, until the process restarted.
+
+On detecting staleness the engine re-indexes the changed files synchronously, on the query
+path, then re-runs the ordinary freshness check and serves only if that check now passes.
+The repair is not trusted: the new content hash is published **last**, after nodes and
+edges, so a concurrent reader can at worst observe new content with an old hash — verdict
+stale, refusal — and can never observe old content with a new hash, which is the only
+ordering that could serve stale data.
+
+Repair is coalesced and storm-guarded. Concurrent callers queue on one lock per corpus and
+re-check freshness under it, so the winner's rebuild satisfies all of them. Each attempt is
+keyed to the live root hash it was attempted against, so the net rule is **at most one
+rebuild per detected content change**, never one per query.
+
+Background pre-warming is deliberately out of scope. It is a latency optimization on the
+one component whose entire job is to never lie.
+
+---
+
+## [RISK-MISSED-EVENT] Risk — a missed filesystem event
+
+- part-of: [FL-FRESHNESS]
+- see-also: [MECH-BACKSTOP]
+- status: draft
+
+A change the watcher does not observe — because the hint did not move, because the
+platform dropped an event, or because the watcher thread was starved — would otherwise
+leave the engine confident and wrong. This is the residual risk the mtime hint introduces,
+and it is retired by [MECH-BACKSTOP], not by trusting the watcher.
+
+Stated plainly so a reader can test it: the guarantee is not "the engine sees every
+change immediately". It is "the engine cannot believe a stale index is fresh for longer
+than one backstop interval".
+
+---
+
+## [INV-FILE-IS-TRUTH] The file is the source of truth; filesystem-reconcile is the guaranteed path
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [MECH-SELFHEAL]
+- status: draft
+- importance: foundational
+
+The `.lts` file on disk is the single source of truth for what a corpus contains. The one
+mechanism that makes a write visible to a query is the engine's own filesystem-reconcile:
+the freshness gate compares against the file content and [MECH-SELFHEAL] re-indexes from
+the file. A write is queryable on a LIVE process the moment it lands on disk, with no
+restart.
+
+Any OTHER path that pushes a change into an in-memory view — a writer that also refreshes
+its own local index, a caller that pre-warms — is a best-effort OPTIMISATION over a
+distinct view, never the path a query's correctness depends on. It follows that such a push
+FAILING must degrade to the guaranteed file-reconcile, never to silence: if the write
+reached disk, the engine will serve it fresh regardless of whether any push succeeded. A
+design in which a failed in-process push leaves a write invisible has made an optimisation
+load-bearing, which this invariant forbids.
+
+---
+
+## [RISK-STALE-CODE] Risk — a running server executing a stale CODE snapshot
+
+- part-of: [FL-FRESHNESS]
+- see-also: [MECH-BUILD-STAMP]
+- see-also: [RISK-MISSED-EVENT]
+- status: draft
+- importance: high
+
+Every guarantee above assumes the process is executing the CURRENT engine code. A
+long-running MCP stdio server never reloads — it runs the python it imported at process
+start. So when the engine library on disk is updated under it (as [MECH-SELFHEAL] itself
+was, propagated to a server that had been running since before it existed), the process
+keeps executing the OLD snapshot: the on-disk fix is inert and the live process is silently
+broken. A manual bounce "fixes" it, which is the tell that the source was already correct
+and the LIVE PROCESS is the stale artifact.
+
+This is [RISK-MISSED-EVENT] one layer up — a missed CODE update rather than a missed FILE
+change — and it is retired the same way: not by trusting that a running process is current,
+but by a periodic re-verify that reconciles on divergence ([MECH-BUILD-STAMP]). It is
+explicitly NOT resolved by prescribing a manual operator restart; a fix that lives only in
+"someone remembers to bounce the server" is the recurrence this invariant closes.
+
+---
+
+## [MECH-BUILD-STAMP] The code-currency sentinel
+
+- part-of: [FL-FRESHNESS]
+- depends-on: [INV-FILE-IS-TRUTH]
+- implements: [INV-FRESH]
+- see-also: [RISK-STALE-CODE]
+- status: draft
+- importance: high
+
+The server stamps its LOADED engine build — a content hash over the engine package's own
+source bytes, mtime-immune, the same oracle discipline the corpus uses — and a sentinel
+compares it periodically against the on-disk build. On divergence the running process is
+executing code it never imported, and the sentinel RECONCILES by an automatic, invisible
+relaunch (re-exec): the very bounce the operator used to perform by hand, performed by the
+system. A stamp that cannot be read fails safe — it never manufactures a false divergence.
+
+This makes the two silent-staleness classes symmetric and both closed: a stale FILE is
+retired by [MECH-BACKSTOP]; a stale CODE snapshot is retired here. The reconcile STRATEGY is
+a deployment knob (automatic relaunch by default; a loud refuse-and-alert for a deployment
+that would rather not self-restart), but the detection is not optional — a server that
+cannot tell it is running stale code cannot honour [INV-FRESH].
+
+DETECTION IS ONLY HALF. This mechanism is stated in terms of what it NOTICES, and that is
+exactly where it was under-specified: nothing here said what the RECONCILE owes. A reconcile
+that detects perfectly and then leaves no serving process has not retired
+[RISK-STALE-CODE] — it has converted a silent staleness into an outage, which is strictly
+worse, because a stale answer is at least an answer. See [INV-RECONCILE-SERVES].
+
+---
+
+## [INV-RECONCILE-SERVES] Invariant — a reconcile leaves a LIVE successor on the SAME transport
+
+- part-of: [FL-FRESHNESS]
+- implements: [INV-FRESH]
+- see-also: [MECH-BUILD-STAMP]
+- see-also: [RISK-STALE-CODE]
+- status: draft
+- importance: high
+
+The engine's primary deployment surface is a STDIO MCP PEER: a child process whose stdin and
+stdout ARE the client's transport. On that surface a "relaunch" is not a daemon restart the
+system can absorb — if the process ends, the transport ends with it, and every corpus query
+in the interim degrades silently until a human notices and reconnects.
+
+So the automatic relaunch of [MECH-BUILD-STAMP] carries three obligations, and each is a
+verifiable count, not a hope:
+
+  1. THE SUCCESSOR SERVES. After a reconcile the process is ALIVE and answering. `os.execv`
+     is the correct primitive precisely because it replaces the image IN PLACE: same pid,
+     same inherited stdio fds, so the client never observes an EOF. A reconcile that spawns
+     a NEW process and lets the old one exit is a transport drop wearing a relaunch's name.
+
+  2. THE SUCCESSOR RE-ENTERS THE SAME ENTRYPOINT. A relaunch must reconstruct the command
+     that actually started this process, not a plausible-looking approximation of it. A
+     server launched as `python -m pkg.mod` must be re-entered as `python -m pkg.mod`;
+     re-running the module's FILE PATH is a different execution mode in which the module's
+     own package-relative imports cannot resolve, and the process dies on import.
+
+  3. NO REQUEST IS DROPPED ACROSS THE SEAM. The relaunch happens BETWEEN requests. A
+     reconcile fired mid-dispatch discards a response that was never written, and the client
+     waits out its timeout — a silent hang, the failure mode that is harder to diagnose than
+     the drop it replaced.
+
+THE PROOF OBLIGATION, because this invariant was violated by code whose test suite was
+green: the reconcile may not be certified by a test that INJECTS a fake reconcile callback.
+Detection and reconcile are different seams; spying the hook proves only that the hook is
+called. The acceptance evidence must be a REAL process launched the way the deployment
+launches it, over REAL pipes, observed still serving NEW code after a code change lands
+under it. A test that shares the launch-shape blind spot certifies the wrong conclusion.
+
+---
+
+## Causal Graph
+
+```
+PRECONDITION_FOR: [MECH-KERNEL] -> [MECH-SELFHEAL]
+ENABLES: [MECH-INCREMENTAL] -> [MECH-SELFHEAL]
+ENABLES: [MECH-SELFHEAL] -> [INV-FILE-IS-TRUTH]
+PREVENTS: [MECH-BACKSTOP] -> [RISK-MISSED-EVENT]
+PREVENTS: [MECH-BUILD-STAMP] -> [RISK-STALE-CODE]
+PRECONDITION_FOR: [INV-RECONCILE-SERVES] -> [MECH-BUILD-STAMP]
+CAUSES: [RISK-MISSED-EVENT] -> [INV-FRESH]
+CAUSES: [RISK-STALE-CODE] -> [INV-FRESH]
+```
+
+---
+
+## [FLOW-QUERY] Flow — the query-path freshness decision
+
+- part-of: [FL-FRESHNESS]
+- see-also: [STEP-RECEIVE]
+- see-also: [GATE-FRESH]
+- status: draft
+- rendered-by: `lts_flow(corpus="alpha", start_node="FLOW-QUERY", group_by="actor")`
+
+The complete decision path a query takes through the gate. This flow is not described by a
+stored diagram; the diagram is a query result over the steps below.
+
+### [STEP-RECEIVE] Query arrives at the gate
+
+- part-of: [FLOW-QUERY]
+- actor: QUERY layer
+- next-step: [STEP-COMPARE]
+
+Any gated operation — find, node, traverse, capabilities, aggregate, flow — enters here.
+
+### [STEP-COMPARE] Compare the maintained root against the index hash
+
+- part-of: [FLOW-QUERY]
+- actor: freshness gate
+- condition: maintained root equals index hash?
+- if-true: [STEP-SERVE]
+- if-false: [STEP-HEALER]
+
+An O(1) comparison of two content hashes. No file is read on this path.
+
+### [STEP-HEALER] Is a self-healer configured?
+
+- part-of: [FLOW-QUERY]
+- actor: freshness gate
+- condition: self-healer configured?
+- if-true: [STEP-REINDEX]
+- if-false: [STEP-REFUSE]
+
+Healing requires a rebuild recipe on the partition. Without one, staleness is terminal for
+this process and the refusal stands.
+
+### [STEP-REINDEX] Re-parse only the files whose content hash moved
+
+- part-of: [FLOW-QUERY]
+- actor: self-healer
+- next-step: [STEP-REVERIFY]
+
+Surgical per [MECH-INCREMENTAL]. Coalesced and attempt-keyed, so concurrent queries against
+the same changed corpus produce one rebuild.
+
+### [STEP-REVERIFY] Re-run the ordinary freshness check
+
+- part-of: [FLOW-QUERY]
+- actor: freshness gate
+- condition: fresh after rebuild?
+- if-true: [STEP-SERVE]
+- if-false: [STEP-REFUSE]
+
+The rebuild is never trusted on its own report. The same check that failed is re-run.
+
+### [STEP-SERVE] Serve the answer
+
+- part-of: [FLOW-QUERY]
+- actor: QUERY layer
+
+The only path that returns data.
+
+### [STEP-REFUSE] Return the stale marker
+
+- part-of: [FLOW-QUERY]
+- actor: QUERY layer
+
+Carries corpus id, index hash, live hash, reason, and — if a repair was attempted — what
+it did and why it did not restore freshness.
+
+---
+
+*FL-FRESHNESS — the correctness contract. Every guarantee here is enforced at the single
+choke point specified in [GATE-FRESH].*

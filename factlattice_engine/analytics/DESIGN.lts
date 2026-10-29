@@ -1,0 +1,89 @@
+---
+title: "lts-engine Analytics Layer — count / group-by / numeric / graph aggregates over find"
+id: "SPEC:LTS-ANALYTICS"
+domain: MET.FACTLATTICE
+scope: "The ANALYTICS layer of lts-engine: a deterministic aggregation fold over the QUERY layer's find — count / group-by / numeric (sum/avg/min/max) / distinct / cross-tab / top_k, plus graph-native degree / edge-type / orphans"
+boundary: "Specifies the aggregation FOLD only. The graph engine (parse/find/traverse/freshness) is the QUERY layer (factlattice_engine.tools) and is consumed here, not re-implemented."
+not-this: "Not a second store, not SQLite, not an LLM summarizer, not a new graph query op — a pure deterministic fold over the node set find() already returns."
+depends-on: [factlattice_engine.tools.LtsEngine.find, factlattice_engine.tools.normalize_date]
+created: 2026-07-23
+updated: 2026-07-23
+---
+# lts-engine Analytics Layer — count / group-by over `find` [SPEC:LTS-ANALYTICS]
+
+> The QUERY layer answers "which nodes / how connected" — nodes, edges, subgraphs, never a scalar or an
+> aggregate row. This layer supplies the missing primitive: a **scalar / histogram** answer. Deterministic,
+> no LLM: `count(corpus, group_by=<attr>, filter=…)` -> `{attr_value: count}`. As a NATIVE engine layer it
+> imports the QUERY layer directly and inherits the freshness gate + whole predicate surface for free.
+
+---
+
+### [LTS-ANALYTICS-CONTRACT] The public surface: count + group_by
+- lifecycle-position: built
+- importance: high
+- api: `LtsAggregator(tools=None)` with `.count(corpus, group_by=None, **filters)` and `.group_by(attr, corpus, canonical=True, raw=False, date_granularity='month', **filters)`; module-level `count()` / `group_by()` convenience wrappers build a default store once and reuse it.
+- returns: a deterministic dict — `{success, corpus, attr, total, distinct, groups:{value:count}, buckets:[{value,count}] sorted (-count, value), filters, normalize}`. `count` without `group_by` returns just `{success, corpus, total, filters}`.
+- group-by attributes: `lifecycle-position`, `domain`, `prefix` (= node `type_prefix`), `function`, `status`, `decided-in-session` (date-bucketed), plus any top-level node field or `properties` key by name, via friendly aliases (`prefix`->`type_prefix`, `lifecycle`->`lifecycle-position`, `session`/`date`->`decided-in-session`, `doctype`->`document_tag`).
+- filters: forwarded verbatim to `find` — `domain / function / service / prefix / status / text / since / until / date_property / area`. Aggregation therefore inherits the QUERY layer's whole predicate surface for free.
+- rationale: the fold is ~10 lines; the entire value is (a) doing it OVER `find` so every filter + the freshness gate come for free, and (b) the two hardening properties below (completeness + canonicalization) that a naive `find`-then-count-in-code gets WRONG.
+
+### [LTS-ANALYTICS-COMPLETE] Completeness — drain the token-budget cursor
+- part-of: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: high
+- problem: `find` applies a TOKEN BUDGET and TRUNCATES its returned node list (context-hygiene for an LLM consumer). A single `find` call over a large corpus returns a truncated slice, not the full set. A count over that slice LIES.
+- solution: `_find_all` drives `find` in a cursor loop (`offset := cursor` while `truncated`), accumulating the complete match set regardless of budget. It reuses the engine predicate + freshness logic exactly; it never bypasses the gate, and it guards against a stuck cursor.
+- verification: selftest tier A builds tools with `default_token_budget=1` (per-node truncation) and asserts `count(total) == 6` — the drain must reassemble the full set from single-node pages.
+
+### [LTS-ANALYTICS-CANONICAL] Canonicalization — collapse messy status values
+- part-of: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: high
+- problem: a real corpus stores `lifecycle-position` values with trailing prose — `committed   # proven across releases` is a DISTINCT raw string from `committed`. A naive group-by yields many singleton buckets, not the histogram a human means.
+- solution: a per-attribute value normalizer. `lifecycle-position` / `status` collapse to their LEADING STATUS TOKEN (everything before the first whitespace / `#` / `(`); `decided-in-session` buckets to `day`/`month`/`year` via the engine's OWN `normalize_date` (so bucketing matches `find`'s since/until semantics). `raw=True` / `canonical=False` shows the un-collapsed values.
+- evidence: selftest tier A asserts canonical distinct < raw distinct over a deliberately-messy fixture, and that `committed # ...`, `committed (...)`, `committed` collapse to one bucket.
+
+### [LTS-ANALYTICS-FRESH-HONEST] Freshness + failure pass-through
+- part-of: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: high
+- behavior: a `find` failure (corpus-not-found, or a STALE partition) is propagated VERBATIM — the aggregator returns the engine's `{success:False, stale:True, …}` marker, never a silently-wrong count. Aggregation is exactly as freshness-honest as `find`.
+- invariant: [INV-LTS-FRESH] — never serve a count computed off stale data.
+- verification: selftest tier A drives an `_AlwaysStale` freshness provider and asserts the count call returns `success:False, stale:True`.
+
+### [LTS-ANALYTICS-TIER1] Tier 1 — the analytical contract (numeric / distinct / cross-tab / top_k)
+- part-of: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: high
+- scope: extends the count/group_by kernel with numeric folds, distinct cardinality, cross-tab pivots, and top_k. Every Tier-1 op is a pure deterministic fold over the SAME complete, freshness-gated node set `_find_all` returns, so all inherit [LTS-ANALYTICS-COMPLETE] + [LTS-ANALYTICS-FRESH-HONEST] for free.
+- numeric: `numeric(attr, op='sum'|'avg'|'min'|'max', group_by=None, **filters)` + thin `sum/avg/min/max(attr, ...)` wrappers. HONESTY RULE — a non-numeric / absent / empty value is SKIPPED and reported as `skipped`, NEVER coerced to 0 (a silent-zero sum lies exactly the way a truncated count lies). Global return includes all four stats plus `count`, `skipped`, `total`. `coerce_number` parses int/float through, a string directly then by leading token (`"7 # measured"`->7.0), a bool -> None (a flag is not a metric).
+- numeric-grouped: `numeric(attr, op, group_by=<attr2>)` — each bucket carries its OWN `{value, count, sum, avg, min, max}`; buckets sorted by the requested op DESC (None last), value ASC.
+- distinct: `distinct(attr, **filters)` — cardinality of an attr's (canonicalized unless `raw=True`) distinct values. `(none)` is NOT counted; `counted` = nodes carrying a value.
+- cross-tab: `cross_tab(attr1, attr2, **filters)` — 2-D pivot. Deterministic `matrix` = nested dict keyed by SORTED row/col value (dense: zero cells present); flat `buckets:[{attr1,attr2,count}]` sorted (-count, attr1, attr2) with only populated cells.
+- top_k: `top_k(attr, k, by='count'|<numeric_attr>, agg='sum')` — bounded slice of the already-sorted group-by (`by='count'`) or numeric-grouped (`by=<attr>`) result.
+- verification: selftest tier A2 — sum(tokens)==400 over 5 contributing with 1 skipped; grouped sum by domain {D1:350,D2:50}; cross-tab matrix `{DEC:{D1:3,D2:2},FIX:{D1:1,D2:0}}` exact; top_k determinism; and the same drain/stale proofs applied to each op.
+
+### [LTS-ANALYTICS-TIER2] Tier 2 — graph-native aggregates (degree / edge-type / orphans)
+- part-of: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: high
+- scope: the aggregates that make this a GRAPH tool, not SQL-over-nodes — they need EDGE/adjacency data `find()` does not carry. `degree(node)`, `top_by_degree(k, direction='both'|'in'|'out')`, `count_by_edge_type()`, `orphans(limit=None)`.
+- adjacency-build: `_adjacency` derives the node universe + freshness verdict from `_find_all` (so STALE/not-found propagate VERBATIM exactly as Tier 1), then reads edges from the SAME fresh partitions via the PUBLIC `Partition.iter_edges()` — which returns EVERY edge with no token-budget truncation, so degree/edge-type counts are COMPLETE. Edge resolution follows the engine's own `resolved_edge_count` rule: skip `dangling` edges and any with an `unresolved_target` flag.
+- degree: in / out / total resolved-edge degree of one node. `orphans` = found nodes with in_degree 0 (an un-referenced node — corpus health as a query). `count_by_edge_type` is a whole-fresh-corpus histogram (an edge type is a corpus-level fact, not filtered to a node subset).
+- verification: selftest tier A2 — degree(N1)=3 (in1/out2); top_by_degree tie-break by id; edge-type histogram excludes the dangling + unresolved edges (resolved 4 of 6 total); orphans=[N4,N6,N5].
+
+### [LTS-ANALYTICS-PLACEMENT] Native engine layer
+- relates-to: [LTS-ANALYTICS-CONTRACT]
+- lifecycle-position: built
+- importance: medium
+- placement: a NATIVE layer of lts-engine (`factlattice_engine.analytics`), importing the QUERY layer (`..tools`) and corpus config (`..config`) directly — no path shim, no read-only-from-outside dance.
+- change: "Moved the aggregation fold IN to lts-engine as a native layer."
+- context_for_change:
+    prior_state: "The fold was built as an external consumer that imported the read-only engine over a path shim; the QUERY layer returned only nodes/edges/subgraphs and meta-questions were done by find-then-count-in-the-caller, repeatedly."
+    reasoning: "Aggregation is a general engine capability every corpus wants, not a consumer-specific one — so it belongs IN the engine as a first-class API layer that composes over the same graph index + freshness gate as QUERY and LINT."
+    invalidating_assumption: "That the analytics fold and the graph engine ship as separate packages. They do not: lts-engine is one library with three composed layers."
+- follow-on: the efficient whole-corpus degree/edge-type form is a maintained adjacency index (a candidate for the incremental-freshness kernel); the per-call scan here is the correct-now implementation.
+
+---
+
+*LTS-ANALYTICS — the ANALYTICS layer of lts-engine. Tier-1 (numeric sum/avg/min/max, distinct, cross-tab, top_k) + Tier-2 graph-native aggregates (degree, top_by_degree, count_by_edge_type, orphans) over the same complete + freshness-gated fold as count/group_by.*

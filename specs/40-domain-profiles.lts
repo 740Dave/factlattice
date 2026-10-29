@@ -1,0 +1,163 @@
+---
+title: "The domain-profile system — pluggable vocabulary, namespaced deconfliction"
+id: "SPEC:FL-PROFILES"
+domain: MET.FACTLATTICE
+scope: "How a domain registers its own vocabulary — id prefixes, edge types, properties, document tags, traversal policy — without any change to the format core, and how namespaces keep multiple domains from colliding"
+boundary: "Specifies the extensibility mechanism. The core vocabulary that no profile may override (the four layers, the reference forms, the parser contract) is specified in FL-MODEL."
+not-this: "Not a catalogue of domains. The profiles shipped alongside this corpus are reference examples, not a registry."
+status: draft
+created: 2026-07-23
+updated: 2026-07-23
+---
+# The domain-profile system [SPEC:FL-PROFILES]
+
+> The format knows that domains exist. It knows nothing about any particular domain.
+> Everything a knowledge format is normally tempted to hardcode — what `REQ-` means, which
+> edge types are legal, which properties are required — is registered by a profile that
+> tooling loads at runtime.
+
+---
+
+## [PROFILE-CONTRACT] What a profile registers
+
+- part-of: [FL-PROFILES]
+- depends-on: [MODEL-ID]
+- see-also: [PROFILE-SELFHOST]
+- status: draft
+- importance: high
+
+A domain profile is a document that declares a domain's vocabulary and how its corpus is
+meant to be traversed:
+
+| Registers | Effect |
+|-----------|--------|
+| Namespaces | Edge types under those namespaces stop being flagged as unregistered |
+| Id prefixes | `REQ-`, `MOD-`, `TEST-` acquire documented meaning and become a taxonomy |
+| Edge types | Domain relationships, each assigned to one of the four core layers |
+| Properties | Domain keys, their types, and which are required on which node kinds |
+| Document tags | The doctypes this domain's documents may carry |
+| Traversal policy | Default entry points, named focus areas, keyword triggers |
+
+The engine core consumes exactly one hook from a profile today: the set of registered
+namespaces. Everything else in the profile is read by higher layers — linters, authoring
+agents, documentation renderers. That is a deliberate staging, and it is worth being
+plain about it: **profile-driven validation of prefixes, required properties, enum values
+and more is implemented in the linter at warning severity, but runs only when a
+machine-readable profile is in scope, and the shipped reference profiles do not provide
+one.** With them, a profile is still documentation plus a namespace registration.
+
+---
+
+## [PROFILE-NAMESPACE] One deconfliction mechanism, applied everywhere
+
+- part-of: [FL-PROFILES]
+- depends-on: [PROFILE-CONTRACT]
+- status: draft
+- importance: high
+
+Namespaces deconflict every extensibility surface, with no per-surface special case:
+
+| Surface | Core | Domain |
+|---------|------|--------|
+| Edge types | `DEPENDS_ON` | `clinical.CONTRAINDICATES` |
+| Id prefixes | — | `REQ-`, `PT-`, `MOD-` |
+| Properties | `status`, `confidence` | `dosage`, `contract-version` |
+| Document tags | `SPEC`, `SYSTEM` | `RUNBOOK`, `CARE-PLAN` |
+| Cross-corpus refs | — | `[ops.acme:SPEC:DEPLOY]` |
+
+`clinical.STATUS` and `swe.STATUS` coexist without collision because they are different
+names, not because anything arbitrates between them. There is no conflict-resolution
+protocol to specify, which is the point of choosing namespacing over a central registry.
+
+---
+
+## [PROFILE-TIERS] Three tiers — core, registered, private
+
+- part-of: [FL-PROFILES]
+- depends-on: [PROFILE-NAMESPACE]
+- see-also: [PROFILE-PROMOTION]
+- status: draft
+
+| Tier | Form | Guarantee |
+|------|------|-----------|
+| Core | `DEPENDS_ON`, `core.DEPENDS_ON` | Immutable, ships with the format, every parser understands it |
+| Registered | `clinical.CONTRAINDICATES` | Published in a profile; parsers load it on demand |
+| Private | a bare non-core type | Local use, no registration, no collision guarantee |
+
+A parser meeting an unregistered namespace **preserves the edge and flags it**. It does not
+drop it and it does not fail. That behaviour is what makes the tiers usable in practice: a
+consumer who has not loaded your profile still gets a complete graph, with the parts they
+cannot validate marked. Zero friction to read, full validation to author.
+
+---
+
+## [PROFILE-BOUNDARY] The core/domain boundary test
+
+- part-of: [FL-PROFILES]
+- see-also: [PROFILE-CONTRACT]
+- status: draft
+- importance: high
+
+Every proposed feature answers one question: does it define a **structural mechanism** — an
+interface, a contract, a syntax rule — or a **specific implementation** — a tool, a
+workflow, a vocabulary?
+
+| Core | Domain |
+|------|--------|
+| The confidence attribute exists and is a number in `[0.0, 1.0]` | How a clinical domain assigns confidence |
+| The four graph layers | Which edge types a domain places in each |
+| `[PREFIX-NAME]` is a reference | What `PT-` means |
+| A governance mechanism exists | A given organization's change-approval workflow |
+| An event-stream contract | The specific event types a domain emits |
+
+This is the test that keeps the format multi-domain rather than one domain claiming
+universality. It is applied to every amendment, and the answer is recorded.
+
+---
+
+## [PROFILE-PROMOTION] Frequency-driven promotion
+
+- part-of: [FL-PROFILES]
+- depends-on: [PROFILE-TIERS]
+- see-also: [MODEL-CHANGE]
+- status: draft
+
+Core vocabulary is not designed up front. It is promoted from observed convergence.
+
+| Domains using it | Action |
+|------------------|--------|
+| 1 | Domain-specific. No action. |
+| 2 | Noted in the registry. No promotion. |
+| 3 or more, compatible semantics | Candidate: promote to core, or mint an intermediate namespace for the cluster |
+| 3 or more, incompatible semantics | No action — namespaces already deconflict them |
+
+The intermediate-namespace option matters more than it looks. A concept shared by a cluster
+of domains but irrelevant to the rest belongs in its own namespace, not in core. Core grows
+only for genuinely universal structure, because every addition to core is something every
+parser must implement forever.
+
+Promotion to core requires a recorded `change` and `context_for_change` block with an
+`invalidating_assumption`, per [MODEL-CHANGE]. A core amendment without a recorded premise
+is not accepted.
+
+---
+
+## [PROFILE-SELFHOST] Profiles are themselves FactLattice documents
+
+- part-of: [FL-PROFILES]
+- see-also: [MODEL-DOCTYPE]
+- status: draft
+
+A domain profile is a `.lts` document parsed by the parser it configures. It is a node in
+a graph, it can be traversed, linted, referenced, and diffed like any other document.
+
+This is the same self-hosting property this corpus demonstrates: the specification of
+FactLattice is written in FactLattice. It is not a rhetorical flourish — it is the cheapest
+available test that the format is expressive enough for structured technical content,
+because a format that could not carry its own specification would fail the test loudly and
+immediately.
+
+---
+
+*FL-PROFILES — the extensibility mechanism. All domains are equal; none is the reference
+implementation.*

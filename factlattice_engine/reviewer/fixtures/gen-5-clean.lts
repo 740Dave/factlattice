@@ -1,0 +1,10 @@
+# Fixture: a citation whose target supports the claim [SPEC:FIXTURE-GEN5-CLEAN]
+
+## [FX5C-A] The retry limit
+
+- claim: retries are capped at three, per node FX5C-B
+
+## [FX5C-B] Retry policy
+
+- claim: retries are capped at three attempts with exponential backoff
+- source: the retry policy document

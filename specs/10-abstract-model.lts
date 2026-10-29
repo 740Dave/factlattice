@@ -1,0 +1,313 @@
+---
+title: "FactLattice Abstract Model — nodes, edges, properties, layers"
+id: "SPEC:FL-MODEL"
+domain: MET.FACTLATTICE
+scope: "The serialization-independent abstract model a FactLattice document encodes: node identity, properties, typed edges, the four graph layers, references, and document tags"
+boundary: "Specifies WHAT a document means, not what the engine does with it. Query, aggregation, linting and rendering are specified in FL-ENGINE."
+not-this: "Not a grammar reference for every accepted surface form — the parser contract in SPEC.md section 2 is normative for surface syntax."
+status: draft
+created: 2026-07-23
+updated: 2026-07-23
+---
+# FactLattice Abstract Model [SPEC:FL-MODEL]
+
+> A `.lts` document is a container that serializes a fragment of a typed knowledge graph.
+> The abstract model below is what every parser must produce; the surface syntax is a
+> detail of one serialization. Two documents that produce the same nodes, edges and
+> properties are the same knowledge regardless of how they were written.
+
+---
+
+## [MODEL-NODE] Node — the unit of addressable knowledge
+
+- part-of: [FL-MODEL]
+- see-also: [MODEL-SYNTAX]
+- status: draft
+- importance: foundational
+
+A node is one addressable assertion, concept, requirement, component, decision, step, or
+observation. It carries an id, a type prefix derived from that id, a title, the document
+tag of its containing document, a source location (file plus line range), a content hash,
+and a property map.
+
+Nodes are minted by headings that carry a bracketed id, and by list items that define an
+id explicitly. A heading with no bracketed id is a **section divider**: it structures the
+document and bounds node content, but it is not knowledge and mints nothing. This is the
+mechanism by which a document can carry narrative scaffolding without polluting the graph.
+
+Node content is bounded by the next heading of any level. That boundary is what makes a
+node's `content_hash` stable under edits elsewhere in the same file — which in turn is
+what lets [MECH-INCREMENTAL] re-parse one file and leave the rest of the corpus alone.
+
+---
+
+## [MODEL-ID] Identity — uppercase, prefixed, corpus-unique
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-NODE]
+- see-also: [MODEL-REF]
+- status: draft
+
+Node ids match `^[A-Z][A-Z0-9_\-]*$`. The uppercase requirement is not cosmetic: it is
+the mechanical signal that separates an id from ordinary bracketed prose, so a parser can
+scan a document for references without inference. A lowercase bracket is prose and is
+ignored.
+
+The segment before the first hyphen is the **type prefix** (`INV-FRESH` has prefix `INV`).
+Prefixes are the primary coarse taxonomy of a corpus: they make `find(prefix="INV")` a
+meaningful query without any schema declaration. Which prefixes exist and what they mean
+is domain vocabulary, registered in a profile — see [PROFILE-CONTRACT].
+
+Ids are unique per corpus. A duplicate id is an error, not a merge: the first definition
+wins and the collision is reported. Silently merging two nodes that happened to share a
+name would make every downstream traversal wrong in a way no query could detect.
+
+---
+
+## [MODEL-PROPERTY] Property — typed key/value on a node
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-NODE]
+- status: draft
+
+Properties are lowercase-keyed key/value pairs attached to a node. Five surface forms
+exist (simple, bold-key, multi-value, nested list, and nested mapping); all five produce
+the same abstract property map. A repeated key accumulates into a list rather than
+overwriting, so a node may carry several `depends-on` declarations without a syntax for
+arrays.
+
+A property VALUE is a scalar, a list, or a mapping. The mapping form is what the
+`{change, context_for_change}` primitive, the `{task, context_for_task}` primitive and
+the `confidence` annotation are specified in — an indented block of unbulleted
+`subkey: value` lines under a `- key:` head — and its sub-fields are keyed, queryable
+fields, not text inside a list item. Notation Freedom is the reason: a YAML block is a
+declared notation, and the parser must extract the same abstract graph whichever
+notation an author chose. There is no nesting below one level: a mapping's values are
+scalars, and a block that mixes bulleted items with unbulleted entries under one key is
+reported as an ambiguity rather than resolved by guessing which half the author meant.
+
+Properties fall into three functional classes, and the class is determined by the key, not
+by the value:
+
+- **Descriptive.** `status`, `owner`, `as-of`, `confidence`, and any domain key. Stored,
+  queryable, filterable, aggregatable. No graph effect.
+- **Relationship-bearing.** `part-of`, `depends-on`, `implements`, `see-also`,
+  `supersedes`, `resolves`, `contrast-with`, `used-by`, `issuer`, `tested-by`. Every
+  bracketed reference in the value mints a typed edge — see [MODEL-EDGE].
+- **Flow-bearing.** `next-step`, `if-true`, `if-false`, `branches`, `converges-to`. Mint
+  labelled temporal edges. Their companions `condition` and `actor` are descriptive: they
+  change how a node is *drawn* by the RENDER layer but mint nothing.
+
+The split matters because it makes the graph auditable. Any edge in a FactLattice corpus
+came from exactly one of: a relationship-bearing property, a flow-bearing property, an
+explicit relationships section, an explicit causal-graph section, or heading nesting.
+There is no sixth source and no heuristic source.
+
+---
+
+## [MODEL-EDGE] Edge — a declared, typed relationship
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-NODE]
+- see-also: [MODEL-PROPERTY]
+- status: draft
+- importance: foundational
+
+An edge has a source id, a target id, a type, a layer, an **inference class**, a source
+location, and optionally a label. The inference class records how the edge came to exist:
+
+| Inference class | Origin | Example |
+|-----------------|--------|---------|
+| `property` | A relationship-bearing or flow-bearing property | `- depends-on: [MODEL-NODE]` |
+| `authored` | An explicit relationships or causal-graph section line | `- [A] DEPENDS_ON [B]` |
+| `structural` | Heading nesting (parent contains child) | An `h3` inside an `h2` |
+
+Recording the inference class is what lets tooling weigh edges differently without
+re-parsing. The orphan check in [LAYER-LINT], for instance, counts only `authored` and
+`property` edges: if `structural` edges counted, every nested node would trivially be
+"referenced" by its own parent heading and the check would find nothing.
+
+Edges are **preserved and flagged, never dropped**. An edge whose target does not exist in
+the corpus is retained and marked dangling. An edge whose type carries an unregistered
+namespace is retained and flagged. A format that silently discarded what it could not
+resolve would make a corpus quietly lose knowledge as it was edited; flagging turns the
+same situation into a lint finding.
+
+---
+
+## [MODEL-CANONICAL] CANONICAL — a legacy name pointing at its canonical node, not supersession
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-EDGE]
+- status: draft
+- importance: important
+
+The relationship-bearing key `canonical-node` mints a **CANONICAL** edge (semantic layer) that
+runs from the node carrying it to the node it names: legacy to canonical. The bare key
+`canonical` does NOT mint: it is already free-text status prose in existing corpora
+(`canonical: true -- cutover accepted...`), and minting it would turn that prose into an
+edge asserting the opposite of its text. It says "this node
+describes the same thing as the target under a non-canonical name or number; the target is
+the canonical definition". The edge TYPE name `CANONICAL` is final: tooling that annotates a
+legacy node keys on it.
+
+It is **not** `superseded-by`, and the two must not be confused. `superseded-by` (a reversed
+SUPERSEDES edge) says the node has been replaced and its content is retired. A CANONICAL
+edge says nothing of the kind: the legacy node's content stays valid, and only the preferred
+name and number differ. Authoring `superseded-by` where `canonical-node` is meant tells every
+reader the content is dead; authoring `canonical-node` where `superseded-by` is meant tells them
+a retired node is still good.
+
+Five rules are linted, each at error severity. The value must be refs only: well-formed
+bracketed ids and separators, so prose, an unbracketed id or a malformed bracket is an
+error rather than silently stored text. The target must exist (a cross-corpus
+reference resolves by the existing cross-corpus conventions). A node has at most one
+canonical target, since two is ambiguous. A node cannot be its own canonical. The canonical
+chain has no cycle.
+
+---
+
+## [MODEL-LAYER] Graph layers — semantic, temporal, causal, entity
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-EDGE]
+- see-also: [DEC-FOUR-LAYERS]
+- status: draft
+
+Every edge belongs to exactly one of four layers. The layer is derived from the edge type,
+or set explicitly by the subheading of a relationships section.
+
+| Layer | Answers | Representative types |
+|-------|---------|----------------------|
+| Semantic | What is this, and what is it part of? | `IS_A`, `PART_OF`, `IMPLEMENTS`, `DEPENDS_ON`, `SUPERSEDES`, `RELATED_TO` |
+| Temporal | What comes before what? | `BEFORE`, `AFTER`, `SEQUENCE`, `CONCURRENT`, `VALIDITY_WINDOW` |
+| Causal | What makes what happen? | `CAUSES`, `ENABLES`, `PREVENTS`, `PRECONDITION_FOR`, `CASCADES_TO` |
+| Entity | Who holds, owns, issues, contains? | `CONTAINS`, `OWNED_BY`, `ISSUES`, `USED_BY`, `TESTED_BY` |
+
+Four layers is a fixed part of core. It is the one piece of vocabulary a domain cannot
+extend, because cross-domain traversal is only possible if every domain agrees on what
+kind of question a given edge answers. A domain may add edge *types* freely; it places
+them in one of these four layers.
+
+Layers are the primary filter on traversal. "How does this process run?" is a temporal
+walk. "What breaks if I change this?" is a causal and semantic walk. Asking both at once
+returns a hairball; the layer filter is what makes a bounded, legible answer possible.
+
+---
+
+## [MODEL-REF] References — local, doctype-qualified, cross-corpus
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-ID]
+- status: draft
+
+A reference is a bracketed id in a property value or a relationship line. Three forms are
+recognized:
+
+| Form | Meaning |
+|------|---------|
+| `[NODE-ID]` | A node in this corpus |
+| `[DOCTYPE:NODE-ID]` | A document root, addressed by its document tag |
+| `[domain.suffix:DOCTYPE:NODE-ID]` | A node in another registered corpus |
+
+Cross-corpus references are namespaced, never filesystem paths. A path binds a corpus to
+one machine's directory layout and breaks the moment the corpus is published, vendored, or
+mounted somewhere else. A namespace binds it to a registered identity that the engine
+resolves at query time through its corpus registry; an unresolvable one returns a plain
+`unresolved` marker rather than a fabricated node.
+
+---
+
+## [MODEL-DOCTYPE] Document tags and frontmatter
+
+- part-of: [FL-MODEL]
+- depends-on: [MODEL-NODE]
+- see-also: [MODEL-CHANGE]
+- status: draft
+
+A document opens with a frontmatter block and a single `h1` carrying a
+`[DOCTYPE:DOC-ID]`. The doctype tags what kind of document this is — `SPEC`, `SYSTEM`,
+`DECISION`, `DOMAIN`, `TESTPLAN`, `DELTA` — and the doc id makes the document itself an
+addressable node, so a reference can point at a whole document rather than a section.
+
+Frontmatter carries document-level metadata: `title`, `id`, `domain`, `scope`,
+`boundary`, `not-this`, `status`, `created`, `updated`. It mints no edges. `scope`,
+`boundary` and `not-this` exist for a specific reason: they let a later reader — human or
+machine — decide whether a question belongs in this document without reading the document.
+On a large corpus that is the difference between "search every file" and "read five
+frontmatter blocks", and it is what makes overlap detection across an existing corpus
+tractable at all.
+
+---
+
+## [MODEL-CHANGE] Knowledge evolution — change and context_for_change
+
+- part-of: [FL-MODEL]
+- see-also: [MODEL-PROPERTY]
+- status: draft
+- importance: high
+
+FactLattice has one first-class primitive for recording how understanding changed:
+
+```yaml
+change: "What changed"
+context_for_change:
+  prior_state: "What was believed before"
+  reasoning: "Why it changed"
+  rejected_alternative: "What else was considered"
+  counter_argument: "The strongest argument against"
+  counter_response: "Why that argument does not hold"
+  invalidating_assumption: "The premise whose change reopens this"
+  implication: "Downstream effects"
+```
+
+`invalidating_assumption` is the load-bearing field. It converts a decision from a
+conclusion into a conditional: *this holds while X holds*. A future reader can then tell
+"still valid, defend it" from "the premise moved, reopen it" without reconstructing the
+original argument.
+
+This is the mechanism that closes the failure mode where one Intelligence, lacking the
+reasoning behind a prior decision, is used to argue against it — and the argument is
+unanswerable because the reasoning was never written down. The reasoning is durable here
+because it is a property of a node, queryable like any other.
+
+---
+
+## [MODEL-SYNTAX] Worked example — the concrete syntax
+
+- part-of: [FL-MODEL]
+- see-also: [MODEL-EDGE]
+- status: draft
+
+A minimal document. The `h1` mints the document node; each `h2` mints a node; each
+relationship-bearing property mints an edge. (Shown as an indented block so this
+document's own parse is not perturbed by the example's property lines.)
+
+    ---
+    title: "Order Service"
+    id: "SPEC:ORDER-SERVICE"
+    domain: ACME.SERVICES
+    ---
+    # Order Service [SPEC:ORDER-SERVICE]
+
+    ## [REQ-IDEMPOTENT] Order submission is idempotent
+    - status: accepted
+    - priority: must
+    - tested-by: [TEST-DUPLICATE-SUBMIT]
+
+    ## [MOD-ORDER-API] The order API module
+    - implements: [REQ-IDEMPOTENT]
+    - path: services/order/api.py
+
+That fragment yields three nodes (one document node plus two `h2` nodes) and four edges:
+`MOD-ORDER-API IMPLEMENTS REQ-IDEMPOTENT` from the `implements` property;
+`TEST-DUPLICATE-SUBMIT TESTED_BY REQ-IDEMPOTENT` from the reversed `tested-by` property;
+and two structural `CONTAINS` edges from the document node. `TEST-DUPLICATE-SUBMIT` is
+defined nowhere in the fragment, so its edge is preserved, marked dangling, and reported
+by [LAYER-LINT] — which is exactly the behaviour that makes a half-written spec visible
+instead of quietly incomplete.
+
+---
+
+*FL-MODEL — the abstract model. Reference material for authoring; read [FL-ENGINE] to see
+what the model buys at query time.*

@@ -1,0 +1,57 @@
+---
+scope: "p95(latencies): the exact 95th-percentile method for the SLA dashboard"
+audience: [implementer]
+boundary: "Defines the computation only. Not data collection, storage, or display."
+domain: SWE.SLA-METRICS
+---
+# P95 Latency [SPEC:P95]
+
+> The 95th-percentile computation, pinned to one method so every dashboard and alert agrees on the number.
+
+## Interface
+
+### [DM-P95] p95(latencies) -> float
+- signature: p95(latencies: list[float]) -> float
+- returns: the 95th-percentile latency by the NEAREST-RANK method defined below.
+- part-of: [SPEC:P95]
+
+## Method
+
+### [DD-NEAREST-RANK] Nearest-rank, ceiling, 1-indexed
+- decision: Sort the values ascending. Compute rank r = ceil(0.95 * n) where n = len(latencies), using 1-based indexing. Return the value at position r (i.e. sorted[r-1]).
+- rationale: The SLA question is "95% of requests were at or below what latency" — an actual observed measurement, not a synthetic point between two measurements. Nearest-rank returns a value that actually occurred.
+- worked-example: n=10, sorted [10,20,30,40,50,60,70,80,90,100] -> r = ceil(9.5) = 10 -> returns 100.
+- part-of: [SPEC:P95]
+
+### [DD-EDGES] Boundary behavior
+- decision: Empty input raises ValueError. A single value returns that value. n>=1 otherwise as above.
+- part-of: [SPEC:P95]
+
+## Invariants
+
+### [INV-OBSERVED] The result is always a value that appears in the input
+- constraint: p95(x) is an element of x. It is never an interpolated or averaged quantity.
+- part-of: [SPEC:P95]
+
+### [INV-DETERMINISTIC] Same input yields the same result
+- constraint: No randomness, no floating-point interpolation dependence; sorting + integer rank only.
+- part-of: [SPEC:P95]
+
+## Not-This
+
+- not-this: "Linear interpolation between ranks (the numpy/pandas/Excel default, method='linear')" -> REJECTED. For n=10, [10..100], linear interpolation gives 95.5 (between the 9th and 10th values), which is not an observed latency and violates [INV-OBSERVED]. Use [DD-NEAREST-RANK]; the answer for that input is 100, not 95.5.
+- not-this: "The mean of the two values nearest the rank" -> REJECTED. Same reason.
+- not-this: "numpy.percentile / statistics.quantiles defaults" -> REJECTED unless explicitly configured to nearest-rank; their defaults interpolate.
+- part-of: [SPEC:P95]
+
+## Acceptance
+
+### [TEST-DISCRIMINATOR] The input that separates nearest-rank from interpolation
+- given: latencies = [10,20,30,40,50,60,70,80,90,100]
+- then: p95 == 100.0 (nearest-rank). An interpolating implementation returns ~95.5 — the wrong answer.
+- part-of: [SPEC:P95]
+
+### [TEST-SINGLE] Single value
+- given: latencies = [42.0]
+- then: p95 == 42.0
+- part-of: [SPEC:P95]

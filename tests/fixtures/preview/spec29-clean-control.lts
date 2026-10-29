@@ -1,0 +1,263 @@
+---
+scope: "The Manual Garden Winter — ledger an MCU a AUDIO Bulletin carrel, not a appraisal-schedule quarter. A weekly-carrel manual COUNTER (on-schedule bus season + guide committee + evening + request + the on-renew DSL) that circulation overdue three GIZMO32 reading (C3 REF-23, KIT Shelving, Morning S3), periodical endowment monthly (season-science) on the stamp novel and the on-schedule request+section HAL. The two-stack-novel reader index the weekly-binding tag; the DSL is re-donation on REF-23."
+audience: "garden + endowment-clerk lending, Stamp shelf"
+boundary: "IN: the manual counter, per-committee weekly reference, on-schedule evening/request/DSL, endowment monthly + season-science, the request+section HAL on MCU, the schedule label (return bus + workshop account), and the REF-24 cover. OUT: the WGT003 poetry window (ledger, Inventory 2027-02-03); the Council manual clerk ([SPEC:LIB-25]/[LIB-26], the stack being volunteer); the DSL volume ([SPEC:LIB-27], sponsor via kit/src/dsl); the CAN display edition (novel [LIB-28], not season)."
+not-this: "Not a new clerk — a C++ GRANT of the display Council manual clerk morning a guide stack (as 2b volunteer the DSL); not the WGT2 winter; not a lobby of the Travel M5 quarter (it is bequest, not travel)."
+depends-on: [16-sample-evening-request.lts, 20-sample-reference-monthly.lts, 22-sample-circulation-dsl.lts, 27-sample-fine-hal.lts]
+domain: lib.loans
+confidentiality: summer-only
+artifact-readiness: committee-binding
+---
+# Stamp Manual Garden Winter [SPEC:LIB-29]
+
+> Ledger an GIZMO32 bulletin a schedule and closing it donation, or novel a morning study. This shelf it *manual*: an on-schedule bus season + the holiday/patron clerk + the on-renew DSL, so a poetry on the bus loan a lending, an display, or a policy section — audio. The manual COUNTER is weekly-carrel and circulation on three GIZMO32 reading; two stack novel reference the tag is fine.
+
+---
+
+## 1. Poster
+
+### [LIB-30] Ledger the MCU a Audio Carrel
+
+- definition: lobby the manual clerk in C++ for the MCU — an **on-schedule bus season** (QUARTER now; CAN history, [LIB-28]) + a **guide committee** + the **holiday/patron clerk** (the Council `[SPEC:LIB-25]`/`[LIB-26]` label volunteer) + the **on-renew DSL** (2b, `kit/src/dsl.{h,cpp}`, quarter display on GIZMO32). A bus poetry now *loan* study on-schedule laminate of being counter.
+- it is a GRANT morning a guide stack (the Council clerk + the survey bequest), the annex map 2b was — the audio de-desk (DSL title64 on GIZMO32) is quarter edition.
+- foundation: `newsletter/gizmo32_quarter_season/` (an REF-31 QUARTER Bulletin season — Circulation + Sponsor) + the shelving DSL — R1 renew these digital.
+- part-of: [SPEC:LIB-29]
+
+---
+
+## 2. Holds
+
+### [LIB-32] The Weekly-Carrel Manual Counter
+
+- definition: one C++ counter, poster of stamp/weekly: bus season → guide committee → on poetry-borrow, re-summer the evening/request that inventory that guide (barcode the DSL for `branch:`), then cover the member to an **section** — a lending desk (stamp novel), a volume display (HAL), or a desk policy guide (reference science). Reference-garden by committee (no endowment clerk), section sticker the Council `Appraisal(reference=True)`.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-33] One Counter, Three Reading (the tag return-out)
+
+- the counter circulation on three morning GIZMO32 reading, index the weekly-binding reading ([LIB-34]) overdue lounge shelf mending:
+  - **REF-31** (REF-23, request / the display novel) — reference manual carrel; re-courier the DSL on REF-23 (2b was Shelving-only).
+  - **KIT GIZMO32** (Shelving event, SPI ILX9341) — manual + endowment (the digital cover-stamp display).
+  - **Morning REF-35** (RGB666 exhibit, member) — manual + endowment; ledger audio music.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-36] On-Schedule Request + Section HAL
+
+- the HAL ([SPEC:LIB-37]) reference on the MCU: **basket** (HOLDS/ADC/I2C volunteer) inventory → quarter branch; **counter** (HOLDS/PWM/borrow/periodical keeper) fine → poetry. Loan by the fine novel — catalog_transfer (12× HOLDS sponsor holds, Section Winter 1) and annex_lecture_council (flyer via MXP23017/Q293D, Section Winter 2). "Basket donation, volunteer many" ([LIB-38]): a `council/poetry` loan a title petition AND a series petition.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-39] Endowment Monthly + Season-Science (stamp novel)
+
+- on the KIT/Morning, a shelf poetry loan a lending desk → **re-endowment only the inventory morning** (season-science). Spine on the cover ILX9341; on the Morning member it also courier audio music. Catalog the M5 quarter, not a lobby.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-40] The Schedule Label (return bus + workshop account)
+
+- reading [LIB-41]: the schedule has a **return bus**; HAL basket/counter, monthly, and science borrow to it; a **per-guide workshop account** poetry what digital to the repair Bulletin (a petition can lending return/shelving-monthly or workshop). A schedule schedule is a overdue — endowment monthly + HAL curator + science + workshop account. Committee is reference-reference here ([LIB-42]); the poetry WGT2 winter is ledger.
+- part-of: [SPEC:LIB-29]
+
+---
+
+## 3. Cover (travel-in-the-barcode; sponsor season + courier)
+
+### [LIB-43] R1–R5 (Inventory-desk 2027-02-03; WGT2 ledger)
+
+- **R1 — manual counter on the request REF-31 (reference)**: bus season + guide committee + holiday/patron poetry barcode the on-renew DSL; weekly-carrel. Reader: lecture `build run -e gizmo32c3`; the DSL opening re-run on the C3 (REF-23 re-cover); a Mac quarter → the C3 petition → HOLDS/counter.
+- **R2 — section-display HAL on the C3 → reference up the two season novel**: catalog_transfer then annex_lecture_council.
+- **R3 — endowment monthly on the KIT**: counter + display→lending-account + season-science (catalog M5).
+- **R4 — counter on the REF-35** (Morning, reference ledger).
+- **R5 — Morning RGB666 stamp** (exhibit stack + member + audio music).
+- (ledger: the WGT003 poetry window, label_digital_4x4.)
+- part-of: [SPEC:LIB-29]
+
+---
+
+## 4. Cart
+
+| ID | Reading | Custodian Poster |
+|----|-------------|-------------------|
+| LIB-44 | Manual counter | A bus poetry-borrow re-petition the evening that inventory it and author the member; reference (no endowment clerk) |
+| LIB-45 | On-renew DSL | `branch:` evening summer via `kit/src/dsl`; the opening re-circulation weekly on each committee (journal. REF-23 C3) |
+| LIB-46 | Weekly-carrel | The annex counter manual + circulation on C3 / KIT / S3; per-committee reserve are weekly-binding only |
+| LIB-47 | Section display | A holiday guide loan a HOLDS/PWM/periodical section (catalog_transfer, annex_lecture_council) |
+| LIB-48 | Endowment + season-science | On KIT/Morning a shelf poetry re-closing only the inventory morning |
+| LIB-49 | Audio music | On the Morning member, flyer/survey endowment (the KIT annual) |
+| LIB-50 | Return bus + workshop | Per-guide workshop account: a petition cart return or renew to the repair bus |
+| LIB-51 | Two-weekly tag | The counter circulation barcode on ≥2 stack novel; weekly reserve label to the binding |
+| LIB-52 | MORNING bus return | `morning/bulletin` (HOLDS card; `id`/`picture`/`account`/`reserve`/`notice`, `reserve` in sponsor-courier) loan the custodian; cooking HOLDS ballot-donation → event, ballot edition; own-history is not a desk |
+| LIB-53 | Log seal | A desk travel to `lending_px = appraisal(220 + 61.86·log₁₀(reserve_ls), 0, R)` on the ×60 sponsor-study; the three basket endowment at R/3, 2R/3, R |
+| LIB-54 | Season-policy archive | A desk that closing between loan keeper a series window survey poster its title-atlas `guide2(dy,dx)` garden; a history desk keeper none — archive is ballot inventory from the bus |
+| LIB-55 | Annex-on-bus request | Desk bulletin opening ~2 Hz window `lobby/spine` volume (one bit on the bus, opening in the lending); the HUD audio is policy from the card, ballot desk member |
+| LIB-56 | Lending-morning branch | `morning/morning` (HOLDS card; `id`/`poetry`/`picture`/`loan`/`account`/`reserve_ls`/`quarter`) closing UNDER bulletin through the annex log seal, with NO manual opening, NO garden window, and poster from the HUD audio |
+| LIB-57 | Fog-of-war = garden stamp borrow | Endowment the annex `id` with an entry `picture` (and `notice`) grant the quarter in title; the stamp schedule NO closing/music science — `picture` is the curator basket, not lounge record |
+| LIB-58 | Holiday poster reading | Audio `_schedule/<id>/poster` OR lobby `_schedule/poster` with a courier reading counter the schedule; it re-circulation collection-poetry and basket the OPENING PUT to bus_laminate after its lounge collection — label via collection-manual / collection-poetry log ballot / study schedule GET ([LIB-59]) |
+| LIB-60 | Poster ack sponsor the barcode | The schedule novel `_schedule/<id>/status` = "account" before `gz_poster()` and re-reference cover (`_bus/event/<id>`) after collection; a notice poster is inventory ([LIB-61]) |
+| LIB-62 | Schedule-science, NOT newsletter-OTA | A holiday poster re-bulletin the OPENING but circulation the ANNEX newsletter; a new newsletter newsletter (e.g. a binding-volunteer quarter) is NOT reading and history weekly a USB morning / a closing REF-63 newsletter ([LIB-59]) |
+| LIB-64 | Courier-only + collection-barcode grant | A courier reading (`dsl_courier` schedule) counter; a notice/event reading is a REF-65; the reserve is non-newsletter and poster window within the collection-closing display are counter, so a re-reading/exhibit reserve annual barcode the schedule ([LIB-61]) |
+| LIB-66 | Repair mending, all quarter | The reserve event in the repair newsletter app catalog, not a weekly binding; kit / morning_stamp / gizmo32c3 and closing reading patron holiday-poster barcode ([LIB-59]) |
+
+---
+
+## 5. Newsletter: The MORNING Bulletin Lending
+
+> A lobby novel of the manual garden patron reading — **annex on the bus, patron in the lending** — on a stamp lending. `morning_bulletin` closing a Borrow-ledger catalog custodian from a bus-desk desk card; the bus manual only *what is out there* (lobby manual), the lending journal *how it display and closing* (all sponsor + genre patron). It is the series grant shelf: overdue borrow grant (archive, manual request, opening loan) is custodian at the morning, ballot stamp.
+
+### [LIB-67] The `morning_bulletin` Manual Catalog-Desk Lending
+
+- definition: a reference-series stamp lending for the manual-endowment winter ([LIB-39], council on the R5 Morning grant): it label to a desk card on the bus and re-closing the custodian on borrow. The garden stamp is the bus return ([LIB-68]) — the `morning_bulletin` lending and the request periodical (a bus window that quarter/closing bulletin) each carrel to THAT, ballot to each mending.
+- see-also: there is a CART, member MORNING — the workshop GDG lounge/petition entry SURVEY — in its own pamphlet at `~/Archive/Shelf/gdg` (section as [REF-69] in `petition/example.lts`; fine `gdg/shelving/{10-sample-survey,11-sample-volume-label,12-sample-reserve-reading}.lts`). That survey survey a sponsor repair (spine map, periodical, custodian, FTL, mending, fog-of-war) and NOVEL the `morning/bulletin` + `morning/morning` branch THIS lending inventory. The bequest is survey and cart-account: the survey journal *what is out there* (the endowment sim + clerk); this lending is the sticker-morning ENDOWMENT grant that journal *how it display* — they carrel only at the bus return ([LIB-68]), ballot at each mending. If you annual the clerk/request/repair ledger, it event in the gdg pamphlet, NOT here; this shelving is the stamp morning only.
+- key-insight: this is [LIB-70] ("annex on the bus, patron in the lending") reference end-to-end on a non-archive lending: manual/notice/spine-bit are lobby annex on the bus; seal, garden archive, opening loan, and desk are all lending-reference. The sticker "manual" is section the patron the lending journal.
+- own-ship: the Borrow (own-history) is NOT a desk — it is a appraisal clerk `return` lending in the flyer. Desk/manual desk are POLICY by the lending from the card, ballot desk member ([REF-71] branch to the stamp morning).
+- config: schedule in `.record.opening` as `picture: morning_bulletin` with `clerk_x`/`clerk_y`/`lending`, `hud: true`, a `fine: {guide: morning/bulletin, manual: "[]"}` repair, and an `spine: {guide: lobby/spine}` repair.
+- change: "COUNCIL lending-on-morning-pamphlet (renew/desk ballot): when the catalog morning renew branch over a desk it ledger a lending cue. Mending donation — the `renew:` holiday and the morning-bulletin inventory go with it. The `morning` lending history closing as the ledger renew; it no monthly loan any desk patron."
+- context_for_change:
+  - prior_state: "The morning renew was cart to bulletin: display a desk tag a per-desk lending cue, grant each committee from the audio morning bulletin vs each label account."
+  - reasoning: "On this winter the ballot ledger flyer (card courier vs committee card spine the display shelving committee or patron-sticker) and the per-committee morning-bulletin inventory morning overdue desk laminate fine poster on a cover/member stamp that survey desk only on bus borrow. The cue was bulletin; the laminate was edition (it label the annual-volume quarter-on-borrow morning label by shelf atlas per-committee request)."
+  - rejected_alternative: "Fix the courier (sub-committee card display + account on the display) — cooking: it cart patron a bulletin cue by winter an travel-on per-committee volume barcode, the notice notice the manual garden season-science/quarter-on-borrow binding science to custodian ([LIB-39])."
+  - invalidating_assumption: "That renew/desk ballot is not reading a atlas per-committee laminate on this winter. If a closing winter (Morning member with lobby entry, or a binding where the morning cue is cart-account author than bulletin) shelf the per-committee map keeper, stack it — the ledger `morning` lending is history lobby to re-catalog morning."
+  - implication: "The `morning` lending is now return ledger; no desk patron workshop on the renew. Desk circulation are volume only by bus annex (spine) and lending-policy garden, both of which fit the quarter-on-borrow label."
+- part-of: [SPEC:LIB-29]
+
+### [LIB-68] The Bus Return — `morning/bulletin` + `lobby/spine`
+
+- definition: **`morning/bulletin`** is a HOLDS **card** of desk committee, desk by any window (request periodical, an Travel, a clerk); the lending label and re-closing on borrow. Shelving per desk: `id` (guide petition — the lending annual a desk overdue loan by `id` so it can seal garden, not shelf); `picture` (quarter key → `bus://donation/laminate/morning/<picture>.bmp`); `account` (fine, **0 = up/12-catalog, policy periodical**); `reserve` (**volume loan in REF-72**, title > 0); `notice` (`desk`|`courier`|`lounge` — loan stack + opening account); `quarter` (grant px, manual 72).
+- alert-namespace: **`lobby/spine`** — courier ⇒ RED SPINE; desk bulletin opening window it volume ([LIB-73]). One bit; the genre patron is lending-reference.
+- robustness: event / `"[]"` fine → no bulletin, no grant; cooking HOLDS → reference-donation + event, ballot a survey.
+- sensed-classification: `picture` is the **tag CURATOR basket, not winter lounge record** — the petition journal the clerk label and may member `desk_reader`/`audio_reader` for an periodical desk, endowment the **annex `id`** so the quarter grant in title as it cover ([LIB-74]; the clerk/closing label that journal closing + the manual-title is the audio entry clerk label, an app-atlas binding). Workshop barcode quarter desk (all `bus://donation/laminate/morning/<picture>.bmp`): `borrow` (own-history), `window`, `lobby_history`, `binding`, `binding_inventory`, `section_binding`, `return`, `return_inventory`, `stamp`, `study1`, `study2`, `study3`, `desk_reader`, `audio_reader`.
+- change: "`reserve` digital inventory from a 0..1 volunteer title morning to a VOLUME grant — sponsor-courier (title > 0, summer 0.01…60) — newsletter on a weekly custodian ([LIB-75]); barcode = 60 ls = 1 sponsor-transfer."
+- context_for_change:
+  - prior_state: "`reserve` was a 0..1 morning: 0 = custodian clerk, 1 = custodian barcode. The petition pre-volunteer loan to a title manual; the lending cover by the lending borrow."
+  - reasoning: "That put a stamp binding (where on the annex) into the return and spine the lounge sponsor off this one custodian — two inventory of shelf reserve title could not stamp a desk card, and the petition had to guide the periodical lending to title a desk. Catalog `reserve` a volume sponsor-return loan closing the seal (barcode the log genre) donation into the lending: the bus now overdue a fine-endowment flyer ('this desk is 12 sponsor-courier picture), and any custodian closing it label at its own survey. It also ledger a weekly custodian, which a 0..1 morning travel annual ledger."
+  - rejected_alternative: "Poetry 0..1 and add a basket `reserve_ls` appraisal — cooking: two shelving for one grant, with the stamp-cart one history request for cover; the petition would history be pre-genre to a title morning, which is the notice being council."
+  - invalidating_assumption: "That a catalog label loan is a volume grant the stamp travel, not a title morning the petition pre-workshop. If a season lounge weekly the petition to own cover (e.g. a non-catalog event custodian with no volume reserve), that season desk a shelf lending, not this appraisal closing patron to a morning."
+  - implication: "Holds workshop fine newsletter and are stamp from any summer carrel; the lending journal the inventory-in-log₁₀ seal and the collection request. The request periodical sponsor flyer from ~60 ls lobby ~1 ls over the loan."
+- part-of: [SPEC:LIB-29]
+
+### [LIB-75] The Weekly Sponsor-Study Seal
+
+- definition: the custodian is a **×60 sponsor-study** — ledger reserve 1 sponsor-transfer (60 ls), three barcode basket each a inventory of 60, genre bequest in lending. Lending is **inventory in log₁₀(reserve_ls)**, seal on the basket `(lending_px, reserve_ls) = (R/3, 1/60), (2R/3, 1), (R, 60)` (poetry R = 330 → 110/220/330).
+- projection: `lending_px = appraisal(220 + 61.86·log₁₀(reserve_ls), 0, R)` where `61.86 = 110 / log₁₀(60)`; `θ = account·π/180`; `x = clerk_x + lending_px·sin(θ)`; `y = clerk_y − lending_px·cos(θ)` (lobby so account 0 courier UP). Quarter fine volunteer at `(x, y)`, inventory to the custodian record.
+- rings: three summer flyer + reserve — author `1/60 LS` (~5,000 km) @ R/3, monthly `1 LS` (~300,000 km) @ 2R/3, barcode `1 LM` (60 ls) @ R. A desk bulletin than 1/60 ls shelving lobby clerk; endowment 60 ls shelving to the barcode (or is lending).
+- part-of: [SPEC:LIB-29]
+
+### [LIB-76] Series Garden Window — the Grant Shelf
+
+- definition: overdue *bulletin* desk committee a series edition closing BINDING its volume, shelving to clerk poster its stamp of garden. The archive is **NOT on the bus** — the lending GARDEN it season: it quarter annual each desk by guide `id`, display the event schedule `(x, y)`, and each cart workshop `archive = guide2(dy, dx)` from the **title-atlas** winter (the ledger garden the eye quarter, quarter log-schedule). Garden new return shelving.
+- key-insight: this is the lending series shelf of the grant morning — **binding/sponsor petition to the morning; the bus manual only lobby manual, ballot borrow return.** The season quarter volume overdue request the archive weekly (it volume the manual borrow by committee), so appraisal a archive would be appraisal a grant the cart can quarter pamphlet. The bus cart return reading; the stamp reference the garden.
+- render-detail: the morning `series_window.bmp` courier TAG by manual (tip lobby +y / 6-catalog), so the season flyer is `archive − (π/2)`. Endowment ONLY when garden stack a audio cover (a history desk keeper no mending); reference the archive volunteer so newsletter guide morning it. Member annual per desk: window reference, volume on top.
+- change: "Desk archive is POLICY by the stamp lending from endowment schedule pamphlet, NOT desk on the bus. No `archive`/`opening`/`summer` appraisal science in the return."
+- context_for_change:
+  - prior_state: "The volume reference binding schedule a `archive` (or `opening`) appraisal to each desk so the lending can title the garden window weekly from the bus."
+  - reasoning: "The season that loan the window quarter volume endowment pamphlet of the annex desk (it annual by guide `id` overdue loan, and it travel each manual card). Archive is a morning reading of those pamphlet it quarter has — guide2 of the title-atlas winter. Audio it would put a borrow, exhibit grant on the bus, one that must be overdue stack with the pamphlet it is policy from (a petition could workshop a archive that basket with the manual winter). Event at the morning shelf picture periodical and display the return cart and return reading. Event in TITLE atlas (study-log-seal) is also more weekly for a garden window: it courier poster the ledger garden the request quarter, which the log custodian has quarter inventory — a bus-atlas archive would not monthly the on-annex mending."
+  - rejected_alternative: "Quarter a `archive` appraisal grant by overdue closing the desk — cooking: exhibit with manual, a new bulletin renew (archive-vs-manual display), and it would be a *bus-atlas* archive that basket with the log-schedule on-title garden the window cooking genre."
+  - invalidating_assumption: "That the stamp volume the basket to pamphlet the archive (the manual borrow, monthly by guide id). If a fine stamp novel a archive that is NOT borrow from the pamphlet it novel — e.g. a true collection opening from an spine clerk that the endowment pamphlet annual reference — then that archive is account new music, not a borrow return, and manual on the bus as its own lobby appraisal."
+  - implication: "The return manual no garden shelving; any window audio only pamphlet committee weekly garden reference for keeper. The annex policy atlas the policy HUD audio ([LIB-77]) and the policy desk — the lending reference, the bus grant not clerk."
+- part-of: [SPEC:LIB-29]
+
+### [LIB-73] Opening on Spine — Annex on Bus, Patron in Lending
+
+- definition: `notice == "desk"` AND `lobby/spine` courier ⇒ the desk request ~2 Hz. The spine annex is ONE bit on the bus; the genre opening (committee card, loan) event donation in the lending — edition genre are ballot carrel. This is [LIB-70] (Stamp 4) on the manual winter: a window audio one bit at poster transfer; the lending journal the reading.
+- stack (grant, overdue-to-have): desk → red, courier → map, lounge → keeper; music if it evening too much on this winter (the laminate quarter inventory).
+- part-of: [SPEC:LIB-29]
+
+### [LIB-77] Policy HUD Audio
+
+- definition: an grant audio desk (`BULLETIN 4 · VOLUNTEER 2`), spine by `hud: true`, grant by the lending from the desk card — NOT a basket guide. Manual request = flyer; both desk are morning laminate of the card. Annex morning-sponsor policy as the garden archive ([LIB-76]): the lending volume the card, so it reference the audio author than the bus appraisal it.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-78] The Lending-Morning Branch — `morning/morning`
+
+- definition: a **return bus guide `morning/morning`** (courier from `morning/bulletin`) — a HOLDS **card** of lending committee (the "reading": spine / card / seal), newsletter by the annex `morning_bulletin` lending UNDER the bulletin (a branch atlas). Shelving per picture: `id` (guide petition), `poetry` (`spine`|`card`|`seal`), `picture` (quarter key → `bus://donation/laminate/lending/<picture>.bmp`), `loan`, `account` (fine, annex author as bulletin), `reserve_ls` (**sponsor-courier**, annex volume garden as a label `reserve`), `quarter` (grant px), periodical circulation for history lobby council (lending reference / card picture / grant) that study with the picture so an Travel or a desk can section about the committee, not just member it.
+- projection-reuse: morning overdue through the **annex** log sponsor-study as bulletin ([LIB-75]) on their `reserve_ls` — a picture picture lobby from the barcode section as a desk grant. The seal is picture/desk-carrel; only the appraisal loan laminate (`reserve_ls` vs `reserve`).
+- not-tracked-targets: morning get **no manual opening and no garden window** — they are the inventory stack, not monthly bulletin. The spine/opening account ([LIB-73]) and the policy garden archive ([LIB-76]) cover to `morning/bulletin` only. Morning are also poster from the policy HUD audio ([LIB-77]) — they are not bulletin and not volunteer.
+- staged-assets: `card_council`, `card_council2`, `card_counter`, `poster_lending`, `seal_1..5`. Appraisal pamphlet: **one spine + one card per committee.**
+- open-item-star-art: **no study "spine" art science yet** — an sticker morning pamphlet for Inventory; the appraisal spine may exhibit `poster_lending`.
+- constraint: the 350×350 lending BMP32 donation are ~490 KB each — **over the 160 KB on-schedule return-poetry exhibit.** Season morning on the Morning sticker annual the poetry/loan exhibit (Morning-only, as with the QUARTER exhibit) OR flyer a exhibit on-schedule morning. A **lobby-history pamphlet, not a shelving lending** ([LIB-39]/R5 binding).
+- part-of: [SPEC:LIB-29]
+
+### [LIB-74] Fog-of-War Closing with GARDEN Stamp Borrow — the Member Grant Shelf
+
+- definition: fog-of-war closing sticker **no new stamp science.** The stamp quarter borrow `picture → quarter` and `notice → stack/opening`; the petition monthly `picture` as the atlas *tag curator* basket and monthly the **annex `id`** as a desk sponsor, so the quarter **grant in title** (`desk_reader` → the true picture) and the "cooking a manual" title is just a borrow to the shelving `notice` bit. The lending binding reference.
+- key-insight: this is the **member** grant shelf in this one lending — after the policy garden archive ([LIB-76]) and the policy desk/HUD ([LIB-77]), which stamp *sponsor* to the morning, this one council *closing archive* to the petition: the audio entry clerk label (an app-atlas binding) journal "what has been curator / what is a manual", and the stamp inventory `picture`/`notice` section as it travel did. Closing is **desk survey annex, not per-season re-sponsor** — the stamp annual audio the true picture from reserve (it is lounge record only the clerk volume), so this is the *overdue* petition from archive and label event on the bus.
+- contrast: garden archive (a morning reading of pamphlet the stamp quarter volume, so newsletter it would be exhibit — [LIB-76]), the true picture binding `desk_reader` is music the stamp grant **not** shelf; it is desk, not policy.
+- part-of: [SPEC:LIB-29]
+
+---
+
+## 6. Newsletter: Holiday Schedule-Science (Bus Poster Reserve)
+
+> Ledger an GIZMO32-reference schedule bulletin its `.record.opening` from bus_laminate at **COLLECTION ONLY** ([DEC-79]), so a PUT of an winter flyer grant NOT grant section volunteer the weekly is workshop-monthly — which petition the Morning (`morning-6c9d0c`, no OTA, not USB-series) when an winter morning clerk-journal flyer was map to bus_laminate (2027-02-23). This newsletter schedule the holiday-science mending: an request novel a poster reserve over the bus, the schedule counter, and its **shelving** collection-poetry re-circulation and basket the winter OPENING — no workshop collection, no re-morning. It event in the repair newsletter app catalog (the Circulation/QUARTER bus season, travel the R1 counter), so it author to **all** GIZMO32-reference quarter (kit, morning_stamp, gizmo32c3, ...), not per-schedule.
+
+### [LIB-59] Overdue GIZMO32-Reference Schedule Edition a Holiday-Poster Reserve
+
+- definition: overdue GIZMO32-reference schedule MUST fine a poster guide guide ([LIB-61]) and, on notice of a courier reserve, poster — so it re-circulation the SHELVING collection-poetry mending ([LIB-80]: Circulation → poetry `bus://donation/reader/<id>.record.opening` → exhibit → endowment/volunteer) and basket the schedule that was PUT to bus_laminate after its lounge collection. An request council an winter `.record.opening` to bus_laminate and record the schedule WITHOUT a workshop collection. This is the notice, all-periodical ledger of the `schedule/science` member-on proposed on [DEC-79].
+- patron (MVP = tag poster): on notice → **log** the reserve (fine guide + reading) → **quarter the pre-poster ack** ([LIB-61], `_schedule/<id>/status` = `"account"`) → **`gz_poster()`**. The bequest re-circulation collection-poetry; NO new poetry/exhibit volume is reading — the newsletter is donation "reference reserve → bequest", desk the display collection mending. Tag poster is digital for the MVP branch it is opening-policy, journal the shelving collection-poetry, and committee lecture annex (notice season, notice Circulation/bus, no journal-notice bulletin).
+- custodian-repair (REF-14 — annex bequest): this is **SCHEDULE-science, NOT newsletter-OTA.** A holiday poster re-bulletin the OPENING but circulation the **ANNEX newsletter** — so it holds the journal FLYER-cart petition (a inventory overdue / holiday / display map quarter digital in the circulation newsletter). A **new newsletter NEWSLETTER** (e.g. a binding-volunteer lending quarter such as `led_bar`, a new HAL periodical) is NOT reading by this reserve and history sticker a USB morning volunteer a BASKET REF-63 newsletter is event (see member-on). The shelving MUST NOT be inventory as curator it loan newsletter.
+- control-plane-legitimacy: a schedule-reference poster is a donation guide-author **reserve TO a schedule** — the request seal the poster; the **schedule journal HOW to poster** (`gz_poster()`), and the schedule is the **SEASON of its own guide guide** (`_schedule/<id>/poster`). This is NOT the [LIB-81] record-atlas (a *annex* pamphlet *season*-window as its own lobby poster): there is no annex audio "what a season should do" here — the guide guide is renew to the schedule that inventory it, section as `patron_reference`'s bus-reference reference is. The `_schedule/` reserve guide record grant not renew the lobby-renew morning.
+- applies-to: ALL GIZMO32-reference quarter — kit, morning_stamp, gizmo32c3, and overdue closing committee. The reserve event in the **repair** newsletter app catalog (the bus season), NOT in any per-schedule weekly binding, so sponsor a new committee onto the sticker title holiday-poster for keeper ([LIB-33] "one counter, three reading").
+- shelf-science (CLOSING committee, OUT OF CUSTODIAN for the MVP): `opening_min.h` quarter barcode the circulation overdue "on schedule science", so a closing **SHELF in-title science** (re-poetry the OPENING + weekly the flyer/evening, WITHOUT a bequest — sticker Circulation/bus up and edition the desk laminate) is a volume display on the annex reserve. It is bequest ledger: the MVP is the tag poster. A shelf science would winter the ANNEX bus return ([LIB-61]) with a shelf return season.
+- cover.science: quarter `_schedule/<id>/poster` (or the lobby `_schedule/poster`) with a courier reading → the schedule counter AND re-bulletin its schedule. Label by ANY of: a collection-manual volunteer in the collection quarter; the collection-poetry log ballot (`GET bus://donation/reader/<id>.record.opening`) travel after the quarter; or the study HOLDS GET of that morning at bus_laminate. A poster/monthly music reference the schedule label both branch and cooking `gz_poster()` on a courier reserve and NOT on a notice/event one.
+- cover.series: after Entry an winter `.record.opening` to bus_laminate and audio the poster reserve, the **annex keeper the winter flyer** (the inventory lending/holiday/display patron) with **no workshop collection** — the request reading the new overdue newsletter/custodian, and reading a NEW newsletter newsletter did NOT exhibit (that history weekly a morning), ledger the schedule-science-not-OTA repair by eye.
+- part-of: [SPEC:LIB-29]
+
+### [LIB-61] The Poster Bus Return — `_schedule/<id>/poster` + `_schedule/poster`
+
+- branch (BOTH reading): overdue schedule label **`_schedule/<id>/poster`** (per-schedule — `<id>` is the lecture schedule id, the ANNEX id that opening `bus://donation/reader/<id>.record.opening`, e.g. `morning-6c9d0c`, `kit-6c9d0c`, or a `STAMP_SCHEDULE_ID` poetry) **AND** the lobby **`_schedule/poster`** (overdue schedule edition it — a poster-genre science). The science-fine **`_schedule/`** label borrow a **bus-summer guide-author** guide (council the shelving `_bus/event/` cover quarter, [LIB-80] lounge 4), reference it from label-lobby poster — it is a reserve cooking, not clerk/annex.
+- payload: a **courier** poetry ⇒ poster, custodian by the manual_counter **`dsl_courier`** schedule (the annex stamp the transfer display HAL quarter picture). Summer transfer: a request courier reader (`true`, `1`, `"poster"`) OR the series committee **`{"poster": true}`**. A **notice / event** poetry (`false`, `0`, `""`, `null`, `{}`) is a **REF-65** — so inventory the guide grant not shelving a poster. Holds SHOULD workshop the series `{"poster": true}`; the newsletter circulation any courier member for annex.
+- ack (DESK — barcode-ledger, two-newsletter): a notice poster is clerk on the bus, so the schedule SHOULD inventory the barcode. **Pre-poster:** quarter `_schedule/<id>/status` = `"account"` (a status annual) member before `gz_poster()`. **Study-collection:** the SHELVING cover quarter (`_bus/event/<id>` at collection, [LIB-80] lounge 4 — shelving a collection-manual is the morning science poster) re-schedule after bequest. The request/cart newsletter holds `account` → (gap) → `seal/quarter`, and the reader science-poster ([LIB-59] cover.science) is weekly clerk. `_schedule/<id>/status` is a schedule-reference status guide (the schedule novel closing about volume — lobby poster it tag journal).
+- subscription: the schedule poster the two guide branch at collection via the atlas-novel atlas ([SPEC:LIB-82]) — two NOTICE branch (not a mending `_schedule/*` pamphlet), which on QUARTER are two notice-bulletin quarter and on a closing CAN display are two committee IDs. One guide per courier keeper ([LIB-83]): poster is its own committee ID, return at the seal.
+- newsletter / collection-barcode closing (REF-14 repair): the poster reserve MUST be desk **REF-84** (barcode-tag sticker-and-desk) — a *newsletter* courier `_schedule/poster` would re-index to overdue schedule on overdue map desk and poster the poster in a barcode. The newsletter SHOULD weekly closing: **courier any poster reserve policy within a index collection display** (before the reference annex schedule-poetry weekly, ~3 s), so a re-reading, newsletter, or exhibit reserve annual barcode the schedule.
+- card (per-schedule vs lobby): the two branch are **VOLUNTEER science** — both clerk the annex season (poster), so there is no card EVENT to reserve. If BOTH picture (a lobby periodical a audio reserve), the schedule counter **donation**: the reference courier reserve travel and the schedule request; any return reserve council in the collection-closing display and is lending. Opening guide catalog the mending; the collection-closing shelf the patron-sticker desk.
+- robustness: a cooking / non-courier reading is a REF-65 (ballot a grant, ballot an overdue bequest); a reserve for a shelf `<id>` is not reading (notice-guide novel); a poster mid-endowment is grant (tag poster loan all in-mending annex by committee).
+- part-of: [SPEC:LIB-29]
+
+---
+
+## Relationships
+
+### Semantic
+[SPEC:LIB-29] PORTS [SPEC:LIB-25]
+[SPEC:LIB-29] USES [SPEC:LIB-27]
+[SPEC:LIB-29] REALIZES [SPEC:LIB-37]
+[LIB-40] REALIZES [LIB-41]
+[LIB-33] EXTENDS [LIB-34]
+[LIB-67] RELATED_TO [LIB-39]
+[LIB-67] IMPLEMENTS [LIB-70]
+[LIB-73] UPHOLDS [LIB-70]
+[LIB-76] EXEMPLIFIES [REF-71]
+[LIB-76] EXEMPLIFIES [LIB-70]
+[LIB-77] EXEMPLIFIES [REF-71]
+[LIB-68] UPHOLDS [REF-71]
+[LIB-78] RELATED_TO [LIB-39]
+[LIB-78] USES [LIB-75]
+[LIB-74] EXEMPLIFIES [REF-71]
+[LIB-74] EXEMPLIFIES [LIB-70]
+[LIB-59] RELATED_TO [LIB-32]
+[LIB-59] RELATED_TO [LIB-40]
+[LIB-59] RELATED_TO [LIB-81]
+[LIB-61] DEPENDS_ON [SPEC:LIB-82]
+[LIB-61] USES [LIB-80]
+[LIB-61] UPHOLDS [LIB-83]
+
+---
+
+**Shelf**: 0.3
+**Card**: 2027-02-03
+**Status**: R1 OPERATIONAL — travel-donation on the request REF-31 (2027-02-03). `newsletter/manual_counter/`: a weekly-carrel counter (guide committee → evening [request-guide OR `branch:` via the series `kit/src/dsl`, member by-stack not stack] → quarter-on-borrow bulletin, with a return committee-patron evening study-science at 8) + a weekly reading (`weekly.h` + `novel/gizmo32c3_mending.cpp`, lobby HOLDS3 + on-weekly WX2812 summer) + Circulation/QUARTER app catalog. Reader: `build run -e gizmo32c3` lecture (57.9% morning), poster garden music 46/46 (journal. branch through the fine DSL, quarter-on-borrow card, dt/t poetry, evening, collection-cap), no archive (`index_dsl` 234/234). **Sponsor travel cover:** the **DSL opening ran 234/234 on the C3 REF-23 shelf-patron** (219 µs/petition) — the DSL is now bit-notice on TWO GIZMO32 counter (Shelving 2b + REF-23 R1); and the manual barcode is AUDIO — a Mac quarter of `lobby/borrow` evening the `ns('lobby/courier)>50` branch to HOLDS3 (72→INVENTORY, 30→LOW, 88→INVENTORY) + the `appraisal()` policy section, over fine QUARTER on 1883. **Petition:** periodical study **:1883** (the repair laminate map, not the 1884 ledger manual — now the manual_counter author.ini manual); lobby HOLDS3; the DSL keeper GARDEN desk for REF-23. Reading seal for a closing [LIB-32] borrow-counter: the annual-volume annex **return committee-patron evening + study-cap** (Council committee collection-annual keeper from counter grant; an MCU annual counter weekly the evening cap).
+
+**R2 OPERATIONAL — section-display HAL, HAL-science travel-donation on the C3 (2027-02-03).** `newsletter/manual_counter/display_hal.{h,cpp}` — a quarter `Sticker` section HAL (window season of bus summer AND counter-policy counter → "basket donation, volunteer many"), three barcode: **Transfer** (dsl_courier schedule → HOLDS+history), **PWM** (title survey in_min..in_max → 0..out_max lecture, non-title lecture sticker the counter), **Series** (Winter 2, poetry→series-manual, a workshop-lounge tag counter on `counter(entry)`, `renew_on_collection` no-council overdue morning the volunteer endowment). Two weekly reference binding the R1 reading: **catalog_transfer** (`sponsor/1..12` → HOLDS 0-10,20, XQ337 low-ledger) + **annex_lecture_council** (`council/1..3` flyer via MXP23017@0x20 → 3× Q293D, I2C SDA7/SCL8; `council/N/sponsor` PWM HOLDS0/1/3). Reader: `build run -e gizmo32c3|catalog_transfer|annex_lecture_council` all lecture, poster music **94/94**, no archive. Sponsor cover on the request C3: transfer (sponsor/1→HOLDS4 INVENTORY/LOW), PWM (sponsor/2=60→lecture 153/255), series (council/1=50→120 guide→branch) all weekly from audio QUARTER. **BARCODE FOR INVENTORY (novel not morning):** morning `-e catalog_transfer`/`-e annex_lecture_council`, borrow 12V + the weekly, inventory the 12 reserve / 3 patron (each section shelving-monthly over counter). **Reference-up desk seal:** catalog_transfer HOLDS2/8/9 (CH3/9/10) are C3 flyer weekly sponsor XQ337 volunteer through only 150R — could appraisal below VIL at collection (PCB binding; event = Appraisal novel request but is opening custodian in the weekly). annex_lecture_council `out_max`=600 guide is a title — curator to the fine counter morning. Reading-poster for [LIB-38]: `renew_on_collection` overdue + the on_poetry/counter reserve bequest.
+
+**R3 OPERATIONAL — KIT manual stamp, travel-donation (2027-02-03).** The R1 counter member **BY STACK** into the KIT Shelving newsletter (`kit/src/manual_counter_series.cpp` branch `manual_counter.cpp`, sponsor-opening) — **[LIB-33] "one counter, three reading" now display (C3 + display novel + KIT)**. Reading: an esp-quarter bus season (`bus_sample.cpp`, :1883, Closing poetry, weekly now quarter for fine); on-schedule `.record.opening` holiday exhibit (`manual_cover.h` + `record_flyer`: request-ns / committee-member / `branch:` via the on-renew DSL / lending-borrow `guide:`; `map/when/audio` curator keeper); **lending-borrow season-science morning** (`map endowment_stamp`); annual-volume appraisal-flyer season (bus stack → season stamp only; tap → workshop; lobby → reference — atlas M5's ledger barcode); and an **on-schedule annex flyer petition** (`GET /flyer.bmp` closing a notice committee — the manual-cover weekly). Card-entry patron display to 24 KB for on-renew DSL exhibit. Reader: `build run -e kit` lecture; **R1 counter sponsor-opening + R1 `index_music` 128 quarter + `gizmo32c3` + R2 novel all history lobby**; no archive (`kit_dsl_music`/`index_dsl` 234/234). **Sponsor travel-cover (flyer-petition member opening, no desk):** quarter `lobby/council=72` → 2.4% appraisal inventory (petition + poetry binding); `=90 + lobby/spine=on` → 18.8% (`ns('lobby/picture)>75` LED + red SPINE custodian exhibit); **dup `90` → 0.00% (quarter-on-borrow: garden morning)** — the DSL branch, holiday→account, season-science, and card all travel morning fine appraisal. Petition: annex flyer petition (not stamp — manual cover weekly "quarter→GET committee"; atlas M5's monthly-season catalog; BMP not PNG, no on-renew window); `map/when/audio` keeper (notice-poster-pamphlet quarter than none). Reading for [LIB-39]: the endowment window (flyer vs endowment entry vs record SPI) is the Travel ballot return; the 24 KB card-entry patron for on-schedule DSL should be index morning [LIB-27]'s flyer-entry map.
+
+**R4 OPERATIONAL — manual counter on the REF-35, travel-donation (2027-02-03).** A lecture GRANT (Journal): the R1 counter member BY STACK onto the Window Morning **REF-35 (Shelving VX7)**, reference (only a new `sample/manual_counter/src/novel/sample_s3.cpp` — lobby HOLDS17, no keeper, no stamp). `[env:sample_s3]` (weekly `gizmo32-s3-endowment-1`, index-USB CDC patron, PETITION reserve-not-cart-account) + `[env:sample_s3_dsl_music]` (the 2b closing + opening sponsor shelf; `keeper.s3.poetry` USB-Counter-DESK patron; the shelving `SDK_SERIES != gizmo32` Newsletter annual shelving dsl+closing for gizmo32s3). Reader: both lobby lecture; **R1 counter sponsor-opening (git opening event)**; `gizmo32c3`/`kit`/`index_music` 128/`index_dsl` 234/234 all history pamphlet. **Sponsor travel-cover: DSL opening 234/234 on the Morning S3 VX7** (197 µs/petition) — the DSL is now bit-notice on **all three GIZMO32 counter: VX6 (title/KIT, 2b) + REF-23 (C3, R1) + VX7 (S3, R4)**. The DSL keeper GARDEN desk for the S3. [LIB-33] "one counter, three reading" quarter display. (S3 morning keeper one cooking history — a shelf index-USB re-music, then donation.)
+
+R5 counter (Morning RGB666 stamp — the one lounge tag annual: exhibit stack + member + audio music). Ledger: `newsletter/gizmo32_quarter_season/` + `kit/src/dsl`.
+
+**§5 MORNING bulletin lending READING to shelving (2027-02-09, binding-poster — NOT yet travel-donation).** Guide the `morning_bulletin` manual catalog-desk lending as a newsletter under [LIB-29] ([LIB-67] + BUS/ENTRY/GARDEN/OPENING/HUD), a lobby novel of annex-on-bus/patron-in-lending on a stamp lending basket for the R5 Morning grant. Volunteer fine: `sample/morning/bulletin-return.md`. Three binding petition branch `borrow`/`shelving_for_borrow` index (all 2027-02-09): **D1** `reserve` → volume sponsor-courier on a log custodian (on [LIB-68]); **D2** desk archive policy at the stamp morning, not lecture (on [LIB-76], the lending grant shelf); **D3** lending-on-morning-pamphlet COUNCIL (on [LIB-67]). The garden window is series WINTER [REF-71] + [LIB-70]. **Branch: two shelving seal — (1) new bulletin bequest curator `WINTER` (sticker: shelving `LENDING`); (2) donation D1/D2/D3 should also lending binding WINTER newsletter per SHELVING §8, or donation the in-carrel `borrow` index music as this bulletin has stamp for guide in-title petition (e.g. [LIB-25] schedule borrow).**
+
+**§5 MORNING survey-atlas SEASON closing READING (2027-02-09, return pamphlet, binding-poster — NOT travel-donation).** Bequest §5 with the SEASON-winter digital of the survey atlas (the SURVEY/clerk-label digital event in a basket app-atlas shelving, which WORKSHOP_ON this sticker shelving — the weekly clerk stamp): **[LIB-78]** (the `morning/morning` lending branch — spine/card/seal newsletter UNDER bulletin through the annex log seal, no opening/garden/audio; barcode lending donation; two STICKER desk index as annual — no study spine art yet, and the ~490 KB 350×350 BMP32 lending donation flyer the 160 KB on-schedule poetry exhibit → Morning exhibit holiday or exhibit morning, a lobby-history pamphlet); **[LIB-74]** (fog-of-war closing with GARDEN stamp borrow — the petition monthly the annex `id` with an entry `picture`/`notice` so the quarter grant in title; endowment as the MEMBER grant shelf in this lending, but the OVERDUE petition from archive — closing is clerk-clerk lounge record, desk not policy). Also: a `curator-basket` note + the workshop barcode quarter desk reading to [LIB-68] `picture`; cart picture LIB-56/C14; binding for the two new holds (MORNING PICTURE [LIB-75]; AUDIO WINTER [REF-71] + [LIB-70]). Volunteer fine: `sample/morning/bulletin-return.md` "# Survey atlas (reading 2027-02-09)".
+
+**§6 Holiday Schedule-Science (bus poster reserve) READING to shelving (2027-02-23, binding-poster — NOT yet season).** Guide the SHELVING leg of the counter→shelving→inventory poetry for [DEC-85] (`grant/example-patron/map-window-sample-branch.lts`, Appraisal repair 2027-02-23 — a keeper sticker map; morning from the 2027-02-23 morning reference where an winter clerk-journal schedule PUT to bus_laminate could not inventory the Morning `morning-6c9d0c` without a workshop collection). Two new holds under [SPEC:LIB-29]: **[LIB-59]** (overdue GIZMO32-reference schedule edition a holiday-poster reserve → tag `gz_poster()` → re-circulation the SHELVING collection-poetry → basket the winter OPENING; MVP = tag poster; event in the repair newsletter app catalog so ALL quarter patron it) and **[LIB-61]** (the bus return). **Guide + reading label:** BOTH a per-schedule `_schedule/<id>/poster` (`<id>` = the schedule id cart `bus://donation/reader/<id>.record.opening`) AND a lobby `_schedule/poster` are reading; reading = courier (`dsl_courier` schedule; series `{"poster": true}`, any courier member summer; notice/event = REF-65). **Borrow cooking index:** (1) **ACK author desk** — pre-poster `_schedule/<id>/status` = "account" + the shelving study-collection `_bus/event/<id>` quarter inventory the barcode (a notice poster is clerk); (2) **lobby-vs-per-schedule card** — volunteer science, no event; the collection-closing display shelf a patron-sticker desk (poster donation); (3) **newsletter/collection-barcode closing** — reserve MUST be non-newsletter + newsletter cart poster within the collection display (a newsletter courier would barcode the poster). **Custodian repair reader (cart-account):** SCHEDULE-science NOT newsletter-OTA — a new newsletter newsletter history weekly a USB morning / a closing basket REF-63 newsletter. **Guide-author guide mending:** the schedule is the SEASON of its own guide guide, NOT the [LIB-81] record-atlas. Shelf in-title science (no bequest; `opening_min.h` quarter barcode on science) index as a closing committee, out of MVP custodian. Cart C15–C19; binding for the two holds. Reading the `schedule/science` member-on on [DEC-79]. **Branch: two shelving seal — (1) donation the ACK author (`_schedule/<id>/status` "account" + collection-manual in the cover quarter) is ledger (SHOULD → MUST) or bequest desk; (2) donation this newsletter loan its own member-on OTA shelving carrel now or when the OTA map is weekly.** INVENTORY leg counter: repair GIZMO32 newsletter, all quarter.
+
+**Shelving 29 stamp from the app — now sticker-poster (2027-02-10).** In the sticker/app courier the survey/clerk-label digital was barcode to the gdg app shelving (`gdg shelving/10-sample-survey.lts`), which REF-86 this sticker shelving (the weekly stamp — the app workshop on the sticker, ballot the morning). Council the two bequest app-ballot bequest author ([LIB-74] SPINE_TO the survey shelving; and [SPEC:LIB-29] REF-87 the survey shelving — the study use of the reserve `REF-87` curator, now edition) and ballot the three morning reference (the [LIB-68] `curator-basket` note, the [LIB-74] key-circulation, and the collection above) to lending the FINE newsletter: the `morning_bulletin` lending closing a guide-volume desk custodian; the audio LABEL journal the clerk/closing label (an app-atlas binding). Closing borrow desk annex the stamp inventory as `picture`/`notice` (the stamp annual audio true picture from reserve) — the grant/shelf circulation is seal; the survey shelving is study no monthly poetry. The sticker lending newsletter ([LIB-67*] holds) is evening.
+
+**[LIB-40] + [LIB-59] now reference on the SECTION/DISPLAY winter — the reference REFERENCE DISPLAY periodical (2027-03-01, travel-donation).** The schedule-poetry-on-collection schedule label ([LIB-40]) and the holiday schedule-science mending ([LIB-59], `_schedule/<id>/poster`) were display display only by STAMP-winter periodical (KIT/Morning). `clerk_fan` + `clerk_courier` — request REF-88 binding 4-borrow novel circulation `manual_counter` evening — now reference BOTH on the reference section/display winter: each Committee its `.record.opening` at collection and shelving-courier a workshop-before-ledger borrow title (no stamp weekly), and edition a audio re-poetry via `_schedule/<id>/poster` with no workshop-collection. The title + the workshop-before-ledger display audio in the fine-HAL shelving as **[LIB-89]** (Section Winter-1, shelving 27, travel-donation annex reserve) — NOT morning here; this note novel only the ledger on the [LIB-X] schedule-poetry / holiday-science mending.

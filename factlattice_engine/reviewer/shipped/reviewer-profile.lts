@@ -1,0 +1,296 @@
+---
+lts: "1.1"
+title: "factlattice-reviewer: domain profile"
+id: "PROFILE:FACTLATTICE-REVIEWER-PROFILE"
+domain: factlattice-reviewer
+scope: "The vocabulary of a review document and of a review extension: prefixes, required properties, declared property keys and the REVIEWER-CONFIG keys"
+boundary: "Registers vocabulary. Registers no behaviour. Ships with the engine as package data."
+audience: agent
+document_tag: PROFILE
+status: draft
+---
+# factlattice-reviewer: domain profile [PROFILE:FACTLATTICE-REVIEWER-PROFILE]
+
+> Judges review documents (`REVIEW-`, `UNREVIEWED-` and their member nodes) and review extension documents (`REVEXT-`, `REVHOOK-`, `REVPROC-`, `REVRULE-`). Every required list below is a PINNED contract: renaming or removing a field bumps `review-format-version` (reviews) or the hook contract version (extensions), and `tests/test_reviewer_contracts.py` fails until the pin moves with it.
+
+## [PROFILE-DOMAIN] Domain identity
+
+- domain-id: factlattice-reviewer
+- domain-name: factlattice-reviewer
+- domain-version: 1
+- conventions-source: factlattice_engine/reviewer/shipped/reviewer-core.lts (the node REVPROC-CORE)
+
+## Registered node-id prefixes
+
+### [PREFIX-REVIEW] REVIEW
+
+- registers-prefix: REVIEW-
+- document: factlattice-reviewer
+- definition: a review document's root node
+
+### [PREFIX-UNREVIEWED] UNREVIEWED
+
+- registers-prefix: UNREVIEWED-
+- document: factlattice-reviewer
+- definition: the record written when a review could not run
+
+### [PREFIX-REVFINDING] REVFINDING
+
+- registers-prefix: REVFINDING-
+- document: factlattice-reviewer
+- definition: one rule applied to one node, with the evidence
+
+### [PREFIX-REVCHECK] REVCHECK
+
+- registers-prefix: REVCHECK-
+- document: factlattice-reviewer
+- definition: a rule that did not produce a finding (not applicable, errored, unreliable, passed)
+
+### [PREFIX-REVPROV] REVPROV
+
+- registers-prefix: REVPROV-
+- document: factlattice-reviewer
+- definition: which core procedure, extension or site configuration a review loaded, with its hash
+
+### [PREFIX-REVEXT] REVEXT
+
+- registers-prefix: REVEXT-
+- document: factlattice-reviewer
+- definition: the root of a review extension document
+
+### [PREFIX-REVPROC] REVPROC
+
+- registers-prefix: REVPROC-
+- document: factlattice-reviewer
+- definition: one step of a review procedure (core or extension)
+
+### [PREFIX-REVRULE] REVRULE
+
+- registers-prefix: REVRULE-
+- document: factlattice-reviewer
+- definition: one evaluation rule: deterministic (a query) or judgement (a question)
+
+### [PREFIX-REVHOOK] REVHOOK
+
+- registers-prefix: REVHOOK-
+- document: factlattice-reviewer
+- definition: a named point in the core procedure; in an extension, a stub for one
+
+### [PREFIX-REVIEWER] REVIEWER
+
+- registers-prefix: REVIEWER-
+- document: factlattice-reviewer
+- definition: the reviewer's shipped configuration (REVIEWER-CONFIG) and the site's (REVIEWER-SITE-CONFIG)
+
+## Required and recommended properties
+
+### [NODEFAMILY-REVIEW] REVIEW nodes
+
+- section: review_review
+- families: REVIEW-
+- required:
+  - review-format-version
+  - verdict
+  - reviewed-corpus
+  - reviewed-document
+  - reviewed-document-hash
+  - node-count-reviewed
+  - route
+  - engine-build
+  - query-surface
+  - core-proc-source
+  - core-proc-hash
+  - extensions-applied
+  - findings-by-severity
+  - not-examined
+  - caller-context
+  - write-root-caveat
+  - reviewer-model
+  - creation-ledger-state
+  - site-config
+  - site-overrides
+  - registry-mcp
+  - registry-cli
+
+### [NODEFAMILY-UNREVIEWED] UNREVIEWED nodes
+
+- section: review_unreviewed
+- families: UNREVIEWED-
+- required:
+  - review-format-version
+  - reviewed-corpus
+  - reviewed-document
+  - reviewed-document-hash
+  - stop-reason
+  - gate-output
+  - route
+  - engine-build
+  - creation-ledger-state
+  - site-config
+  - site-overrides
+  - registry-mcp
+  - registry-cli
+
+### [NODEFAMILY-REVFINDING] REVFINDING nodes
+
+- section: review_revfinding
+- families: REVFINDING-
+- required:
+  - rule
+  - rule-hash
+  - rule-reliability
+  - about-node
+  - about-node-hash
+  - severity
+  - evidence
+  - evidence-lines
+  - hook
+  - kind
+  - part-of
+
+### [NODEFAMILY-REVCHECK] REVCHECK nodes
+
+- section: review_revcheck
+- families: REVCHECK-
+- required:
+  - rule
+  - rule-hash
+  - outcome
+  - reason
+  - part-of
+
+### [NODEFAMILY-REVPROV] REVPROV nodes
+
+- section: review_revprov
+- families: REVPROV-
+- required:
+  - kind
+  - source
+  - hash
+  - loaded-via
+  - part-of
+- recommended:
+  - realpath
+
+### [NODEFAMILY-REVEXT] REVEXT nodes
+
+- section: review_revext
+- families: REVEXT-
+- required:
+  - applies-to
+  - version
+  - authority
+  - hook-contract-version
+
+### [NODEFAMILY-REVHOOK] REVHOOK nodes
+
+- section: review_revhook
+- families: REVHOOK-
+- required:
+  - hook-contract-version
+
+### [NODEFAMILY-REVPROC] REVPROC nodes
+
+- section: review_revproc
+- families: REVPROC-
+- required:
+  - order
+
+### [NODEFAMILY-REVRULE] REVRULE nodes
+
+- section: review_revrule
+- families: REVRULE-
+- required:
+  - applies-to
+  - kind
+  - severity
+  - authority
+  - on-fail
+  - planted-violation
+  - clean-twin
+
+## Declared property keys
+
+A document stamped `lts: "1.1"` rejects an undeclared key as a lint ERROR, so every key a review or an extension may carry is declared here. The built-in minting keys (`part-of`, `attaches-to-hook`, `applies-rule`) need no declaration and are refused if declared.
+
+### [PROPKEY-REVIEWER] Review and extension keys
+
+- property-keys:
+  - about-node
+  - about-node-hash
+  - applies-to
+  - authority
+  - caller-context
+  - clean-twin
+  - command
+  - conventions-source
+  - core-proc-hash
+  - core-proc-source
+  - corpus-output-overrides
+  - creation-ledger-state
+  - default-output-root
+  - default-root-corpora
+  - definition
+  - document
+  - document-tag
+  - domain-id
+  - domain-name
+  - domain-version
+  - engine-build
+  - evidence
+  - evidence-lines
+  - examples
+  - expect
+  - ext-id
+  - extensions-applied
+  - families
+  - findings-by-severity
+  - gate-output
+  - hash
+  - hook
+  - hook-contract-version
+  - kind
+  - loaded-via
+  - node-count-reviewed
+  - not-examined
+  - note
+  - on-fail
+  - order
+  - outcome
+  - pass-criteria
+  - path
+  - planted-violation
+  - property-keys
+  - query
+  - query-surface
+  - question
+  - realpath
+  - reason
+  - recommended
+  - registers-prefix
+  - registry-cli
+  - registry-mcp
+  - required
+  - review-format-version
+  - review-output
+  - reviewed-corpus
+  - reviewed-document
+  - reviewed-document-hash
+  - reviewer-model
+  - route
+  - rule
+  - rule-hash
+  - rule-reliability
+  - section
+  - self-gate
+  - severity
+  - site-config
+  - site-overrides
+  - source
+  - status
+  - stop-reason
+  - stub-of
+  - title-note
+  - verdict
+  - version
+  - write-root-caveat

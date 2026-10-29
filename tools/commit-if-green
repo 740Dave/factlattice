@@ -1,0 +1,29 @@
+#!/bin/bash
+# Commit ONLY if the full suite passes, judged by pytest's EXIT STATUS (not by piping its output,
+# which is how 2788263 landed on a red suite). Usage: commit-if-green <worktree> -m "msg" [git commit args]
+#   CIG_TIMEOUT_S=900          wall-clock bound on the suite (a hung suite refuses, exit 1).
+#   EXTRA_PYTEST_ARGS="--deselect ..."  to deselect a KNOWN, ticketed hang (named in the commit message).
+set -u
+tooldir="$(cd "$(dirname "$0")" && pwd)"   # resolved BEFORE cd "$tree", so a relative invocation works
+tree="$1"; shift
+cd "$tree" || exit 2
+log=$(mktemp -t commit-if-green)
+# Wall-clock bound (default 900 s; a normal run is ~50 s): a HUNG suite is a refusal, never a wait.
+python3 "$tooldir/run_bounded.py" "${CIG_TIMEOUT_S:-900}" -- \
+  python3 -m pytest tests -q -p no:cacheprovider ${EXTRA_PYTEST_ARGS:-} >"$log" 2>&1
+rc=$?
+if [ $rc -eq 125 ]; then
+  echo "commit-if-green: REFUSED -- CIG_TIMEOUT_S='${CIG_TIMEOUT_S:-}' is not a finite positive number of seconds (an unbounded suite is never allowed)"
+  exit 1
+fi
+if [ $rc -eq 124 ]; then
+  echo "commit-if-green: REFUSED -- the suite exceeded ${CIG_TIMEOUT_S:-900}s (hung?); its process group was killed (full log: $log)"
+  tail -5 "$log"
+  exit 1
+fi
+tail -1 "$log"
+if [ $rc -ne 0 ]; then
+  echo "commit-if-green: REFUSED -- pytest exit $rc (full log: $log)"; grep -E "^FAILED|^ERROR" "$log" | head -10
+  exit 1
+fi
+git commit "$@"

@@ -1,0 +1,263 @@
+---
+title: "Domain Profile: Maker / Physical-World Engineering"
+id: "DOMAIN:MKR"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding a personal hardware and electronics workspace — projects, component catalogs, board and device inventories, wiring and power topology, and the bring-up and debugging patterns learned across projects"
+created: 2026-04-01
+updated: 2026-04-01
+---
+# Domain Profile: Maker / Physical-World Engineering [DOMAIN:MKR]
+
+> Encodes the knowledge of a hardware and electronics workspace: the projects underway, the boards and components on hand, how they are wired and powered, and the reusable patterns for bringing unfamiliar hardware to life. Unlike a pure software domain, its assertions bind to physical objects — pins, voltages, buses, and enclosures — where a wrong value is not a bug but a burned board.
+
+> Maker is a cross-cutting layer as much as a knowledge domain: its identity, tooling, and engineering patterns apply across whatever project is active, and are loaded alongside project-specific corpora rather than in isolation.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | MKR |
+| Sub-Namespaces | MKR.INV (inventory: boards, components), MKR.PROJ (projects), MKR.PAT (bring-up and debugging patterns) |
+| Location | Project-local, plus a shared workspace-context corpus |
+| Conventions File | This profile |
+| Maturity | Reference profile — generic, adopt and extend per workspace |
+
+---
+
+## 2. Structure
+
+### 2.1 Inventory (MKR.INV)
+
+The catalog of physical things: microcontrollers, single-board computers, sensors, expanders, and their electrical characteristics. Inventory nodes are the nouns other layers refer to. Each records the physical facts a project needs to design against — voltage levels, bus addresses, pin counts, current draw.
+
+### 2.2 Projects (MKR.PROJ)
+
+The builds: what is being made, from which inventory parts, in what state. Project nodes bind a goal to a set of components, a wiring topology, and a running record of what was learned. A project references inventory; it does not duplicate it.
+
+### 2.3 Patterns (MKR.PAT)
+
+The durable, reusable engineering knowledge extracted from projects: how to bring up an unknown board, how to bisect a hardware fault, how to bring an unresponsive device onto a bus. Pattern nodes carry a problem statement, an ordered strategy, and the invariant that makes the strategy safe.
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-MKR-1: Assertions Bind to Physical Objects
+
+- decision: Inventory and wiring nodes carry the electrical and physical facts of real objects (voltage, current, pin, bus address, footprint). These are not documentation; they are the design constraints a project must respect.
+- rationale: In physical-world engineering a wrong value has a physical consequence. Encoding voltage levels, pin assignments, and current budgets as first-class properties lets a check catch a 5V signal on a 3.3V pin before the smoke.
+- status: foundational
+
+### 3.2 DD-MKR-2: Projects Reference Inventory, Not Copy It
+
+- decision: A project cites inventory nodes by id (`mkr.USES`) rather than restating a component's characteristics. A component's electrical facts live in exactly one place.
+- rationale: The same board appears in many projects. Duplicating its pinout invites drift — two projects disagreeing about the same chip. One authoritative inventory node prevents it.
+- status: foundational
+
+### 3.3 DD-MKR-3: Patterns Carry Their Invariant
+
+- decision: Every MKR.PAT node records not just a `strategy` but the `invariant` that must hold for the strategy to be safe. A pattern without its invariant fails linting.
+- rationale: A bring-up sequence is only safe under conditions (power off before rewiring; confirm ground before signal). The invariant is the load-bearing part; the steps are its consequence. Recording only the steps loses why they are ordered as they are.
+- status: foundational
+
+### 3.4 DD-MKR-4: Physical Topology Uses Dedicated Edge Types
+
+- decision: Physical relationships (wired-to, powered-by, communicates-via, mounted-on) are distinct edge types, not generic dependencies.
+- rationale: "Component A depends on component B" is too coarse for hardware. Whether B powers A, signals A over I2C, or is merely bolted to the same chassis changes what a fault in B does to A. Distinct edges make blast-radius queries meaningful.
+- status: foundational
+
+### 3.5 DD-MKR-5: Lessons Are Attributed to the Project That Taught Them
+
+- decision: Pattern nodes carry a `learned-from` reference to the project during which the lesson was earned.
+- rationale: A debugging pattern is more trustworthy when its provenance is visible — a future builder can read the originating project for the full context behind the generalized rule.
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Inventory Prefixes (MKR.INV)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| BOARD- | Microcontroller / single-board computer | [BOARD-MCU-1], [BOARD-SBC-1] |
+| COMP- | Component catalog entry | [COMP-I2C-EXPANDER], [COMP-LED-DRIVER] |
+| SCHEMA-COMPONENT | Component schema definition | [SCHEMA-COMPONENT] |
+| INFRA- | Fixed infrastructure (host, network, power supply) | [INFRA-BENCH-PSU], [INFRA-HOST-1] |
+
+### 4.2 Project Prefixes (MKR.PROJ)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| PROJ- | Project node | [PROJ-KIOSK], [PROJ-SENSOR-NODE] |
+| SCHEMA-PROJECT | Project schema definition | [SCHEMA-PROJECT] |
+| WIRE- | Wiring / connection record | [WIRE-I2C-BUS-1], [WIRE-POWER-RAIL] |
+
+### 4.3 Pattern Prefixes (MKR.PAT)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| PAT-HW- | Hardware bring-up pattern | [PAT-HW-FIRST-BOOT], [PAT-HW-BUS-SCAN] |
+| PAT-DEBUG- | Hardware debugging pattern | [PAT-DEBUG-MYSTERY-BOARD] |
+| ML-R | Maker-log rule / heuristic | [ML-R-LABEL-EVERYTHING] |
+
+### 4.4 Workspace-Context Prefixes
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| ID- | Workspace / operator identity | [ID-OPERATOR] |
+| BEH- | Working-style / collaboration guidance | [BEH-VERIFY-BEFORE-POWER] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Electrical and Physical Properties (MKR.INV)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| voltage | string | Operating / logic voltage (e.g. 3.3V, 5V) |
+| current-draw | string | Typical / max current draw |
+| bus | enum | i2c, spi, uart, can, 1-wire, gpio |
+| bus-address | string | Device address on its bus (e.g. I2C 0x20) |
+| pins | number | Usable I/O pin count |
+| pinout-ref | reference | Node or document holding the full pin map |
+| footprint | string | Physical package / mounting footprint |
+| limitations | string | Known electrical or firmware limitations |
+
+### 5.2 Project Properties (MKR.PROJ)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| goal | string | What the project is meant to accomplish |
+| state | enum | planned, breadboard, assembled, deployed, retired |
+| uses | list | Inventory node ids this project builds from |
+| deploy-location | string | Where the finished build lives |
+| services | list | Software services the build runs, if any |
+
+### 5.3 Pattern Properties (MKR.PAT)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| problem | string | The recurring problem the pattern addresses |
+| strategy | string | The resolution approach |
+| sequence | list | Ordered steps to execute the strategy |
+| invariant | string | The condition that must hold for the strategy to be safe |
+| learned-from | reference | Project node that first taught this lesson |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| mkr.USES | entity | A project is built from an inventory component |
+| mkr.WIRED_TO | entity | One component is physically connected to another |
+| mkr.POWERED_BY | causal | A component draws power from a source or rail |
+| mkr.COMMUNICATES_VIA | semantic | Two components exchange data over a named bus/protocol |
+| mkr.MOUNTED_ON | entity | A component is physically mounted on a board or chassis |
+| mkr.LEARNED_FROM | temporal | A pattern was extracted from a specific project |
+| mkr.CONSTRAINS | causal | A physical characteristic constrains a design choice |
+
+---
+
+## 7. Document Type Tags
+
+| Tag | Description |
+|-----|-------------|
+| INVENTORY | Board / component catalog document |
+| PROJECT | Project definition and running record |
+| PATTERN | Reusable bring-up or debugging pattern |
+| WIRING | Connection and power-topology record |
+| PROFILE | Workspace / operator context |
+| GUIDE | Working-style or engineering-log guidance |
+
+---
+
+## 8. Confidence and State
+
+Inventory nodes are typically high-confidence (they restate a datasheet or a measured value) and change only when a part is replaced or a measurement is corrected. Project nodes carry a `state` rather than a numeric confidence, because a build's truth is its physical stage, not a probability. Pattern nodes gain implicit confidence as their `learned-from` list grows — a heuristic confirmed across several projects is more trustworthy than one seen once.
+
+---
+
+## 9. Temporal Semantics
+
+### 9.1 Project State Progression
+
+A project moves `planned → breadboard → assembled → deployed → retired`. Each transition is a durable fact; a retired project's nodes are kept so its wiring and lessons remain queryable.
+
+### 9.2 Inventory Correction
+
+When a measured electrical characteristic is corrected, the inventory node is updated in place and the prior value is captured in a DELTA record — physical facts do not accumulate versions the way decisions do, but the correction history matters when a downstream build assumed the old value.
+
+---
+
+## 10. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["PROJ-INDEX"]
+  primary_layers: [entity, causal]
+  focus_areas:
+    projects:
+      entry: ["PROJ-INDEX"]
+      layers: [entity, causal]
+      keywords: ["project", "build", "state", "deploy"]
+    inventory:
+      entry: ["COMP-INDEX", "BOARD-INDEX"]
+      layers: [entity, semantic]
+      keywords: ["component", "board", "part", "voltage", "pinout", "bus"]
+    wiring:
+      entry: ["WIRE-INDEX"]
+      layers: [entity, causal]
+      keywords: ["wiring", "power", "connection", "i2c", "spi", "topology"]
+    patterns:
+      entry: ["PAT-INDEX"]
+      layers: [causal, temporal]
+      keywords: ["pattern", "bring-up", "debug", "mystery", "sequence", "invariant"]
+    workspace:
+      entry: ["ID-OPERATOR"]
+      layers: [semantic]
+      keywords: ["operator", "workspace", "style", "guidance", "collaboration"]
+```
+
+---
+
+## 11. Corpus Structure
+
+```
+<workspace>/
+├── context/                           # Cross-cutting workspace layer
+│   ├── 00-operator-profile.lts        # ID-, BEH- nodes
+│   └── 01-working-style.lts           # BEH- nodes
+├── inventory/                         # MKR.INV
+│   ├── 10-boards.lts                  # BOARD- nodes
+│   ├── 11-components.lts              # COMP- nodes (with electrical properties)
+│   └── 12-infrastructure.lts          # INFRA- nodes
+├── projects/                          # MKR.PROJ
+│   └── <project>/
+│       ├── 20-project.lts             # PROJ- node
+│       └── 21-wiring.lts              # WIRE- nodes
+├── patterns/                          # MKR.PAT
+│   ├── 30-bringup-patterns.lts        # PAT-HW- nodes
+│   └── 31-debug-patterns.lts          # PAT-DEBUG- nodes
+├── events/
+│   └── quality.jsonl                  # Quality event stream
+└── deltas/
+    └── DELTA-{date}-{short-sha}.lts
+```
+
+---
+
+## 12. Cross-Cutting Nature
+
+Maker functions as **workspace context** as well as a knowledge domain. Operator identity and working-style guidance apply regardless of which project is active, so the `context/` corpus is loaded alongside any project rather than owned by one. This is why the domain carries an identity/behavior prefix set (`ID-`, `BEH-`) that a pure knowledge domain would not: the profile describes not only the hardware but the conventions of the person building it.
+
+---
+
+**Version**: 1.0
+**Created**: 2026-04-01
+**Updated**: 2026-04-01
+**Status**: Draft

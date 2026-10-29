@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+build/
+dist/
+*.egg
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Editor / OS
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local configuration & secrets (never commit deployment/credential state)
+.env
+.env.*
+*.local
+local_settings.*
+FACTLATTICE_CORPUS_CONFIG.json
+corpus_config.json
+
+# Runtime state: built graph indexes, freshness/verdict stores, logs, caches
+# The query log defaults OUTSIDE the repo (the deployment's own state dir) and must never
+# live inside a corpus root — every appended line would move the corpus content hash and
+# make the freshness kernel re-index. Ignored here purely as insurance against someone
+# pointing FACTLATTICE_QUERY_LOG at a working tree.
+query-log.jsonl
+*.query-log.jsonl
+graph_index.json
+*.graph_index.json
+*.index.json
+*.verdict
+*.verdict.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+
+# Local corpus data / working corpora (the public repo ships no corpus content)
+corpora/
+corpus/
+/data/
+
+# --- PRIVATE DEPLOYMENT OVERLAY — never commit/push to the public repo ---
+# The real proprietary domain profiles + corpus config the running engine points at.
+/private/

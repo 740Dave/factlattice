@@ -1,0 +1,10 @@
+# Fixture: every term defined [SPEC:FIXTURE-GEN2-CLEAN]
+
+## [FX2C-A] Rollout
+
+- claim: the rollout uses a quorum fence before every switchover
+- source: the runbook
+
+## [FX2C-B] Quorum fence
+
+- definition: a quorum fence is a check that a majority of replicas acknowledge the switchover before it proceeds

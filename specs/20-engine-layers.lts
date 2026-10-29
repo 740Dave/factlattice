@@ -1,0 +1,922 @@
+---
+title: "lts-engine — the four API layers"
+id: "SPEC:FL-ENGINE"
+domain: MET.FACTLATTICE
+scope: "The lts-engine query surface: QUERY, ANALYTICS, LINT and RENDER, the single freshness choke point they share, and the token-budget contract every layer honours"
+boundary: "Specifies what the engine answers and what it guarantees about the answer. The freshness machinery that makes those guarantees enforceable is specified in FL-FRESHNESS."
+not-this: "Not a transport specification. The engine is a library with a transport-agnostic dispatch; the MCP server is one adapter over it, not part of the contract."
+status: draft
+created: 2026-07-23
+updated: 2026-09-11
+---
+# lts-engine — the four API layers [SPEC:FL-ENGINE]
+
+> One library, one graph index, one freshness gate, four composed API layers. A consumer
+> can ask "which nodes", "how many", "is this corpus well-formed", and "draw me this
+> subgraph" of the same corpus through one engine, and every answer carries the same
+> freshness guarantee because every answer goes through the same gate.
+
+---
+
+## [FL-ENGINE-CONTRACT] One library, four composed layers
+
+- part-of: [FL-ENGINE]
+- depends-on: [MODEL-EDGE]
+- see-also: [LAYER-QUERY], [QUERY-PROSE], [LAYER-ANALYTICS], [LAYER-LINT], [LAYER-RENDER]
+- status: draft
+- importance: foundational
+
+The layers compose rather than coexist. ANALYTICS is a fold over QUERY's own selection
+function; RENDER walks the same adjacency maps QUERY walks; LINT runs the same parser the
+other three read from. Nothing is re-implemented per layer.
+
+That is a correctness property, not a tidiness one. If LINT had its own parser, "lints
+clean" and "ingests clean" would be two different claims that drift. Because it consumes
+the engine's parser, **lints-clean is ingests-clean by construction** — see [LAYER-LINT].
+If ANALYTICS had its own selection code, an aggregate could count nodes a query would not
+return. Because it folds over `find`, it cannot.
+
+| Layer | Question it answers | Return shape |
+|-------|--------------------|--------------|
+| QUERY | Which nodes? How are they connected? | Nodes, edges, subgraphs |
+| ANALYTICS | How many? Grouped how? Which are most connected? | Scalars, histograms, matrices |
+| LINT | Is this corpus well-formed? | Findings with file:line |
+| RENDER | What does this subgraph look like? | A diagram, derived at query time |
+
+---
+
+## [LAYER-QUERY] QUERY — the graph read surface
+
+- part-of: [FL-ENGINE]
+- depends-on: [FL-ENGINE-CONTRACT]
+- status: draft
+- importance: high
+
+Six operations: `find`, `find_in_prose`, `node`, `traverse`, `capabilities`,
+`list_corpora`.
+
+`find` selects nodes by prefix, domain, status, area, free text, and an optional
+since/until window over a configurable date property. Its free text matches **structure
+only** — see [QUERY-PROSE], which specifies both that boundary and the second operation
+that covers the other side of it. `node` returns one node with its
+per-layer forward and reverse edges plus a source excerpt. `traverse` is a bounded
+typed-edge breadth-first walk with layer, edge-type, direction and depth filters.
+`capabilities` returns the connected surface around a topic. `list_corpora` enumerates
+registered partitions with their node counts, edge counts, and freshness.
+
+A concrete query. *"Which requirements in the payments corpus are still `proposed`, and
+what implements them?"*
+
+    lts_find(corpus="payments", prefix="REQ", status="proposed")
+    lts_traverse(corpus="payments", start_node="REQ-REFUND-WINDOW",
+                 edge_types=["IMPLEMENTS", "TESTED_BY"],
+                 direction="reverse", max_depth=2)
+
+Guarantees. Every read passes the freshness gate, so a stale partition returns a loud
+marker and never old data. Results are **whole-node**: a node that does not fit the
+remaining token budget is omitted entirely and a cursor is returned, never truncated
+mid-content. QUERY returns nodes, edges and subgraphs — never a scalar. A scalar is an
+ANALYTICS answer, and keeping the boundary sharp is what stops QUERY from growing an
+ad-hoc aggregation dialect.
+
+### A corpus-omitted read never reads a private corpus, and says so [INV-PRIVATE-FANOUT]
+
+- part-of: [LAYER-QUERY]
+- see-also: [INV-DECLARED-REACH]
+- status: accepted
+- decision-date: 2026-10-02
+- rule: A corpus is PRIVATE when its registry entry says `private: true`, or when its id ends in `-personality` and the entry does not say `private: false`. Every corpus-omitted fan-out (lts_find, lts_find_in_prose, the lts_reverse / reverse_digest referrer union, and the unscoped lts_aggregate partition reads) skips private corpora: it never gates, reads or heals them. Naming a private corpus exactly is unchanged.
+- declared-as: Every private corpus appears in `extent.corpora_skipped` with reason `private: name it explicitly`: the whole list, hit or no hit, so the skip list never reveals which private corpus held a match. `index.fresh` counts stale skips only; a private skip is not staleness.
+- reverse-rule: A reverse lookup keeps referrers homed in the NAMED corpus (private or not) and drops referrers homed in any OTHER private corpus.
+- why: Measured 2026-10-02 on main 14a02a8: lts_find(text="memory") with corpus omitted returned 20 personality nodes from 8 different Intelligences' selves among 582 hits. The only guard was a per-agent convention (always pass corpus=). Privacy that depends on every caller remembering an argument is not privacy. Ticket: acme-team ISSUE-FANOUT-LEAK.
+- tested-by: tests/test_private_corpus_fanout.py
+- routed-hop-rule: A cross-corpus HOP (lts_node, lts_traverse, lts_capabilities routing an edge into another corpus) into a private corpus OTHER than the one the caller named is declared but not served: it appears in an additive `routed_withheld` list as {corpus, target, reason}, never in routed_nodes / routed_digest / routed_capabilities. Privacy is decided BEFORE freshness, so a stale private target is the same withheld stub, not a routed_stale marker. This covers private-to-private hops as well. The field is absent when nothing was withheld, so existing responses are byte-identical. (review F1 + delta F-D2/F-D4.)
+- metadata-visibility: ACCEPTED, deliberately: what stays visible about a private corpus is METADATA, never node content. Exactly: its corpus id, node count and root paths (lts_list_corpora, extent.corpora_available, extent.corpora_skipped, the profile-registration audit); the target NODE ID and corpus of a withheld cross-corpus hop (routed_withheld[].target); and node ids in the operator readprofile CLI. Titles, properties and body text are never served from a corpus the caller did not name. Knowing that a self exists, and which id a public node links to, is not reading it. (review F2 + delta F-D3; reopen if a corpus id or node id itself becomes sensitive.)
+- standing-order: A TRIPWIRE, not enforcement: test_every_corpus_iteration_site_has_a_privacy_decision AST-scans the engine and counts, per scope (function, method, class body or module level), every touch of the corpus collection (partitions(), corpus_ids(), filter_by_domain(), and the store-internal _by_corpus_id / _by_domain). Any change against FANOUT_ALLOWLIST, which pairs each site's exact count with the reason its privacy is correct, fails the suite, including a new call inside an already-allowlisted function. Static scanning cannot see getattr-by-string, a method reference passed elsewhere, or iteration of a list a helper already returned; review covers those. (review F4 + delta F-D1.)
+
+---
+
+## [QUERY-PROSE] Structured scope and prose scope are two operations, not one matcher
+
+- part-of: [LAYER-QUERY]
+- depends-on: [LAYER-QUERY]
+- see-also: [ENGINE-BUDGET]
+- status: draft
+- importance: high
+- decision-date: 2026-08-13
+- change: "`find`'s free text matches id, title and string property values ONLY, and now DECLARES that scope on every text query. A second operation, `find_in_prose`, matches node body text and classifies each hit body-only or also-in-structure."
+- context_for_change:
+    prior_state: "The graph index carries no body text at all, so `find(text=...)` had never been able to read prose — and nothing in the response said so. A widget corpus answered a query for its own subject term with six confident, well-formed hits, every one of them a markdown FILENAME sitting in an `artifact:` property, over a corpus holding no subject-matter content, reporting `complete: true` and `truncated: false`."
+    reasoning: "A property hit means THIS NODE ASSERTS THIS; a prose hit means THIS NODE DISCUSSES THIS. Merging them into one matcher buys recall and destroys that distinction, which is the more valuable of the two signals: a body-only hit is a pointer to content the graph cannot answer for. Two named operations put the distinction where a rushed caller meets it — in the tool list — rather than in a field somebody has to notice and interpret."
+    rejected_alternative: "Widen `find`'s matcher to include body text, or report prose hits as a second count on the same response. Rejected on two grounds. Recall: it changes every existing caller's result set and cost for a benefit most of them did not ask for. Incentive: authors move facts INTO properties precisely because prose is not queryable, and that pressure is productive — it is what makes a corpus answerable at all. Prose hits arriving free alongside structured ones relieve exactly that pressure."
+    counter_argument: "An agent that never learns the second tool exists still receives a silent zero, so the split alone does not close the defect."
+    counter_response: "Correct, and that is why the split is only half the change. Every `find` text query now carries `extent.body_scanned: false` and a `scope_note` that names the scope it did not read, counts the nodes it did not read it in, and names `find_in_prose`. THE CHEAP ANSWER ROUTES; IT NEVER SATISFIES — the same rule the digest tier is built on. A bare zero becomes a routed zero whether or not the caller had heard of the second tool."
+    invalidating_assumption: "That prose is second-class knowledge and structure is the answerable form. If a corpus ever holds knowledge that CANNOT be expressed as properties and edges, keeping prose search deliberately less convenient stops being a productive pressure and becomes an obstacle, and the split must be revisited."
+    implication: "A high body-only count for a term is a densification worklist generated by REAL QUERIES rather than by audit — the mirror of an audit finding a corpus nobody asks for. It says people are asking for something the structure cannot answer."
+
+`find`'s text scope is id, title, and string property values. Nothing else, and the
+boundary is now declared rather than implied: every text query returns
+`extent.body_scanned: false` and an `extent.scope_note` naming the unread scope, the count
+of in-scope nodes carrying unread body lines, and the operation that covers them. The count
+is derived from line ranges in the index, so declaring the scope costs `find` no file I/O.
+
+`find_in_prose` reads the source lines beneath each node's heading. The heading itself is
+excluded — it carries the id and the title, which is `find`'s scope, and including it would
+make a doctype tag a prose hit on every node in a document. Property lines are included,
+because `find` reads only property values that are strings and a list-valued or
+mapping-valued property is invisible to it; excluding those lines would reproduce the
+blindness.
+
+Every hit is classified against `find`'s own predicate, so the classification cannot drift
+from it:
+
+| `finding` | meaning |
+|-----------|---------|
+| `body-only` | absent from id, title and every string property. `find` DOES NOT RETURN THIS NODE. A densification finding. |
+| `also-in-structure` | `find` already returns it; `structure_hit_in` names where. Redundant coverage, not a gap. |
+
+It returns **locality, not content** — id, title, source file, and the matching line with
+its number. Reading a hit still costs a `node` call. That is deliberate: this is a
+diagnostic for when the structure failed to answer, not a cheaper `find`, and a response
+that handed back the prose would make prose feel as good as structure.
+
+Guarantees are the layer's, unchanged: the same freshness gate, the same whole-node budget
+slice and cursor, the same tier contract. A `digest` here returns identity and counts for
+every hit and never a line of body text — the promise the layer must keep hardest at
+exactly the operation where it is easiest to break.
+
+---
+
+## [QUERY-LIMIT-ORDER] Bounding by count, not by time: `limit` and recency `order_by`
+
+- part-of: [FL-ENGINE]
+- depends-on: [LAYER-QUERY]
+- depends-on: [ENGINE-BUDGET]
+- depends-on: [INV-DECLARED-REACH]
+- see-also: [QUERY-PROSE]
+- see-also: [SPEC-COVERAGE-SCOPE]
+- status: draft
+- importance: high
+- rollout-status: shipped 2026-09-11 — implemented in factlattice_engine/ordering.py + wired into find/traverse (factlattice_engine/tools.py); SPEC.md §4.6.2 mirrors this contract
+- change: "`find` and `traverse` gain two optional, per-query parameters — `limit` (an integer ceiling on the number of nodes returned) and `order_by` (the ordering applied before that ceiling is taken, defaulting to the query's `date_property` descending). With `limit` set, `tier=\"digest\"` measures its ceiling against the POST-limit count, not the raw match count, so a caller can bound response size by node count directly instead of hunting for a `since` window that happens to fit."
+- context_for_change:
+    prior_state: "A 30-day decision-digest bootstrap query against `acme-data-science` (373 matched nodes, comfortably under the 1000-node digest ceiling) returned successfully but serialized to 55,287 chars / 1,406 lines — because `digest` claims completeness over every match and applies no bound on response size short of that 1000-node ceiling. An 11-day slice of the same corpus (31 nodes) returned complete and usable. The caller's only lever was the `since` window, and a time window is unstable in both directions: a busy fortnight overflows the caller's own context budget; a quiet month under-orients by returning too little."
+    reasoning: "The invariant that actually overflows is the NODE COUNT a response must carry, not the elapsed time the caller happened to name. A control that bounds node count is stable under corpus growth and query velocity; a control that bounds elapsed time is one derivative removed from the thing that breaks, and drifts every time the corpus grows. Monitor the invariant, not the proxy."
+    rejected_alternative: "Auto-shrink the since window until the digest fits. Rejected: it silently changes what the caller asked for (a 30-day sweep quietly becomes a 9-day one), and the shrink target moves every time the corpus grows, so the identical call is not reproducible week to week. Also rejected: lower or otherwise game DIGEST_MAX_NODES for this case. That constant guards a different thing (a whole-corpus digest is a context bomb, per its own rationale) and is not the caller's actual need, which is 'the newest 30', not 'permission to receive up to K nodes'."
+    counter_argument: "A general `order_by` invites sorting by arbitrary properties whose types are not comparable across nodes — exactly the undefined-behavior class FactLattice's honesty invariants exist to prevent elsewhere (e.g. [LAYER-ANALYTICS]'s numeric fold)."
+    counter_response: "Addressed by [SPEC-NULL-ORDERING], which gives incomparable values the SAME treatment [LAYER-ANALYTICS] gives a non-numeric value in a numeric fold: never coerced, always counted, and placed in one deterministic bucket rather than silently dropped or randomly ordered."
+    invalidating_assumption: "That the caller can always name a useful `limit` up front. A future consumer needing 'everything newer than the last time I asked' rather than 'the newest N' is not served by this design and would need a separate cursor/watermark parameter, specified on its own."
+    implication: "The bootstrap step that measured this defect (a 30-day decision-graph sweep) can be rewritten as `limit=30, order_by=\"recency\"` with no window at all — buffer-stable regardless of how many decisions land in a given month. N is chosen by the CALLER (a bootstrap script, an agent def, a human); the engine must never hardcode it — see [INV-LIMIT-CALLER-SET]."
+
+Two parameters, each a single pipeline stage, added to `find` and `traverse` — see
+[SPEC-COVERAGE-SCOPE] for exactly which tools and why not others yet.
+
+| Parameter | Type | Default when absent | Effect |
+|---|---|---|---|
+| `limit` | int (>= 0) or absent | absent = unbounded, today's behavior, byte-identical | Ceiling on the number of nodes in the ordered result; applied LAST, after filtering and ordering |
+| `order_by` | `"recency"`, `{field, direction}`, or absent | absent = today's order, `(corpus, id)` ascending, UNCHANGED | The ordering `limit` is taken FROM |
+
+The headline case this closes:
+
+    lts_find(corpus="acme-data-science", area="decisions", limit=30,
+             order_by="recency", tier="digest")
+
+returns the 30 most-recently-`decided-in-session` decision nodes, complete and
+predictably sized, regardless of whether the corpus holds 31 matching nodes or 373 — see
+[TIER-DIGEST-LIMIT].
+
+---
+
+### [PARAM-LIMIT] `limit` — a caller-set ceiling, never an engine default
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [ENGINE-BUDGET]
+- status: draft
+
+`limit` is a non-negative integer. Absent or `null` MUST leave every existing behavior
+unchanged (see [SPEC-BACKWARD-COMPAT]) — this is what makes the parameter additive
+rather than a redesign. `limit=0` is legal: it returns an empty result while
+`total_matched` still reports the true pre-limit count, which is a valid way to ask "how
+many would there be" without paying for any node body.
+
+`limit` bounds a NODE COUNT, never a byte count and never a token count — those are what
+`token_budget` already governs ([ENGINE-BUDGET]). The two compose rather than collide;
+see [SPEC-PAGINATION-COMPOSITION].
+
+#### [INV-LIMIT-CALLER-SET] The engine MUST NOT hardcode N
+
+- part-of: [PARAM-LIMIT]
+- status: draft
+- importance: foundational
+
+No tool signature, no server default, and no internal code path may substitute a fixed
+number (30, 50, 100 ...) for an absent `limit`. Absence means unbounded, exactly as it
+means today. A caller that wants "the newest 30" states `limit=30`; the number belongs
+to the bootstrap script, the agent definition, or the human — never to the engine. This
+mirrors [ENGINE-BUDGET]'s own framing: a bound the engine imposes silently is access
+control wearing budgeting's clothes, and this feature exists specifically so a CALLER'S
+bound replaces a proxy the caller had no way to set precisely.
+
+#### [SCEN-ENGINE-NEVER-DEFAULTS-LIMIT] Omitting limit is unbounded, not "30"
+
+- part-of: [PARAM-LIMIT]
+- when: a caller omits `limit` entirely
+- then: the response carries every matching node subject only to the tier's own
+  pre-existing ceiling (`DIGEST_MAX_NODES` for digest, the caller's `token_budget` for
+  full, the ordinary budget slice for page) — never a value silently substituted by the
+  engine
+
+---
+
+### [PARAM-ORDER-BY] `order_by` — the ordering `limit` is taken from
+
+- part-of: [QUERY-LIMIT-ORDER]
+- status: draft
+
+Two accepted forms, chosen as the narrowest surface that still closes the reasoning in
+[QUERY-LIMIT-ORDER]'s `context_for_change`:
+
+1. **`order_by="recency"`** — sugar for `{field: <the query's resolved date_property>,
+   direction: "desc"}`. This is the headline case and MUST be supported as the literal
+   string.
+2. **`order_by={field: <property key>, direction: "asc"|"desc"}`** — the general form.
+   `field` MAY name any property key present in the corpus, not only a date property;
+   `direction` defaults to `"desc"` when the mapping omits it.
+
+A general `{field, direction}` shape was chosen over a recency-only knob because the
+engineering cost of the general form is two keys, not a second code path — the
+comparison and null-handling machinery in [SPEC-NULL-ORDERING] is identical either way,
+and closing off the general form would mean specifying a second, incompatible mechanism
+the day someone needs to sort by `token_count` or a non-default date property. "General"
+does not mean "undefined on mixed types": [SPEC-NULL-ORDERING] governs what happens when
+`field`'s values are not uniformly comparable.
+
+`order_by` omitted or `null` MUST leave the default order exactly as it is today —
+`(corpus_id, id)` ascending for `find` (its existing `matches.sort(...)`) and BFS
+discovery order for `traverse`. Shipping this feature MUST NOT flip an existing caller's
+default order to recency; recency is opt-in.
+
+An unrecognized `direction` value is a caller error (`invalid_order_direction`),
+refused loudly, never silently coerced to `"desc"`. A `field` that matches no property on
+any matched node is NOT an error — every node falls into the unorderable bucket
+([SPEC-NULL-ORDERING]) and the response's `order_applied.unorderable_count` equals
+`total_matched`, which is how a caller notices a typo'd field name without the call
+failing outright.
+
+---
+
+### [SPEC-ORDER-OF-OPERATIONS] Filter, then order, then limit — one sequence, no exceptions
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [PARAM-LIMIT]
+- depends-on: [PARAM-ORDER-BY]
+- status: draft
+- importance: foundational
+
+    match set  = every node passing area/since/until/status/text/prefix/domain/...  (unchanged)
+    ordered    = match set sorted by order_by  (or today's default order, if order_by is absent)
+    windowed   = ordered[:limit]   (or all of `ordered`, if limit is absent)
+    response   = windowed, sliced again by tier/offset/token_budget — see [SPEC-TIER-INTERACTION]
+
+`total_matched` is always measured against `match set`, BEFORE `order_by` and BEFORE
+`limit` — unchanged from today ([INV-DECLARED-REACH]: "a count describes the corpus, not
+the response") and what lets a caller tell "the newest 30 of 108" from "all 30 that
+exist."
+
+#### [SCEN-ORDER-OF-OPS-LIMIT-APPLIES-LAST] limit narrows the already-ordered set, never the filter
+
+- part-of: [SPEC-ORDER-OF-OPERATIONS]
+- given: a corpus where the 5 most recent decisions in `area="decisions"` are not the 5
+  most recent nodes overall
+- when: a query supplies `area="decisions"`, `order_by="recency"`, and `limit=5`
+- then: the response's 5 nodes are the 5 most recent nodes WITHIN `area="decisions"` —
+  filtering happens before ordering and limiting, never after
+
+---
+
+### [SPEC-NULL-ORDERING] Missing or incomparable ordering values sort last, deterministically
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [PARAM-ORDER-BY]
+- status: draft
+- importance: high
+
+A node lacking `order_by.field` entirely, or carrying a value that cannot be compared
+against the field's dominant type (dates compare to dates, numbers to numbers; a stray
+string in a numeric field is not coerced), falls into one UNORDERABLE bucket. That
+bucket:
+
+- sorts AFTER every comparable node, regardless of `direction` — both `asc` and `desc`
+  put unorderable nodes last, because "last" is the one placement a caller can rely on
+  without knowing which direction they asked for.
+- is itself ordered by **id ascending** — the same deterministic tiebreak applied to
+  genuine ties among comparable values, so two runs against an unchanged corpus MUST
+  return byte-identical order. Never nondeterministic, per the same expectation the query
+  path already holds elsewhere ([DEC-NO-LLM], [INV-DETERMINISTIC]).
+
+[SPEC-RESULT-METADATA]'s `order_applied.unorderable_count` reports the size of this
+bucket, so a caller can tell "these are the 30 newest" from "12 of these had no date and
+are here by tiebreak, not recency."
+
+#### [SCEN-NULL-ORDER-FIELD-SORTS-LAST] A node with no decided-in-session date never masquerades as recent
+
+- part-of: [SPEC-NULL-ORDERING]
+- given: 3 of 40 matched nodes carry no `decided-in-session` property
+- when: `order_by="recency"` is requested
+- then: those 3 nodes are the LAST 3 of the ordered set (after all 37 dated nodes,
+  newest-first), ordered among themselves by id ascending, and the response's
+  `order_applied.unorderable_count` reports `3`
+
+---
+
+### [SPEC-TIER-INTERACTION] How `limit` composes with digest, page, and full
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [SPEC-ORDER-OF-OPERATIONS]
+- status: draft
+- importance: foundational
+
+`limit` changes what each tier's existing ceiling is measured AGAINST (SPEC.md §4.6.1,
+the response-tier contract). No tier's contract there is weakened — a tier still never returns a silent fraction — but
+digest's completeness claim and full's ceiling are both restated in terms of the
+WINDOWED set (post-`limit`), never the raw match set, because that is the whole point of
+the feature. [TIER-DIGEST-LIMIT], [TIER-PAGE-LIMIT] and [TIER-FULL-LIMIT] specify each
+tier in turn.
+
+---
+
+### [TIER-DIGEST-LIMIT] digest: complete over the top-N, not over the whole match set
+
+- part-of: [SPEC-TIER-INTERACTION]
+- status: draft
+
+`assert_digestable`'s ceiling check (today: `total_matched > DIGEST_MAX_NODES` refuses
+with `digest_ceiling_exceeded`) MUST be evaluated against `len(windowed)` — the
+POST-`limit` count — never against `total_matched`. `total_matched` may exceed
+`DIGEST_MAX_NODES` freely once `limit` is set; the response is still "ALWAYS COMPLETE
+for what it claims" because with `limit` set, what it claims is the top-N, and it says so
+via `truncated: true` ([SPEC-RESULT-METADATA]).
+
+If the caller's OWN `limit` (or the unbounded case with no `limit` at all) still leaves
+`windowed` over `DIGEST_MAX_NODES`, that refusal is unchanged from today: `assert_
+digestable` fires, naming `len(windowed)` as the count that exceeded the ceiling, with
+the same remedy (narrow the query, lower `limit`, or use `tier="page"`).
+
+#### [SCEN-DIGEST-LIMIT-BOUNDED-NO-ERROR] The headline case: newest 30 of 373, predictably sized
+
+- part-of: [TIER-DIGEST-LIMIT]
+- given: a query's filters match 373 nodes (comfortably under `DIGEST_MAX_NODES`, so
+  today's engine already "succeeds" but serializes to 55,287 chars / 1,406 lines)
+- when: the caller adds `order_by="recency"`, `limit=30`
+- then: the response carries exactly 30 rows (predictable, bounded size), with
+  `total_matched=373`, `truncated=true`, `limit_applied=30` — the caller no longer has to
+  choose between "everything" and hunting for a `since` window that happens to fit
+
+#### [SCEN-DIGEST-LIMIT-RESCUES-OVERSIZED-CORPUS] limit succeeds where an unbounded digest would have refused
+
+- part-of: [TIER-DIGEST-LIMIT]
+- given: a query's filters match 1,800 nodes — over `DIGEST_MAX_NODES`, so an unbounded
+  `tier="digest"` call refuses today with `digest_ceiling_exceeded`
+- when: the caller adds `limit=30`
+- then: the call SUCCEEDS, because the ceiling check now runs against `len(windowed) ==
+  30`, not `total_matched == 1800`
+
+#### [SCEN-LIMIT-EXCEEDS-DIGEST-CEILING] A limit that is itself too large still refuses
+
+- part-of: [TIER-DIGEST-LIMIT]
+- when: the caller requests `tier="digest"` with `limit=5000` against a match set of
+  1,800 nodes
+- then: `windowed` has 1,800 nodes (limit exceeds the match set, so it has no clamping
+  effect) — if `windowed` is still over `DIGEST_MAX_NODES`, the call refuses exactly as
+  an unbounded call would, naming `len(windowed)`
+
+---
+
+### [SPEC-PAGINATION-COMPOSITION] limit and offset compose as window-then-page, not SQL's offset-then-limit
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [SPEC-ORDER-OF-OPERATIONS]
+- status: draft
+- importance: high
+
+`limit` is applied ONCE, immediately after `order_by`, fixing `windowed =
+ordered[:limit]`. `offset` and `token_budget` then page WITHIN `windowed` exactly as
+they page over the full match set today. `cursor`/`next_offset` MUST NOT exceed the size
+of `windowed`; once the caller has consumed the entire limited window, `cursor` is
+`null` even though `total_matched` may be far larger.
+
+This is chosen over SQL's OFFSET-then-LIMIT (skip `offset` rows, then take `limit` more)
+because here `offset` is a CONTINUATION cursor for one bounded answer the caller already
+committed to — not an independent second filter. SQL's semantics would let a caller
+"page past" their own limit and see rows N+1..N+limit from a different part of the
+corpus, defeating the reason `limit` was set: a bounded, predictable-size answer that
+never grows across a paging session.
+
+---
+
+### [TIER-PAGE-LIMIT] page: offset and token_budget page within the limited window
+
+- part-of: [SPEC-TIER-INTERACTION]
+- depends-on: [SPEC-PAGINATION-COMPOSITION]
+- status: draft
+
+`tier="page"` slices `windowed` (not the full match set) by `offset` and
+`token_budget`, exactly as today's `_budget_slice` slices the match set. `total`
+reported alongside a page equals `len(windowed)`, so a caller paging through a
+limited window sees its own size as the horizon, not the corpus's.
+
+#### [SCEN-PAGE-CURSOR-NEVER-ESCAPES-LIMIT] Paging stops at the limit, not at the corpus
+
+- part-of: [TIER-PAGE-LIMIT]
+- given: `limit=30` against 373 matched nodes, with a `token_budget` small enough to
+  return 10 nodes per call
+- when: the caller pages with `offset=0`, then `offset=10`, then `offset=20`
+- then: the third call's `cursor`/`next_offset` is `null` — nothing more to page to —
+  even though `total_matched=373` says the corpus holds far more
+
+---
+
+### [TIER-FULL-LIMIT] full: limit narrows the candidate set; the caller's token_budget still governs
+
+- part-of: [SPEC-TIER-INTERACTION]
+- status: draft
+
+`assert_full_fits`'s mechanism is unchanged: the COMPLETE set must fit `token_budget` or
+the call refuses with `full_ceiling_exceeded`. What changes is which set that mechanism
+is evaluated against — `windowed` (post-`limit`), never the raw match set. `limit`
+reduces what the ceiling must fit; it does NOT relax the ceiling itself. If `windowed`
+still does not fit, the refusal names `total_token_count` computed over `windowed`, so
+the stated remedy ("raise `token_budget` to at least this number") remains literally
+true.
+
+#### [SCEN-FULL-LIMIT-STILL-RESPECTS-BUDGET] A smaller candidate set can still overflow the budget
+
+- part-of: [TIER-FULL-LIMIT]
+- given: `limit=10` narrows a 373-node match set to the 10 newest nodes, but those 10
+  nodes' combined `token_count` exceeds the caller's `token_budget`
+- when: the caller requests `tier="full"`
+- then: the call refuses with `full_ceiling_exceeded`, naming the 10-node
+  `total_token_count` — exactly today's contract, evaluated against the smaller,
+  post-`limit` set
+
+---
+
+### [SPEC-RESULT-METADATA] What the response adds, and what it leaves alone
+
+- part-of: [QUERY-LIMIT-ORDER]
+- depends-on: [INV-DECLARED-REACH]
+- status: draft
+- importance: high
+
+[INV-DECLARED-REACH]'s existing vocabulary (`count`, `total_matched`, `truncated`,
+`cursor`) is REUSED, unchanged in meaning: `truncated` remains exactly `count <
+total_matched`, and `summary.total == total_matched` still always holds. Four fields are
+ADDED, and MUST be omitted entirely — not present with a null value — when the caller
+supplied neither `limit` nor `order_by`, so an existing consumer with a fixed-key
+assertion sees no schema change at all ([SPEC-BACKWARD-COMPAT]).
+
+| field | present when | meaning |
+|---|---|---|
+| `limit_applied` | `limit` was supplied | echoes the caller's `limit` |
+| `order_applied` | `order_by` was supplied | `{field, direction, unorderable_count}` — the resolved ordering and how many nodes fell into [SPEC-NULL-ORDERING]'s bucket |
+| `windowed_total` | `limit` was supplied | `min(total_matched, limit_applied)` — the size of the limited window `offset` pages within |
+| `bound_reason` | `limit` or `order_by` was supplied | `"none"` or `"token_budget"` — why `count < windowed_total` in THIS response (i.e. whether another page call is needed to see the rest of the limited window) |
+
+This is what lets a caller distinguish "this is the newest 30 of 108" (`count=30`,
+`total_matched=108`, `truncated=true`, `windowed_total=30`, `bound_reason="none"` — the
+whole limited window is already in hand) from "this is all 30 that exist" (`count=30`,
+`total_matched=30`, `truncated=false`, no `limit_applied` field at all if `limit` was
+never supplied).
+
+#### [SCEN-RESULT-METADATA-DISTINGUISHES-LIMIT-FROM-COMPLETE] "Newest 30 of 108" is never mistakable for "all 30"
+
+- part-of: [SPEC-RESULT-METADATA]
+- given: two calls — one against a 108-node match set with `limit=30`, one against a
+  genuine 30-node match set with no `limit`
+- when: both calls return 30 nodes
+- then: the first response carries `total_matched=108`, `truncated=true`,
+  `windowed_total=30`; the second carries `total_matched=30`, `truncated=false`, and no
+  `limit_applied`/`windowed_total` fields — the two responses are distinguishable without
+  the caller having to remember what it asked for
+
+---
+
+### [SPEC-BACKWARD-COMPAT] No parameters, no change — enumerated
+
+- part-of: [QUERY-LIMIT-ORDER]
+- status: draft
+- importance: foundational
+
+When a caller supplies neither `limit` nor `order_by`, ALL of the following MUST hold,
+unchanged:
+
+- The default order is `(corpus_id, id)` ascending for `find`, BFS discovery order for
+  `traverse` — never recency, never any other order.
+- `tier="digest"`'s ceiling check runs against `total_matched`, exactly as today
+  (`digest_ceiling_exceeded` at `total_matched > DIGEST_MAX_NODES`).
+- `tier="full"`'s ceiling check runs against the full match set, exactly as today.
+- `tier="page"` and the legacy (tier-omitted) path slice the full match set by
+  `offset`/`token_budget`, exactly as today.
+- The response carries none of [SPEC-RESULT-METADATA]'s four new fields.
+- Every existing filter (`since`, `until`, `date_property`, `area`, `prefix`, `status`,
+  `text`, `domain`, `function`, `service`) behaves exactly as it does today; `order_by`
+  and `limit` are additional pipeline stages appended after them, never a replacement.
+
+#### [SCEN-BACKWARD-COMPAT-NO-PARAMS] An unmodified caller sees a byte-identical response
+
+- part-of: [SPEC-BACKWARD-COMPAT]
+- when: an existing caller invokes `find` or `traverse` with the same arguments it used
+  before this feature shipped
+- then: the response is byte-identical, field for field, ordering included
+
+---
+
+### [SPEC-COVERAGE-SCOPE] Which tools get limit and order_by, and why not the others yet
+
+- part-of: [QUERY-LIMIT-ORDER]
+- see-also: [LAYER-QUERY], [LAYER-ANALYTICS], [LAYER-LINT]
+- status: draft
+- importance: high
+
+| Tool | In scope? | Why |
+|---|---|---|
+| `lts_find` | **Yes — full support** | The primary target; already carries `date_property` and the tier contract this spec extends |
+| `lts_traverse` | **Yes** | Returns the same shape of node collection as `find`. `limit` truncates the DISCOVERED set (after the existing `max_depth`/`max_nodes` traversal policy has already bounded exploration); `order_by` overrides the default BFS discovery order when supplied, and is otherwise unchanged |
+| `lts_capabilities` | Not in this spec | Has no `tier` support at all yet ([LTS-TIER] is unimplemented for this tool); adding `limit`/`order_by` ahead of tier support would create a third, inconsistent partial-bounding mechanism. A follow-up once `capabilities` gains tiers |
+| `lts_node` edge listings | **Excluded, deliberately** | `tier="digest"`'s edge map is a declared-COMPLETE contract (§4.6.1); a node's edge count is bounded by corpus fan-out, not corpus size, so the overflow this spec addresses does not reproduce there. Limiting it would break an already-shipped completeness guarantee |
+| `lts_lint` findings | Not addressed here | A distinct budgeting and severity-prioritization concern ([LAYER-LINT], [ENGINE-BUDGET]); left open, not decided against |
+| `lts_aggregate` | Not applicable | Returns scalars/histograms, not a node collection ([LAYER-ANALYTICS]); `top_k` already exists for that shape |
+
+---
+
+## [LAYER-ANALYTICS] ANALYTICS — scalars, histograms, graph statistics
+
+- part-of: [FL-ENGINE]
+- depends-on: [LAYER-QUERY]
+- depends-on: [ENGINE-BUDGET]
+- status: draft
+- importance: high
+
+A deterministic fold over the node set QUERY already selects, plus a second tier of
+graph-native aggregates that read edges directly: `count`, `group_by`, `numeric` with
+`sum`/`avg`/`min`/`max`, `distinct`, `cross_tab`, `top_k`, `degree`, `top_by_degree`,
+`count_by_edge_type`, `orphans`.
+
+A concrete query. *"How many requirements are in each lifecycle state, and which five
+nodes are the most depended-upon?"*
+
+    lts_aggregate(op="count", corpus="payments", prefix="REQ", group_by="status")
+    lts_aggregate(op="top_by_degree", corpus="payments", k=5, direction="in")
+
+Three guarantees make an aggregate trustworthy, and each closes a way a naive
+find-then-count-in-the-caller gets the number wrong:
+
+- **Completeness.** The fold drains QUERY's token-budget cursor, so it sees every matching
+  node. A single `find` call returns a budgeted slice; counting that slice would report a
+  number that silently depends on the consumer's context window.
+- **Freshness.** A not-found or stale verdict from QUERY propagates verbatim. A stale
+  corpus yields a refusal, never a silently-wrong count.
+- **Honesty.** A numeric fold **skips** non-numeric and absent values and reports the skip
+  count. It never coerces a missing metric to zero, because a zero is indistinguishable
+  from a real measurement once it is in a sum.
+
+---
+
+## [LAYER-LINT] LINT — structural and referential validation
+
+- part-of: [FL-ENGINE]
+- depends-on: [FL-ENGINE-CONTRACT]
+- implements: [INV-DECLARED-REACH]
+- see-also: [MODEL-EDGE], [ENGINE-BUDGET]
+- status: draft
+- importance: high
+
+Two capabilities over one parse. Structural diagnostics surface parse errors, id
+collisions, dangling edges, unregistered namespaces, and unresolved targets. The
+bidirectional dangle-lint adds **forward** findings (a reference to an id defined nowhere)
+and **orphan** findings (a defined node that no authored or property edge points at).
+
+A concrete invocation:
+
+    lts_lint(source="specs/", dangle=True)
+
+Severity is linter policy, not parser judgement: parse errors and id collisions are
+errors; forward dangles are errors; orphans and namespace flags are warnings. The split is
+deliberate. A reference to nothing is unambiguously a bug. An unreferenced node is
+routinely legitimate — a fresh node, a document root, an entry point — so making it fail a
+gate by default would train authors to disable the gate.
+
+Guarantee: the linter consumes the engine's own parser and re-implements no extraction or
+resolution rule. A corpus that lints clean is a corpus the QUERY layer ingests identically.
+
+`findings` is a COLLECTION and is budgeted like every other one — [ENGINE-BUDGET] applies
+here in full, and the declaration vocabulary is [INV-DECLARED-REACH]'s, reused, not
+restated. A directory lint over a real corpus is the largest response the engine can
+produce (measured: 667 findings / ~203k tokens over one project's specs, more than a
+whole context window in a single call), so lint is the layer where an undeclared bound
+does the most damage. Its `summary` is folded over EVERY finding, not the carried page:
+the question `lts_lint` answers is "is this CORPUS clean", and a count folded over one
+page answers a different question under the same name.
+
+---
+
+## [LAYER-RENDER] RENDER — diagrams derived from the graph
+
+- part-of: [FL-ENGINE]
+- depends-on: [LAYER-QUERY]
+- implements: [INV-DERIVED]
+- status: draft
+- importance: high
+
+RENDER walks a subgraph and emits a diagram. It is two pure functions — a subgraph
+selector and a Mermaid emitter — behind one tool, `lts_flow`.
+
+A concrete query. *"Draw the deployment approval flow."*
+
+    lts_flow(corpus="ops", start_node="FLOW-DEPLOY-APPROVAL",
+             group_by="actor", layout="TD")
+
+The emitter knows nothing about flows. Its contract is `render(nodes, edges) -> diagram`,
+so the same code renders a process flow, a supersession chain, a dependency tree, or a
+decision lineage depending only on which edge types the walk followed. Passing
+`edge_types=["SUPERSEDES"]` renders a supersession chain through the identical path.
+
+Two behaviours are worth stating explicitly because they are where naive diagram tooling
+fails. **Membership edges are not drawn**: `CONTAINS`/`PART_OF` define which nodes belong
+to the flow, but a container-to-step arrow is not a step transition. **An edge with an
+endpoint outside the rendered node set is dropped and reported**, never emitted — in
+Mermaid an unknown endpoint silently declares a phantom node, which is precisely the class
+of silent breakage this layer exists to avoid.
+
+Nothing is written anywhere. The diagram is produced from the live graph at request time.
+See [INV-DERIVED] for why that is the whole point.
+
+---
+
+## [GATE-FRESH] The single freshness choke point
+
+- part-of: [FL-ENGINE]
+- depends-on: [LAYER-QUERY]
+- implements: [INV-FRESH]
+- see-also: [MECH-SELFHEAL]
+- status: draft
+- importance: foundational
+
+Every gated surface funnels through one function that decides serve, heal, or refuse.
+QUERY's five operations, ANALYTICS (because it folds over `find`), and RENDER (because it
+walks the same partition) all pass through it. There is one place in the engine where the
+decision "is this corpus current enough to answer from" is made.
+
+The consequence is that a new tool inherits the freshness contract rather than having to
+remember it. A render tool added without touching the gate still refuses on a stale
+corpus, because it cannot reach the adjacency maps without passing through.
+
+The gate does not trust a repair. After a self-heal runs, the ordinary freshness check is
+re-run from scratch, and only a genuinely fresh verdict serves. See [FLOW-QUERY] for the
+full decision path.
+
+---
+
+## [ENGINE-BUDGET] Token budgets — context hygiene, not access control
+
+- part-of: [FL-ENGINE]
+- depends-on: [LAYER-QUERY]
+- see-also: [INV-DECLARED-REACH]
+- status: draft
+
+Every layer that returns a COLLECTION applies a token budget and returns a cursor when
+it truncates. A collection is any repeated payload the caller counts or folds over —
+nodes, edges, capabilities, flow steps, **and lint findings** — not nodes alone. The
+scope clause is stated this way on purpose: written as "every layer that returns nodes"
+it silently excused [LAYER-LINT], whose repeated payload is named `findings`, and lint
+was consequently the one reach surface outside this contract.
+
+This exists because the primary consumer is an Intelligence with a finite context
+window, and an unbounded traversal over a large corpus is useless to it — not because
+anything is being withheld.
+
+Two rules keep budgeting honest. Items are never split: an over-budget item is skipped
+whole and reported, so no consumer ever reasons from half a node. And the budget is a
+pagination mechanism, not a filter: the cursor is always sufficient to retrieve the
+remainder, which is exactly what [LAYER-ANALYTICS] relies on to compute a complete count.
+
+---
+
+## [INV-DECLARED-REACH] No surface may under-report without saying so
+
+- part-of: [FL-ENGINE]
+- depends-on: [ENGINE-BUDGET]
+- status: draft
+- importance: foundational
+
+A bound is legitimate. A SILENT bound is not. Any response that carries fewer items than
+the engine found MUST declare the difference in the payload, in ONE vocabulary shared by
+every layer:
+
+| field | meaning |
+| --- | --- |
+| `count` | items actually carried in this response |
+| `total_matched` | items the engine found, before any bound applied |
+| `truncated` | `true` when `count < total_matched` |
+| `cursor` | the `offset` that resumes from the first omitted item; `null` when whole |
+
+The vocabulary is fixed, and the slicing is ONE implementation reused by reference, not
+a contract each layer restates. A second spelling of "there is more" is a second thing
+that can be forgotten, and a layer that invents its own is indistinguishable from a
+layer that has none. It had already forked twice before this was written: `find` said
+`total_matched` while `traverse`/`capabilities`/`flow` said `total`, and
+`lts_capabilities` returned a `cursor` while accepting no `offset` to spend it on — a
+truncation declared with no way to act on it, which is under-reporting wearing the
+costume of honesty. `total` survives as a compatibility ALIAS on the three tools that
+shipped it; it is the tail of the old spelling, not a second contract.
+
+**A COUNT DESCRIBES THE CORPUS, NOT THE RESPONSE.** Any total, summary, or histogram
+travelling alongside a bounded collection is computed over everything the engine found —
+before the bound. A summary folded over the truncated list is not a summary of the
+document, it is a summary of the response, and it reports a state the system is not in
+while looking exactly like a measurement. `summary.total == total_matched` always, and
+`summary.total >= count`; when those diverge the response says so via `truncated`.
+
+The failure this closes is not a wrong number. It is a number that is wrong and cannot
+be told apart from a right one — the same class as a lint verdict that cannot name its
+vocabulary ([LAYER-LINT]) and an aggregate that coerces a missing metric to zero
+([LAYER-ANALYTICS]).
+
+---
+
+*FL-ENGINE — the four API layers. The guarantees asserted here are enforced by the
+machinery in [FL-FRESHNESS].*
+
+## A shared embedding service: one model per user, behind a flag [MECH-SEMANTIC-EMBEDD]
+
+- part-of: [FL-ENGINE]
+- see-also: [DEC-SEMANTIC-ASSIST], [INV-DECLARED-REACH], [ENGINE-BUDGET]
+- status: proposed
+- decision-date: 2026-10-02
+- why: Measured (the architect S7, reports/s7-2026-10-02/S7-RESULT.md, live 8bb18e5): every lts-engine process that serves one semantic call loads its own pinned model, 1.0-2.4 GB peak RSS against 0.3 GB without; ~6 sessions cost 6-14 GB on a 24 GB machine. Latency is not the problem (warm semantic p50 17-40 ms at 1-4 processes).
+- rule: When enabled, an engine obtains embeddings from ONE per-user process, `lts-embedd`, over a Unix socket in a 0700 directory under the engine state root. The service holds only the pinned model and tokenizer: no corpus, no index file and no corpus name. Engines keep their corpora, sidecars, BM25 and vector search local. Only 'texts to vectors' is shared.
+- flag: LTS_SEMANTIC_EMBEDDER=local|shared, default local (today's per-process model, byte-identical behaviour). shared is opt-in until the on_miss decision rules.
+- exact-path-invariant: The exact path (lts_find answer fields, lint, writers, selfcheck) never contacts the service and stays model-free; with the service absent, down or refused, the engine still installs and answers exactly as today (DEC-SEMANTIC-ASSIST implication).
+- handshake: A connecting engine sends hello; the service answers with its complete vector-shaping material (the inputs of _version_material: model id, tokenizer version, unicode table, onnxruntime and numpy versions, pooling, prefixes, max_len, dim). ANY mismatch with the engine's own material is refused: semantic status unavailable, reason 'embedder version mismatch'. Two vector spaces are never mixed.
+- scheduling: Two queues: interactive query embeds run strictly ahead of index-build batches, so a background refresh cannot starve a query.
+- failure: Service absent, crashed, stalled, refused, mismatched or misbehaving: the semantic call returns the labelled status unavailable with a reason, never an exception into the caller and never a hang. A query (or an interactive doc embed of at most 256 texts) has ONE budget covering connect, spawn wait, hello and every frame, re-armed before every recv so a byte trickle cannot stretch it; a build has a per-frame deadline. Any malformed reply closes that thread's socket. Every frame echoes the request id, rows are tracked in a bitmap (out-of-range, duplicate or wrong-size rows refused), and `done` is accepted only when every row has arrived. This absorbs followups item 5 (slow-embedder timeout).
+- restart-in-flight: On EOF mid-call the client reconnects once and retries the single idempotent embed within the remaining deadline, else answers unavailable; a query is never answered from partial vectors. An index refresh whose embed fails fails as any embed failure does today: the sidecar is written manifest-last, nothing torn is served, the existing cool-down retries.
+- lifecycle: Started on demand by the first engine that needs it (a lockfile guarantees exactly one), idle-exits after a timeout to free the model's memory. The socket name carries the version-material hash, so during a go-live old and new engines each use their own service and never fight (the same structural answer as [SIDECAR-PER-VERSION]). Always-on (launchd) instead of on-demand is a maintainer choice in the on_miss decision.
+- privacy: Texts cross the socket, local only, 0700, user-owned; the service logs no text and never learns corpus names.
+- acceptance-1: MEMORY: the SYSTEM-WIDE sum of peak RSS (the service plus every engine) vs K local-model engines, at K = 1, 2, 4, 6; the shared total must not grow by more than one model as K grows.
+- acceptance-2: LATENCY: warm semantic p50/p95 through the socket vs in-process at K = 1, 2, 4 (60 distinct-text calls per process, uptime beside each K); added p50 under 5 ms.
+- acceptance-3: BUILD INTERFERENCE: query p50/p95 on other corpora while the service embeds a full acme-docs rebuild, on the SAME harness and corpus as S7 (worker_bg.py) with uptime before and after; p95 no worse than 2x the in-process baseline (S7: 158 ms worst batch). If load differs from S7's (7-10) by more than ~2x, re-measure the in-process baseline in the same window.
+- acceptance-4: KILL TEST: with queries in flight from 4 engines, SIGKILL the service; every call ends ok or unavailable within its deadline; zero hangs, zero exceptions into a caller, zero results from partial vectors; the next call starts a fresh service.
+- acceptance-5: VERSION SAFETY: an engine whose material differs from a running service is refused (unavailable, reason named) and starts or uses its own version's service; two versions running side by side never exchange vectors.
+- acceptance-6: PARITY: vectors from the service are byte-identical to in-process vectors for every A4 dev query and a 1,000-card corpus sample, so lts-semantic-recall-v1 results (A4, A6, dev parity) carry over unchanged; checked by re-running the dev parity harness with the flag set to shared.
+- not-decided-here: Whether on_miss goes default-ON (needs the grown gate fixture, followups 11, and DS); always-on vs on-demand; whether the service later also serves BM25 or indexes (one shared lts-engine, option C).
+- proposed-by: The architect, 2026-10-02; design sketch reports/s7-2026-10-02/SHARED-MODEL-SERVICE-SKETCH.md; build sequence agreed with the architect: build behind the flag, the six acceptance measurements, review, then the on_miss decision.
+- acceptance-2b: LATENCY TAIL: added p95 through the socket under 20 ms at K = 1, 2, 4 (same runs as acceptance-2).
+- acceptance-7: ACCESS: the socket lives in a 0700 directory created umask-proof (explicit chmod after mkdir); a peer whose euid differs from the owner is refused (tested via the peer-credential check, not a second account); the pidfile is opened O_NOFOLLOW, must be a regular file owned by this euid, and is held with an flock for the service's whole life (liveness is the lock, never the pid, so a recycled pid or a zombie cannot fake a live service); the spawn lock is O_NOFOLLOW plus flock; a socket path or run directory that is a symlink or owned by another uid is refused, so none can be pre-planted to hijack the service.
+- decision-trail: acme-team ISSUE-SEMANTIC-DESIGN (entries shared-model-sketch-2026-10-02, s7-latency-and-memory-2026-10-02). Plain text, not a bracketed edge: this repo's specs lint standalone, where another corpus's namespace cannot resolve (it reads as dangling).
+
+## Semantic suggestions carry a short disclaimer once per session [SEM-SESSION-PREFACE]
+
+- part-of: [FL-ENGINE]
+- see-also: [DEC-SEMANTIC-ASSIST], [MECH-SEMANTIC-EMBEDD]
+- status: proposed
+- decision-date: 2026-10-03
+- why: The maintainer ruling on (recorded as enable-ruling-2026-10-03), verbatim: "Before the semantic results, add a disclaimer that they should not be treated as definitive/trustworty, but instead to drive a second targeted query using a correct search that is trustworthy. My example language here is too long/verbose; it also need not be included each query, but rather once per session. If the current implementation does this, then no changes are necessary." the architect and the architect judged that the existing per-block label (kind semantic-suggestions-not-matches, is_assertion false, the NOTE ending 'Read the node before relying on it') does NOT satisfy it: it is not placed before the results, and it does not direct a second, exact query.
+- rule: In one engine process (one MCP client session: lts-engine is a per-session stdio child), the FIRST semantic suggestion block that carries at least one candidate gets a `preface` string as its FIRST key, ahead of every other key including `candidates`. Every later block in that process omits `preface`. The flag is shared by both semantic surfaces, lts_semantic_find and the on_miss `did_you_mean_semantic` block, so whichever comes first carries it.
+- preface-text: Semantic suggestions are leads, not answers. Confirm one with a targeted exact query (lts_node on its id, or lts_find) before relying on it.
+- consumption: Only a block with status ok and a non-empty `candidates` list consumes the preface. An unavailable, skipped, building or empty block leaves it pending, so the disclaimer is never spent on a block that has no results to precede. The test-and-set is under a lock, so two concurrent calls cannot both carry it or both miss it.
+- unchanged: Everything else is unchanged: the per-block `kind`, `is_assertion` and `note` stay on every block; the exact answer, its counts and its nodes are never modified; with on_miss off, lts_find is byte-identical to before. A reconnect starts a new process, which shows the preface once more (acceptable: it is a new session).
+- tool-descriptions: The lts_semantic_find and lts_find(semantic) tool descriptions say that the first result block of a session carries a short `preface` and that later ones do not.
+- acceptance-1: First ok block with candidates in a fresh process: `preface` present, equal to preface-text, and the FIRST key of the lts_semantic_find response (where the block's keys are spread into the response) / of the `did_you_mean_semantic` block (on_miss).
+- acceptance-2: Second and later ok blocks in the same process, through either surface: no `preface` key.
+- acceptance-3: An unavailable or empty block before the first ok block does not carry or consume it; the next ok block carries it.
+- acceptance-4: Shared flag: lts_semantic_find first, then on_miss: only the first carries it; and the reverse order.
+- acceptance-5: on_miss off: lts_find response byte-identical to the pre-change engine on the same query (no preface, no other change).
+- proposed-by: The architect, 2026-10-03, to execute the maintainer's D2 directive; flip of LTS_SEMANTIC_ON_MISS follows the review and the architect's go-live.
+- session-scope: "Session" here means ONE ENGINE PROCESS, which is the only session the engine can see. Consequences, all accepted: (a) a reconnect, or a build-stamp re-exec (CodeCurrencySentinel, os.execv on a code change, the client staying connected), starts a new process and shows the preface once more; (b) a subagent that shares its parent's MCP connection may never see it, if the parent consumed it first; (c) after a client-side context compaction the agent may have lost the text, but the process keeps the flag, so it is not re-shown; (d) the flag is consumed when the block is built, so a response lost in delivery loses the preface. The per-block `kind`/`is_assertion`/`note` on EVERY block is the backstop for (b)-(d). (review audit of 3b4b2f4, F2/F3.)
+- obligation: Any FUTURE surface that returns semantic suggestions must obtain its preface through the engine's single `_preface` gate (one flag per process); a surface that builds its own block bypasses the once-per-session rule. (review audit of 3b4b2f4, P3.)
+- ruling: recorded decision: chosen "Turn on now" (against the architect's "Not yet"), with the comment quoted in `why`. This node implements the comment; the on_miss flip (env LTS_SEMANTIC_ON_MISS in the lts-engine MCP config) implements the choice, after this node's review, as a go-live act.
+
+## A deployment switch that stops semantic suggestions from ever claiming a strong match [SEM-LABEL-CAP]
+
+- part-of: [FL-ENGINE]
+- see-also: [DEC-SEMANTIC-ASSIST], [SEM-SESSION-PREFACE]
+- status: proposed — PRE-BUILT, lands only on the maintainer's answer to
+- decision-date: 2026-10-03
+- why: v2 post-flip monitoring (the architect V2-RESULT.md; DS ADJUDICATION-v2.md): the `high` label (`confidence: strong match`) was adjudicated WRONG on 3 of 146 DS-verified-absent questions, failing BARS-v2 bar 3 (0 allowed). DS's reconsider decision recommends option (b): keep on_miss but stop emitting `high`; the alternatives are default-off or keep as is. Built behind an env switch, default unchanged, so every option the maintainer can pick is a config change with no code change.
+- flag: LTS_SEMANTIC_HIGH_LABEL=on|off, default on (today's labels, byte-identical). off: no candidate is ever labelled `high`; the top-1 that would have been `high` is labelled `medium` (`related, not asserted`) like every other candidate, and ranking, candidates and scores are unchanged. An unrecognised value logs a loud warning and is treated as on (the MECH-SEMANTIC-EMBEDD P3-2 precedent).
+- transparency: When off, every block with status ok carries `label_policy: "strong-match disabled by deployment"`, INCLUDING an ok block with zero candidates (the policy is a fact about the deployment, not about a result); blocks that are not ok (unavailable, index_building, index_failed, skipped) carry no labels and no label_policy. When on, the block is byte-identical to before. (review audit of 57a6490, P2-1.)
+- scope: Both surfaces (lts_semantic_find and the on_miss block) through the single SemanticService.suggest path; read per call, so a reconnect is not needed for tests but deployment changes still go through the lts-engine MCP env.
+- acceptance-1: Default (unset) and on: labels and the whole block are byte-identical to the pre-change engine on the same query.
+- acceptance-2: off: across a query whose top-1 is `high` when on, no candidate has label `high` or confidence `strong match`; candidate ids, order and scores are identical to on.
+- acceptance-3: off: every ok block carries label_policy, including an empty ok block; an unavailable block does not; on: no block does. on_miss candidate ids, ranks and scores are identical on vs off. An unknown value warns ONCE per value per process, quoting the raw value as set.
+- acceptance-4: An unknown value warns (logged) and behaves as on.
+- acceptance-5: Both surfaces: lts_semantic_find and lts_find on_miss obey the switch.
+- proposed-by: The architect, 2026-10-03, pre-built while the maintainer is away; land plus env flip only on the maintainer's choice of (b).
+- evidence-limit: The tests force a `high` top-1 by patching top_label, because the tiny test model never produces one; the on-vs-off check is therefore synthetic. That off removes every `high` on real data is true by construction (a single assignment site), not by measurement; and passing BARS-v2 bars 2-3 under off is by construction, not evidence that labels are good. (review audit of 57a6490, P3-3.)
+
+## The query log records semantic suggestions, prose search and reverse lookups, so results can be analysed afterwards [QUERYLOG-SEMANTIC-COVERAGE]
+
+- part-of: [FL-ENGINE]
+- see-also: [DEC-SEMANTIC-ASSIST], [SEM-SESSION-PREFACE], [SEM-LABEL-CAP]
+- status: proposed
+- decision-date: 2026-10-03
+- why: The maintainer asked (2026-10-03) whether the semantic query system logs enough to analyse each result for accuracy afterwards. Measured on the live log (~/.local/state/factlattice/query-log.jsonl, 18,881 records): NO. (1) lts_semantic_find, lts_find_in_prose and lts_reverse are absent from querylog._LOGGED_TOOLS, so they are never recorded, although result_ids() already has a branch for find_in_prose `hits`. (2) An lts_find record carries only the exact result_ids; the on_miss `did_you_mean_semantic` suggestions, their labels and the label policy are not recorded.
+- rule: lts_semantic_find, lts_find_in_prose and lts_reverse are logged like every other read tool. Semantic SUGGESTIONS are recorded in a separate `suggestions` field, never in `result_ids`: a suggestion shown is not a node read, and the never-read analysis that result_ids feeds must not count it.
+- suggestions-field: For lts_semantic_find (top-level block) and lts_find (the did_you_mean_semantic block): `suggestions: {status, label_policy (when present), preface (bool), candidates: [{id, rank, label}]}`, candidates capped at MAX_RESULT_IDS with `capped` stated. Absent when the response has no suggestion block.
+- privacy: Unchanged: free text stays a sha+length unless FACTLATTICE_QUERY_LOG_LITERALS=1 (a maintainer decision, asked separately). Candidate ids are node ids, logged literally like result_ids.
+- never-changes-the-answer: As for every log write: record_call swallows every error; the response is byte-identical with or without logging.
+- acceptance-1: lts_semantic_find, lts_find_in_prose and lts_reverse each produce one record through dispatch.
+- acceptance-2: lts_semantic_find: the record's `suggestions.candidates` list the served ids, ranks and labels in order; `result_ids` does NOT contain them.
+- acceptance-3: lts_find with an on_miss block: `suggestions` mirrors did_you_mean_semantic; an exact-hit lts_find has no `suggestions` key (unchanged record).
+- acceptance-4: label_policy and preface are recorded when present.
+- acceptance-5: lts_find_in_prose hits land in result_ids (the existing branch); lts_reverse records its node_id.
+- proposed-by: The architect, 2026-10-03, the maintainer-sanctioned backlog (discretion to stack-rank).
+- obligation: Any NEW read tool must be added to querylog._LOGGED_TOOLS in the same change that adds it (omission is how these three went unlogged), and any NEW response shape that shows semantic suggestions must be recognised by querylog.suggestions(). Effect on existing numbers, accepted: lts_find_in_prose hits and the lts_reverse target now enter result_ids, and their zeros now count in shape() and re-query storms, so never-read and zero-rate figures shift from this landing onward. (review audit of e3c0662, P2-2 and P3-1.)
+
+## Semantic head cards include every element of a list-valued property, so repeated keys are searchable [SEM-CARDS-LIST-VALUES]
+
+- part-of: [FL-ENGINE]
+- see-also: [DEC-SEMANTIC-ASSIST], [MECH-SEMANTIC-EMBEDD]
+- status: proposed
+- decision-date: 2026-10-03
+- why: a corpus editor and the architect found that a repeated property key (e.g. two `alias` lines) parses as a LIST. The architect confirmed that semantic/cards.py head_card keeps only string values (`not isinstance(v, str)` is skipped), and that property lines are excluded from body chunks, so list values reach neither embedding nor BM25 (LexRank is built from the cards). Measured on the live registry (37 corpora, 21,979 nodes): 2,095 nodes (9.5%) carry list-valued properties, mostly substantive: requirement 463, scenario 444, constraint 60, implication 54, consequence 44 (see-also 355 and depends-on 104 are reference-only). acme-docs has 857, and acme-console, acme-viewer, acme-monitor and acme-specs ~280-290 each.
+- rule: head_card treats a list-valued property element by element: each string element is appended exactly as a string value is today (same exclusions: key filter _EXCLUDE_KEY; reference-only elements via _REF_ONLY). Non-string elements are skipped. Order: elements in parsed order, after the scalar-valued properties' existing positions (the property's position in the dict is kept).
+- version: CARD_SCHEMA_VERSION 1 → 2. Required, not optional: card text changes for ~2,000 nodes, and without a new index_version, engines on old and new code would share one sidecar and re-embed those nodes back and forth (the go-live ping-pong SIDECAR-PER-VERSION removed). Cost: a one-time full re-embed per corpus on first use after go-live, in the background (measured acme-docs: 284 s via the shared service); old engines keep serving their own version until reconnected.
+- scope: Semantic cards only (embedding + BM25 for lts_semantic_find and on_miss). Exact lts_find matching of list elements is the engine build's scope (split agreed with the architect 2026-10-03).
+- acceptance-1: A node whose `alias` is a list: every non-reference element appears in its head card; a reference-only element and excluded keys do not.
+- acceptance-2: A node with only string properties: head card byte-identical to the v1 rule (only the version prefix of the fingerprint changes).
+- acceptance-3: index_version changes with the bump (new sidecar dir); an old-version sidecar is not reused.
+- acceptance-4: BM25 (LexRank over the cards) finds a node by a word that appears only in a list element.
+- measurement: Before/after on frozen fixtures, reported (NOT a gate; DS's v3 is the gate): v1 dev split and the v2 positives (v2 is closed, so it now serves as a dev set), R@1/R@3/R@10 and the count of `high`-eligible top-1s, on the v2 snapshot.
+- proposed-by: The architect, 2026-10-03, the maintainer-sanctioned backlog (discretion to stack-rank; retrieval quality).
+- embed-window-effect: Accepted trade-off, measured by the review of 4f283ae (bge-small vocab, 510-piece window, 7 corpora): 678 head cards change. 18 cards that were under the window are now over it (acme-docs 17, acme-console 1), so the tail they already had is no longer embedded, though BM25 still sees it. In 7 nodes the window was already full, so the list content adds no embedded signal and they re-embed for nothing. Cards already over the window (acme-docs 199, a second corpus 152) gain list content that only BM25 sees. Card structure (design note §3 lever A) is the fix for the window; this change does not attempt it. Nested containers inside a list (a dict or a list of lists) are dropped silently, as before, by design.
+
+## The shared embedding service can run always-on under launchd, following the live engine's version [MECH-EMBEDD-ALWAYS-ON]
+
+- part-of: [FL-ENGINE]
+- see-also: [MECH-SEMANTIC-EMBEDD]
+- status: proposed
+- decision-date: 2026-10-03
+- why: The maintainer ruling: "Always on (launchd)" (against the architect's 'keep on demand'). MECH-SEMANTIC-EMBEDD left always-on vs on-demand to the maintainer. On demand, the first search after an idle gap waits ~1 s while the model loads; always on holds ~0.8 GB resident.
+- rule: A new `keep` subcommand of factlattice_engine.semantic.embedd runs the SAME Server (same socket, pidfile, permissions and protocol) with idle exit disabled, resolving pin, state root, model root and max_len EXACTLY as an engine's SharedEmbedder does (LTS_SEMANTIC_MODEL or the default pin; LTS_ENGINE_STATE_DIR or ~/.lts-engine; max_len 512), so its socket name (the version-material hash) is the one engines connect to.
+- version-following: keep watches watch_fingerprint() every LTS_EMBEDD_KEEP_WATCH_S (default 30 s). It covers everything that shapes the SERVICE material: the source of KEEP_SOURCE_FILES (embedd.py, embedder.py, index.py, tokenizer.py, cards.py, suggest.py, semantic/__init__.py); the onnxruntime and numpy distribution versions, read fresh from importlib.metadata on every tick so an on-disk upgrade is seen; the interpreter's identity (realpath of sys.executable, plus mtime and size, which also covers the Unicode table); and the content hash of LTS_SEMANTIC_PIN_FILE when set (an unreadable or absent file is a state of its own). Any change shuts the service down cleanly and exits 75; launchd restarts it on the new code/environment, so exactly one resident model serves the live version, never two. Environment variables are frozen in the plist; a change in the MCP entry is reported by `status` as drift, not followed automatically. Known gaps, accepted: factlattice/parser.py (imported by cards.py; only CARD_SCHEMA_VERSION shapes material) and variant onnxruntime distribution names (e.g. onnxruntime-silicon read as absent). (Delta review of e45740d, N1.)
+- takeover: If an on-demand service of the same material already holds the pidfile, keep does not exit and does not fight: it polls every 5 s and takes over when the on-demand service idle-exits.
+- crash-loop-limit: keep records its start times in <run>/embedd-keep-starts.json. At 5 starts within 600 s it logs the reason and exits 0. launchd (KeepAlive SuccessfulExit=false) then stops restarting it, and engines fall back to today's on-demand spawning. The record resets after 600 s quiet.
+- launchd: LaunchAgent label io.factlattice.lts-embedd at ~/Library/LaunchAgents/io.factlattice.lts-embedd.plist. ProgramArguments: python3 -m factlattice_engine.semantic.embedd keep. EnvironmentVariables: PYTHONPATH = the live checkout. RunAtLoad true; KeepAlive {SuccessfulExit: false}; ThrottleInterval 10; StandardOut/ErrorPath = <run>/embedd-keep.log.
+- launchd-label-migration: An earlier release used a different reverse-DNS prefix on the same `.lts-embedd` suffix. `launchagent install` migrates such an agent only when (a) its file is `<label>.plist` in the LaunchAgents directory, (b) the Label ends `.lts-embedd` and differs from the current label, (c) ProgramArguments contain `factlattice_engine.semantic.embedd`, and (d) the plist equals the one this install would write apart from Label (same interpreter, environment, log path). A same-module agent failing (d), such as a dev instance with another state dir, is reported (`left alone`) and untouched unless named with `--adopt-legacy <label>`. Order: bootout of each old label BEFORE bootstrapping the new one; a bootout that returns non-zero is checked with `launchctl print`, and if the old agent is still loaded the install stops, restores any old agent it had stopped, writes no plist or log and exits 1. The old plist is removed only after the new bootstrap succeeds; if that unlink fails the install exits non-zero and names the file. If the new bootstrap fails, or any exception occurs from the first bootout onward (including a failure of a later bootout), the previous new plist is put back and each stopped old agent is bootstrapped again, with the result reported (`restored` or `COULD NOT restore`). A legacy-shaped file that is a symlink, not a regular file, or unreadable is never read blindly: install refuses and status says `cannot classify`. `launchagent status` prints a `legacy label <label>: installed (<file>), loaded: yes|no` line per leftover. Limit, accepted: a LOADED earlier-release agent whose plist is already gone is not found, so exactly-one cannot be guaranteed there; the go-live checks the process list for a second embedd.
+- install: One reversible step each: `python3 -m factlattice_engine.semantic.embedd launchagent install|uninstall|status`. install writes the plist (0600) and runs `launchctl bootstrap gui/<uid>`; uninstall runs `launchctl bootout` and removes the plist; status prints loaded, pid and material. Installing is a go-live act (the architect), not done by tests or builds.
+- unchanged: Socket and run-dir permissions, the protocol, the per-call deadlines and the on-demand path are unchanged. With no LaunchAgent installed, behaviour is byte-identical to MECH-SEMANTIC-EMBEDD.
+- acceptance-1: keep resolves the same material hash as SharedEmbedder in the same environment.
+- acceptance-2: keep never idle-exits (idle_s disabled): idle for well past LTS_EMBEDD_IDLE_S, it is still serving.
+- acceptance-3: A source-fingerprint change makes keep exit 75 after a clean shutdown (pidfile lock released, socket removed).
+- acceptance-4: With the pidfile held by another live service, keep waits and takes over after the holder exits; it never starts a second service.
+- acceptance-5: Crash-loop limit: the 5th start within 600 s exits 0 with a logged reason; a start after 600 s quiet proceeds.
+- acceptance-6: The generated plist matches the launchd spec above; install/uninstall call launchctl through an injectable runner (tests never touch the real launchd).
+- acceptance-7: Measured after install, on this machine: one resident service; first search after 15 min idle served without a model load; resident RSS reported.
+- proposed-by: The architect, 2026-10-03; requirements from the architect (version-following; KeepAlive with a crash-loop limit; run-dir perms unchanged; one reversible install step).
+- install-environment: The LaunchAgent must resolve the SAME material as the engines it serves, so install copies from the lts-engine MCP server env (~/.mcp.json) every variable that shapes material or location: PYTHONPATH, plus LTS_SEMANTIC_MODEL, LTS_SEMANTIC_PIN_FILE and LTS_ENGINE_STATE_DIR when set. The interpreter is the one the MCP engines run: the resolved path of that config's `command`, never launchd's minimal-PATH python3. acceptance-7 checks this by comparing material hashes. Obligation: any file added to factlattice_engine/semantic that shapes vectors must join KEEP_SOURCE_FILES in the same change, or a go-live that edits it won't restart the always-on service. (Builder findings, 2026-10-03.)
+- install-and-status: install copies MCP_ENV_KEYS (PYTHONPATH required; LTS_SEMANTIC_MODEL, LTS_SEMANTIC_MODEL_DIR, LTS_SEMANTIC_PIN_FILE, LTS_ENGINE_STATE_DIR when present) from the lts-engine MCP entry, resolves its `command` to an absolute interpreter, and runs an import probe (`<python> -c "import onnxruntime, numpy, factlattice_engine.semantic.embedd"` with the plist env only). Any failure is a REFUSAL that writes nothing. A failed bootstrap restores the previous plist bytes, if there were any. Limit, accepted: the probe proves the interpreter can import the model stack, not that its material equals the engines'; acceptance-7 compares material hashes after install. status reports: loaded or not, pid (or "loaded but not running"), material, "in sync" or "drift: …" (interpreter, env keys, import probe), and a durable tripped crash-loop marker until the next successful start. The crash-loop record counts EVERY start, refusals included, so a refusing service also stops after 5 in 600 s. Runbook note: 5 go-lives within 10 minutes also trip the limit (each exit 75 is a start); engines then use on-demand spawning until the agent is kickstarted.
+- crash-loop-recovery: Recovering from a tripped crash-loop limit: fix the cause, then wait until the 600 s window has passed and run `launchctl kickstart gui/<uid>/io.factlattice.lts-embedd` (or log in again). A kickstart INSIDE the window counts as a start and re-trips. Counting covers every start that reaches _main's first statement. Starts that fail before that (an interpreter or import failure, e.g. a deleted PYTHONPATH) cannot be counted; launchd's ThrottleInterval of 10 s is then the only brake, and `status` reports the agent as loaded but not running. (Delta-2 review of f9cb095, P2-1 and P3-1.)
+- measured-footprint: The architect 2026-10-03, keep pid 75912, 41 min after start (process age; idle time not measured), arctic-m15: `footprint` reports 1,111 MB physical footprint (811 MB dirty MALLOC_LARGE, 186 MB MALLOC_MEDIUM), while `ps` RSS reads 34 MB. macOS compresses idle dirty pages, so RSS UNDERSTATES the cost; the `why` line's "~0.8 GB" is low, and the real cost is ~1.1 GB of footprint, paged back in on use (first search after idle: 0.197 s, against 0.9–1.05 s cold load). Measure with `footprint <pid>`, never RSS.
+
+## An agent can file a known-item miss: the query it asked, the node it knows exists, and why [QUERY-REPORT-MISS]
+
+- part-of: [FL-ENGINE]
+- see-also: [QUERYLOG-SEMANTIC-COVERAGE], [DEC-SEMANTIC-ASSIST]
+- status: proposed
+- decision-date: 2026-10-03
+- why: The maintainer, 2026-10-03, asked whether there is value in 'a simple lts-engine API that would allow an Intelligence to essentially file a bug report, e.g. I queried for X because I wanted to read the exact spec instead of recalling from memory, I know it exists in the corpora, but I didn't get the results that I know exist'. A known-item miss (real wording plus a real intended answer) is the highest-value retrieval signal there is: it feeds alias/title fixes, regression tests, and real-world recall fixtures. Nothing records it today; the maintainer and the architect agreed to build it.
+- tool: lts_report_miss(corpus, query, expected_ids, why, tool_used='lts_find', found_via=None). corpus and query are required; expected_ids is a non-empty list of node ids (max 10); why is required free text (max 2,000 chars); tool_used names what the caller ran (lts_find, lts_find_in_prose, lts_semantic_find); found_via optionally says how the caller eventually found the node (e.g. 'lts_node by id from memory').
+- behaviour: Read-only on every corpus. (1) Validates that each expected id exists in the named corpus; unknown ids are reported back, never silently dropped, and a report whose ids ALL fail is refused. (2) Re-runs the query NOW and records, per expected id, its rank in the exact lts_find result (relevance order) and in lts_semantic_find (k=50), or null if absent: the evidence is captured at report time, because the corpus moves. (3) Appends one JSON record to the miss log and returns {success, report_id, ranks, unknown_ids}.
+- miss-log: <state_dir>/miss-log.jsonl (the querylog state dir: FACTLATTICE_STATE_DIR, else XDG_STATE_HOME/factlattice, else ~/.local/state/factlattice); NEVER inside a corpus root (same reason as the query log). Record: ts, session, report_id, corpus, query (LITERAL: a miss report is deliberate disclosure by the caller, unlike passive query logging), expected_ids, unknown_ids, why, tool_used, found_via, engine_build_stamp (the on-disk content hash of the engine package, not a git SHA), index_version, ranks{id: {exact, semantic}}. Append-only; a write failure is reported in the response (success false, reason), never an exception.
+- privacy: The query and why are stored literally because the caller chose to file them. Private corpora: allowed only when named explicitly (no fan-out), as everywhere else ([INV-PRIVATE-FANOUT]).
+- not-in-scope: No automatic alias edits, no fixture writes: the log is evidence for humans and agents (the architect, corpus owners, DS) to act on through the normal routes. A reader / summariser tool is a later step.
+- tool-surface: New tool name in LTS_*_TOOL_NAMES, server.TOOLS schema and description, dispatch, surface-parity tests; and in querylog._LOGGED_TOOLS (FACTLATTICE-SPEC-CHECKLIST rule for new tools).
+- acceptance-1: A report with a valid expected id appends exactly one record with the literal query, why, ranks for that id under exact and semantic, engine_build_stamp and index_version; the response carries the same report_id and ranks.
+- acceptance-2: An unknown id is listed in unknown_ids (not dropped); all-unknown is refused with a reason and writes nothing.
+- acceptance-3: Missing query, empty expected_ids, missing why, over-long why or >10 ids are refused loudly; nothing is written.
+- acceptance-4: The miss log path is never under any registered corpus root; an unwritable log gives success false with a reason.
+- acceptance-5: The tool is read-only on corpora: the corpus files hash is identical before and after.
+- acceptance-6: The tool is advertised, dispatched, logged in the query log, and covered by the surface-parity tests.
+- proposed-by: The architect, 2026-10-03 (the maintainer-sanctioned backlog).
+- review-amendments: (review of 2fcc25a.) The response carries exact_status and semantic_status, so a failed evidence search is never shown as 'not found'. The corpus-root guard compares NORMALISED paths (case-folded on case-insensitive filesystems), and its refusal names no path and no corpus. Caps: query ≤2,000 chars, why ≤2,000, tool_used and found_via ≤500 each, ≤10 ids after stripping and de-duplication. The miss log is written even when the query log is disabled (FACTLATTICE_QUERY_LOG=0), because a report is deliberate. The record field is engine_build_stamp (sha256 of the engine package source on disk, which can differ from the loaded code), not a git head. Ranks are 1-based; a semantic rank is recorded only when semantic status is ok.
+- fail-closed: (The architect land condition.) If the engine cannot enumerate the registered corpus roots (registered_roots returns none, or the store/registry raises), lts_report_miss REFUSES to write: success false, reason 'cannot verify the miss log is outside every corpus root: corpus roots unknown; nothing written', naming no path and no corpus. The guard never fails open.
+- status-vocabulary: exact_status and semantic_status (response and record) carry ONLY: ok | unavailable | index_building | 'error: digest ceiling exceeded' | 'error: <ExceptionClassName>' (a find error response that is not the ceiling is 'error: FindFailed'; any other semantic status maps to 'unavailable'). No reason text at all, sanitised or not: detail goes to the server's stderr log only. The write-failure error and reason carry only the exception class name.
+- class-name-validation: An exception's class NAME is data until validated: a class can be created with any __name__ (a path, a newline, a private corpus name). Status fields and write-failure error/reason use the class name only when it matches ^[A-Za-z_][A-Za-z0-9_]*$, else "Exception". index_version is recorded only when it matches ^[0-9a-f]{8,64}$, else null. (Delta-3 review of 155529d, P1 and P3-1.)
+
+## A deployment knob for how many edited nodes a query re-embeds on the query path, and the cost in the query log [SEM-TOPUP-LIMIT]
+
+- part-of: [FL-ENGINE]
+- see-also: [SEM-LABEL-CAP], [DEC-SEMANTIC-ASSIST], [QUERYLOG-SEMANTIC-COVERAGE]
+- status: proposed — built on perf/semantic-topup-limit; the default is unchanged, and changing the live value is a deployment act gated by the architect/the maintainer
+- decision-date: 2026-10-05
+- why: The architect measured 2026-10-04/05. Live query log: zero-result lts_find with on_miss suggestions p50 696 ms, p95 6.5 s, max 13.3 s (n=37), against 17 ms p50 for finds with matches (n=180). A suggested node was read within 5 min in 6 of 32 cases. Decomposition: the same on-miss query took 812 ms with embedded_on_query=4, then 19 ms with 0. Scratch copy of a lexicon corpus, local arctic-m15: ~90 ms per re-embedded node (1: ~100 ms, 5: ~450 ms, 10: ~880 ms), up to SYNC_TOPUP_LIMIT=25 per query. The 13.3 s maximum is NOT decomposed (the log lacked the fields); it is the reason for the logging half of this change.
+- flag: LTS_SEMANTIC_SYNC_TOPUP_LIMIT=<int >= 0>, default 25 (byte-identical to the pre-change engine). Read per call. Past the limit the stale index is served with index_fresh false and nodes_unembedded_stale = the count, and a background refresh starts (existing behaviour, unchanged). 0 = never embed on the query path in background mode. sync build mode (CLI, tests) still always tops up. An explicit SemanticService(sync_topup_limit=...) wins over the env.
+- logging: querylog.suggestions() copies embedded_on_query and nodes_unembedded_stale from the suggestion block ONLY when its status is ok and the key is present. A building or unavailable block carries placeholder zeros from _ensure's initial info, which are not measurements (review F1, 2026-10-05). An absent key stays absent, never a fabricated 0. The env value must be ASCII digits; anything else warns once per value and uses 25 (review F3).
+- tradeoff: A lower limit lags only the embedding leg for recently edited nodes, until the background refresh finishes (~90 ms per node). The BM25 leg and exact find are unaffected. The lag is disclosed per response.
+- acceptance-1: Unset: a 1-node edit is embedded on the query (embedded_on_query 1, index_fresh true), as before.
+- acceptance-2: 0: the same edit is served stale (index_fresh false, nodes_unembedded_stale 1, embedded_on_query 0); after the background refresh the next query is fresh with embedded_on_query 0.
+- acceptance-3: A bad value (non-integer or negative) warns once per value per process and uses 25.
+- acceptance-4: The query log's suggestions record carries both fields when the block has them, and omits them when it does not.
+- tests: tests/test_semantic_topup_limit.py (6); the 4 new-behaviour tests were RED at f063ee1, each for the defect itself (env ignored; no warning; no API; no log field).

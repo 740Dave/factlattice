@@ -1,0 +1,23 @@
+---
+lts: "1.1"
+title: "factlattice-reviewer: shipped configuration"
+id: "SPEC:REVIEWER-CONFIG-DOC"
+domain: factlattice-reviewer
+scope: "The shipped reviewer configuration keys; no site values"
+audience: agent
+boundary: "Defines vocabulary and rules. Holds no site values and writes nothing."
+status: draft
+---
+# factlattice-reviewer: shipped configuration [SPEC:REVIEWER-CONFIG-DOC]
+
+This file ships with the engine and holds NO site values. A site's values live in ONE node, REVIEWER-SITE-CONFIG, in a registered corpus outside the engine repository, so that an engine go-live can never overwrite them. The reviewer finds it with a corpus-omitted lts_find on the prefix REVIEWER-SITE-CONFIG: exactly one must exist. Zero means no site configuration; two or more stops the run with no-output-root, naming both. The shipped node and the site node use the same three keys.
+
+The value `none` means unset. The three keys are declared in the reviewer profile, and a test pins them.
+
+## [REVIEWER-CONFIG] Shipped reviewer configuration (no site values)
+
+- default-output-root: none
+- corpus-output-overrides: none
+- default-root-corpora: none
+
+default-output-root is the folder reviews go to for corpora on default-root-corpora. corpus-output-overrides is a list of items of the form `<corpus-id>[:<path-prefix>] -> <folder>`; the longest matching prefix wins and an override beats a profile review-output, which beats the default. default-root-corpora lists the corpora the default folder applies to; a corpus the engine treats as private never uses the default folder, even if it is listed.

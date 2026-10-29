@@ -1,0 +1,257 @@
+---
+title: "FactLattice parser self-verification control corpus"
+id: "SELFCHECK:CTRL-DOC"
+domain: met.selfcheck
+audience: engine
+status: active
+created: 2025-06-02
+---
+# Parser self-verification control [SELFCHECK:CTRL-DOC]
+
+> Ground truth for this corpus lives in the SIDECAR `control.expected.json`, never in
+> this file. A parser broken enough to misread this corpus would misread an oracle
+> embedded in it, and the check would then agree with itself.
+
+---
+
+## [CASE-P1-SIMPLE] P1 simple property form
+
+- status: active
+- owner: selfcheck
+
+## [CASE-P2-BOLD] P2 bold-key property form
+
+- **audience**: architect
+
+## [CASE-P3-MULTI] P3 multi-value property form over a REL_PROPERTY_EDGES key
+
+- see-also: [CASE-P1-SIMPLE], [CASE-P2-BOLD]
+
+## [CASE-P4-NESTED] P4 nested-list property form
+
+- depends-on:
+  - [CASE-P1-SIMPLE]
+  - [CASE-P3-MULTI]
+
+## [CASE-P5-MAPPING] P5 YAML-mapping property form
+
+- provenance:
+  authored_by: selfcheck
+  authored_at: 2025-06-02
+
+## [CASE-CONFIDENCE] SPEC 7.1 confidence mapping
+
+- confidence:
+  value: 0.85
+  blast_radius: high
+  rationale: measured against silent-loss-classes v4
+  assessed_by: ui-architect
+  assessed_at: 2025-06-02T00:00:00Z
+
+## [CASE-CONTEXT-FOR-CHANGE] SPEC 8.1 mapping with a KEYED invalidating_assumption
+
+- change: the parser gained the P5 mapping form
+- context_for_change:
+  prior_state: a mapping under a key-only head collected nothing
+  reasoning: SPEC 8.1 specifies the primitive AS a YAML mapping
+  rejected_alternative: reading the indented block as a list of strings
+  counter_argument: a list would preserve every character the author wrote
+  counter_response: a list is not queryable by sub-field, which is the whole point
+  invalidating_assumption: that SPEC 2.2's four enumerated forms are exhaustive
+  implication: sub-fields become first-class queryable fields
+
+## [CASE-FLOW-DECISION] Flow decision step with labelled branches
+
+- condition: did the indented block parse?
+- actor: lts-engine
+- if-true: [CASE-FLOW-PASS]
+- if-false: [CASE-FLOW-FAIL]
+
+## [CASE-FLOW-PASS] Flow step reached when the block parsed
+
+- next-step: [CASE-FLOW-DONE]
+
+## [CASE-FLOW-FAIL] Flow step reached when the block did not parse
+
+- next-step: [CASE-FLOW-DONE]
+
+## [CASE-FLOW-DONE] Flow terminal step
+
+- status: terminal
+
+## [CASE-SL18-NAMESPACE] SL-18 a multi-segment namespaced verb keeps its namespace
+
+- note: the edge for this case is authored in the triples section below
+
+## [CASE-SL11-SUBSTRING] SL-11 a verb inside a target id mints nothing
+
+- note: the edge for this case is authored in the triples section below
+
+## [CASE-TARGET-SUPERSEDES-55] SL-11 target whose id CONTAINS the core verb
+
+- note: nothing may be minted from the verb substring inside this node id
+
+## [CASE-REL-BULLETED] Source of a BULLETED triple
+
+- note: the triple naming this node carries a leading hyphen bullet
+
+## [CASE-REL-UNBULLETED] Source of an UNBULLETED triple
+
+- note: the triple naming this node has no leading bullet
+
+## [CASE-SL1-SYMBOL] SL-1 a symbol-prefixed key does not parse
+
+- ⚠ blocked-on: the authoring fix
+- status: negative-case
+
+## [CASE-SL2-CAPS] SL-2 a capitalised key does not parse
+
+- Owner: selfcheck
+- status: negative-case
+
+## [CASE-SL13-DASH] SL-13 an en-dash bullet does not parse
+
+– owner: selfcheck
+- status: negative-case
+
+## [CASE-SL14-NOSPACE] SL-14 a colon with no following space does not parse
+
+- owner:selfcheck
+- status: negative-case
+
+## [CASE-MIXED-BLOCK] Mixed P4 bullets and P5 mapping entries under one head
+
+- mixed-block:
+  - [CASE-P1-SIMPLE]
+  reasoning: this unbulleted entry makes the block ambiguous
+- status: negative-case
+
+## [CASE-LOWER-BRACKET] A lowercase bracket is prose, not a reference
+
+- see-also: [not-an-id]
+- status: negative-case
+
+## Relationships
+
+### Semantic
+
+- [CASE-REL-BULLETED] DEPENDS_ON [CASE-P1-SIMPLE]
+  reasoning: an indented unbulleted continuation line in this section
+  prior_state: it must never be read as a property of anything
+  - an indented bulleted continuation line must not be either
+- note: a column-0 annotation bullet here is prose, not a near miss
+[CASE-REL-UNBULLETED] IMPLEMENTS [CASE-P2-BOLD]
+
+### Cross-Domain
+
+- [CASE-SL18-NAMESPACE] dom.sub.DEPENDS_ON [CASE-P1-SIMPLE]
+- [CASE-SL11-SUBSTRING] DOCUMENTS [CASE-TARGET-SUPERSEDES-55]
+
+## Causal Graph
+
+```
+CAUSES: [CASE-FLOW-DECISION] -> [CASE-FLOW-FAIL]
+ENABLES: [CASE-P5-MAPPING] -> [CASE-CONTEXT-FOR-CHANGE]
+```
+
+## [CASE-WRAPPED-VALUE] A property value WRAPPED across physical lines
+
+- requirement: a wrapped value is ONE value -- the parser joins each continuation
+  line to the head, collapsing the newline to a single space and keeping the
+  author's internal spacing verbatim
+- status: active
+
+## [CASE-WRAPPED-EXCLUSION] An indented BULLET under a valued head is not a continuation
+
+- boundary: the indented bullet below opens its own structure and must not be folded
+  into this value
+  - a sub-bullet is new structure, not a wrapped sentence
+
+## [CASE-ID-TABLE] A table whose first column is an identifier column is DATA
+
+| ID | Requirement | verify.machine |
+|----|-------------|----------------|
+| CTRL-T1 | a wrapped value is joined, not truncated | test_wrapped_value_is_joined |
+| CTRL-T2 | an ID table reaches the graph | test_id_table_rows_become_properties |
+
+## [CASE-PLAIN-TABLE] A table with NO identifier column stays ignorable
+
+| Layer | What it does |
+|-------|--------------|
+| narrative | decoration, not data |
+| grid | still decoration |
+
+## Compliance (an UNTAGGED heading -- the table below has no node of its own)
+
+| ID | Requirement | verify.machine |
+|----|-------------|----------------|
+| CTRL-T3 | an ID table under an untagged heading lands on its ANCESTOR node | test_orphan_id_table_attaches_to_ancestor |
+
+## [CASE-QUAL-PAREN] SL-21 a PARENTHETICAL qualifier in the KEY REGION
+
+- requirement (qualified): a parenthetical qualifier before the colon is FLAGGED, never guessed
+- delta: (leading paren in value) form (measured): the paren is in the VALUE, so it parses
+- status: negative-case
+
+## [CASE-QUAL-DASH] SL-22 an EM-DASH qualifier in the KEY REGION
+
+- requirement — dashed: an em-dash qualifier before the colon is FLAGGED, never guessed
+- boundary: an em-dash inside a value — and a colon after it: both stay in the value
+- status: negative-case
+
+## 23. SL-23 a citation [CASE-CITED-NOT-DECLARED] hijacks the id declared at the end [CASE-ID-HIJACK]
+
+- status: negative-case
+
+## [CASE-RELATES-TO] SL-24 `relates-to` — the natural spelling of RELATED_TO
+
+- relates-to: [CASE-P1-SIMPLE]
+
+## [CASE-SUPERSEDED-BY] SL-25 `superseded-by` — the REVERSE voice of SUPERSEDES
+
+- superseded-by: [CASE-P1-SIMPLE]
+
+## [CASE-VERIFY] SL-26 `verify` — the spelling authors reach for instead of `tested-by`
+
+- verify: [CASE-P2-BOLD]
+
+## [CASE-SPAWNS] SL-27 `spawns` — an observation causing a decision
+
+- spawns: [CASE-P2-BOLD]
+
+## [CASE-PROSE-CITES] SL-28 a PROSE property citing an id must mint NOTHING
+
+- rationale: chosen because [CASE-P1-SIMPLE] already owns it, so the leaf pays once
+- status: negative-case
+
+## [CASE-MALFORMED-REF] SL-33 a mixed-case bracket is an ATTEMPTED ref, not plain prose
+
+- relates-to: [Mixed-Case-Attempt]
+- status: negative-case
+
+## [CASE-CANONICAL] SL-38 `canonical-node` -- a legacy node pointing at its canonical node (NOT supersession)
+
+- canonical-node: [CASE-P1-SIMPLE]
+
+## [CASE-CANONICAL-BARE] SL-38b bare `canonical` is free-text status prose and must mint NOTHING
+
+- canonical: false -- NOT yet canonical/live; see [CASE-P1-SIMPLE]
+
+## [CASE-REV-HOOK] SL-39 a review hook -- the node a REVPROC attaches to
+
+- role: the target of an attaches-to-hook edge
+
+## [CASE-REV-PROC] SL-39 attaches-to-hook and applies-rule -- one review PROC step
+
+- attaches-to-hook: [CASE-REV-HOOK]
+- applies-rule: [CASE-REV-RULE]
+- order: 1
+
+## [CASE-REV-RULE] SL-39 applies-rule -- a review rule POINTING at an existing rule node
+
+- applies-rule: [CASE-P1-SIMPLE]
+
+## [CASE-REV-BARE] SL-39b look-alike spellings are prose and must mint NOTHING
+
+- applies-to: [CASE-REV-HOOK]
+- attaches-to: [CASE-REV-HOOK]

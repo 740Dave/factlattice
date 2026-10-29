@@ -1,0 +1,5418 @@
+{
+  "_readme": [
+    "GROUND TRUTH for control.lts. HAND-AUTHORED. Parsed by `json`, NEVER by the system",
+    "under test.",
+    "",
+    "WHY A SIDECAR AND NOT THE CORPUS. Two independent reasons, both load-bearing:",
+    "  1. CORRELATED CORRUPTION. If the expectations lived inside control.lts they would be",
+    "     read by the very parser being tested. A parser broken enough to misread the corpus",
+    "     would misread its own oracle, and the check would agree with itself. The oracle must",
+    "     be read by a DIFFERENT reader (`json`) than the one under test.",
+    "  2. THE INPUT MUST NOT MOVE WHEN THE EXPECTATION DOES. Expectations legitimately change",
+    "     over time -- a silent-loss class is added, a severity is promoted, a count shifts.",
+    "     A sidecar makes that a reviewable DATA diff. Editing the corpus to change an",
+    "     expectation would perturb the thing being measured in the same commit that changes",
+    "     the measurement.",
+    "",
+    "STOP -- DO NOT REGENERATE THIS FILE FROM PARSER OUTPUT.",
+    "  There is deliberately NO --update-expectations / --regenerate / --bless flag, and no",
+    "  helper anywhere in this repo that writes this file. Not for convenience, not for a",
+    "  one-off. The reason is mechanical, not stylistic: if a red self-check can be made green",
+    "  by re-recording actual output, then the cheap move on every failure is to re-record, the",
+    "  bug becomes the expectation, and from that moment the control CAN ONLY EVER PASS. A",
+    "  control that cannot fail is not a control -- it is a green light wired to the ignition.",
+    "  If you are here because the self-check went red: the parser is the suspect, not this",
+    "  file. Change this file only as a deliberate, reviewed diff that carries a REASON in its",
+    "  commit message -- the same discipline DELIBERATELY_UNMAPPED carries in",
+    "  tools/tests/test_gate_reachability.py, where adding an entry is a",
+    "  decision that a diff surfaces to a reviewer.",
+    "",
+    "THE RECORD IS TWO-LEVEL, and the levels are NOT 1:1.",
+    "  LEVEL 1 (primary) -- `lines`: one declared disposition per SOURCE LINE, which is exactly",
+    "     what SPEC 2.5 already models (every non-blank line is CONSUMED by a parser branch or",
+    "     CLASSIFIED as one of 2.3's ignorable forms). The parser already produces this record",
+    "     in LineCoverage; we compare against it directly rather than inventing a second",
+    "     accounting. This is what makes a failure NAME itself: 'line 109 should have been",
+    "     FLAGGED as a capitalised key, the parser CONSUMED it as a property' localises the",
+    "     defect, where 'expected 12 properties, got 11' only starts an investigation.",
+    "  LEVEL 2 -- `graph`: the artifacts (nodes, their exact properties, findings, counts).",
+    "  THE BRIDGE -- each line's `contributes` names the graph artifact(s) that line produced.",
+    "     The mapping is deliberately NOT flattened into a line->artifact table, because it is",
+    "     not a function in either direction: a P5 mapping is SEVERAL lines producing ONE",
+    "     property; a P3 multi-value line is ONE line producing SEVERAL edges; a heading is ONE",
+    "     line producing a node AND its CONTAINS edge AND all of its property-inferred edges",
+    "     (the parser attributes E4 edges to the node's HEADING line, not to the property line",
+    "     -- recorded here as fact, since it is the parser's real behaviour).",
+    "",
+    "TOTALITY. Every one of the 200 lines belongs to exactly one case, and every node belongs",
+    "to exactly one case. The runner asserts that partition before it checks anything, so a",
+    "line cannot be quietly dropped from the oracle to make a failure disappear.",
+    "",
+    "ORACLE v2 (2026-08-11) -- FIVE cases and 33 lines ADDED, none changed. The control had",
+    "  neither a WRAPPED property value nor an ID TABLE among its live shapes, and both",
+    "  classes were bleeding in the corpora while all 24 cases passed: 41-example-wrapped-",
+    "  values.lts captured 23% of its authored bytes, and its `[ACME-SUB-ACCEPT]`",
+    "  -- a 14-row acceptance contract -- captured 7%. A control cannot measure a class it",
+    "  does not contain, so the classes were added as LIVE SHAPES (SL-19 wrapped value, SL-20",
+    "  ID table) with an EXCLUSION beside each: an indented BULLET that must not be folded",
+    "  (line 168) and a decorative table that must not be promoted (lines 179-182). The",
+    "  pre-existing lines 1-155 and their dispositions are BYTE-IDENTICAL; the only edited",
+    "  expectations are CTRL-DOC.properties (it now owns the ancestor-attached table at line",
+    "  188) and the GRAPH-TOTALS counts.",
+    "",
+    "ORACLE v3 (2026-08-11) -- FOUR cases and 12 lines ADDED, none changed. Same story as v2,",
+    "  one grammar over: the control contained no property-shaped bullet whose KEY REGION",
+    "  carried a qualifier, so SL-21 (parenthetical) and SL-22 (en/em-dash) bled through 27",
+    "  green cases. Measured on the day they were named: 163 occurrences across the Acme",
+    "  corpora, 151 parenthetical and 12 dashed, in 21 files -- and FOUR of them inside",
+    "  tests/fixtures/preview/spec29-clean-control.lts, the file whose entire job was to be",
+    "  the CLEAN negative control. `lts_preview` reported it at 100.0% coverage, 0 lost.",
+    "  Both classes are added as LIVE SHAPES with an EXCLUSION BESIDE EACH, one line below its",
+    "  positive and inside the same node: line 193 puts the parenthesis in the VALUE and line",
+    "  199 puts an em-dash AND a later colon in the VALUE. Both must keep PARSING.",
+    "  WHAT THE EXCLUSIONS DISCRIMINATE, measured by mutation rather than asserted: widening",
+    "  `_PROP_SIMPLE_RE`'s key to a greedy `[a-z].*` -- the 'just parse the qualified form'",
+    "  fix the ruling forbids -- turns BOTH exclusions red (the key boundary moves to the LAST",
+    "  colon and each value is destroyed) at the same time as it turns both positives red.",
+    "  WHAT THEY DO NOT DISCRIMINATE, recorded so the claim is not over-sold: an over-eager",
+    "  COVERAGE CLASSIFIER. `classify_line` returns KIND_CONSUMED before the near-miss check,",
+    "  so an unanchored variant of both new regexes leaves this control 33/33 GREEN. The",
+    "  exclusions guard the parser's key boundary, not the classifier's precision; the",
+    "  classifier's precision is guarded by the corpus measurement, not by this file.",
+    "  The pre-existing lines 1-188 and their",
+    "  dispositions are BYTE-IDENTICAL; the only edited expectations are the GRAPH-TOTALS",
+    "  counts and WRAPPED-VALUE-EXCLUSION's flagged_line_count (3 -> 5), both mechanical",
+    "  consequences of the appended lines.",
+    "",
+    "ORACLE v4 (2026-08-15, RECORDED RETROSPECTIVELY) -- FIVE cases and 21 lines were added",
+    "  by 3f9a2c1 for the property-KEY minting classes SL-24..SL-28 (`relates-to` mapped to",
+    "  nothing across 140 occurrences while this control was GREEN at 34/34). That commit",
+    "  updated CONTROL_DIGEST correctly but left BOTH provenance fields stale: no v4 note",
+    "  here, and `measured_against` still claiming `SL-1 .. SL-23`. The consequence is",
+    "  narrow but is exactly the failure this artifact exists to prevent -- `measured_against`",
+    "  is returned VERBATIM in every lts_selfcheck verdict, so a green run was reporting the",
+    "  wrong class list, and standing rule 4 ('a cleanliness claim carries the class list and",
+    "  the date it was measured against') was mechanically false. Repaired in the same commit",
+    "  that adds v5, and recorded rather than silently corrected.",
+    "",
+    "ORACLE v5 (2026-08-15) -- FOUR cases ADDED, ZERO lines added, none changed. This is the",
+    "  first oracle change that adds NO source lines: SL-29..SL-32 carry empty `lines` and",
+    "  empty `nodes` because their subject is the PROFILE LOADER, not control.lts. The damage",
+    "  they measure happens at profile LOAD, before any document is read -- a stale process",
+    "  carrying the pre-guard loader parses control.lts perfectly and will STILL accept a",
+    "  profile that shadows core PART_OF, after which every layer-scoped traversal in the",
+    "  deployment silently returns a subset. Because no line was added, every pre-existing",
+    "  line disposition, every node and every GRAPH-TOTALS count is BYTE-IDENTICAL, and",
+    "  control.lts itself is UNTOUCHED (301 inserted lines, 0 deleted, all in this file).",
+    "",
+    "  THE COMPROMISE, STATED RATHER THAN GLOSSED. These cases carry `given_profile` /",
+    "  `given_profiles`, which are INPUTS living in a file that is supposed to hold ground",
+    "  truth only. The rule that exists to protect is CORRELATED CORRUPTION: an oracle read",
+    "  by the system under test would be misread by the same defect and the check would agree",
+    "  with itself. That risk is structurally ABSENT here, because `load_profile(dict)` never",
+    "  touches the .lts parser -- fixture and expectation share no reader. The input keys are",
+    "  named `given_*` so an input can never be mistaken for an expectation.",
+    "",
+    "  EVERY REFUSAL CASE IS PAIRED WITH AN ACCEPTANCE. SL-32 exists solely so that a loader",
+    "  which refused EVERYTHING could not score green on SL-29..SL-31, and `error_contains`",
+    "  exists so that a refusal saying only 'invalid profile' cannot satisfy a rule whose",
+    "  content is 'refuse, NAMING BOTH DEFINITIONS'.",
+    "",
+    "WHAT A GREEN RESULT DOES NOT MEAN. See the module docstring of",
+    "factlattice_engine/selfcheck.py. This measures recall against a KNOWN class list only.",
+    "",
+    "ORACLE v6 (2026-08-16, Era 1 RATIFY) -- SEVEN cases ADDED, ZERO lines added, none",
+    "  changed. control.lts is UNTOUCHED; every pre-existing line disposition, node and",
+    "  GRAPH-TOTALS count is BYTE-IDENTICAL. These carry empty `lines`/`nodes` for the",
+    "  SL-29..SL-32 reason generalised: their subject is not a region of control.lts.",
+    "  For SL-37 the subject is the ENTRY POINT (no document expresses it). For",
+    "  SL-34..SL-36 the subject is the document's MODE, and the reason is structural",
+    "  rather than convenient: every one of these classes compares THE SAME BYTES under",
+    "  TWO configurations (legacy vs strict; verb registered vs not; key declared vs",
+    "  not). control.lts is one file with one absent marker parsed under one core-only",
+    "  config, so it can hold ONE ARM of each pair and never both -- a two-mode",
+    "  comparison is not expressible as a region of a single corpus file.",
+    "",
+    "  THE CORRELATED-CORRUPTION RULE IS INTACT, and it is worth restating because",
+    "  these cases carry `given_document` -- .lts text read by the parser under test.",
+    "  The rule protects EXPECTATIONS, not inputs: control.lts has always been an input",
+    "  read by the parser while its oracle was read by `json`, and `given_document` is",
+    "  the same arrangement inline. Every expectation beside it (`mode`, `kinds`,",
+    "  `severity`, `suggestions`) is still read by `json` and never by the parser, and",
+    "  inputs are named `given_*` so one can never be mistaken for the other.",
+    "",
+    "  EVERY NEW CASE IS PAIRED. A regime check that can only fire is as useless as one",
+    "  that can only pass: ERA1-KEY-PROFILE-DECLARED exists so a check that flagged",
+    "  every non-core key cannot score green on ERA1-KEY-DECLARED-OR-MARKED;",
+    "  ERA1-VERB-PROSE-TARGET's second arm registers the verb and demands the finding",
+    "  DISAPPEAR; ERA1-ENTRY-POINT-EQUIVALENCE carries `negative_control: true`, which",
+    "  starves one path and requires the instrument to notice."
+  ],
+  "measured_against": "silent-loss-classes v10 (2026-10-07), SL-1 .. SL-40 -- SL-23 is the first SUBSTITUTION class (every other class up to it makes something DISAPPEAR; SL-23 makes something LIE); SL-24..SL-28 are the property-KEY minting classes; SL-29..SL-32 are the EDGE-TYPE NAMESPACE classes and are the first cases here whose subject is the PROFILE LOADER rather than the document parser; SL-33 is the MALFORMED-REF class (Era 0 / PARSER-ENGINEERING-SPEC.md rev 2 C1, SPEC A4): a bracket that is id-SHAPED but not a well-formed id, at a ref-expecting position, is now a `malformed_ref` finding instead of silence; SL-34..SL-37 are the ERA 1 RATIFICATION classes and are the first cases whose subject is the document's MODE rather than its bytes -- SL-34 the format-version marker (absence=legacy, presence=strict, and the GRAPH identical across both), SL-35 the A2 declared-or-marked key regime (core / profile-declared / x-marked / undeclared, with edit-distance suggestion), SL-36 the A3 verb regime including the prose-target path that was silent and unspecified, SL-37 entry-point equivalence (the V5/V5b/V5c wiring, green as of C3/C4 and guarded by its own negative control); SL-39 is the review-extension EDGE class (2026-10-07): `attaches-to-hook` (REVPROC -> REVHOOK) and `applies-rule` (REVPROC -> REVRULE, REVRULE -> existing rule) mint forward edges, `order` stays a property, and the look-alikes `applies-to` / `attaches-to` mint nothing (SL-39b); SL-38 is the `canonical-node` minting class (2026-10-03): a legacy node pointing at its canonical node, a FORWARD CANONICAL edge that is NOT supersession; SL-38b pins that BARE `canonical` (free-text status prose on 10 live nodes) mints nothing; SL-40 is the REVIEW-SHAPE class (2026-10-07, A-E4): a review or extension node must carry its required properties and declare its keys under the shipped reviewer profile, judged by counting V3 findings because every profile finding is a warning, with a stripped twin so that an emptied required list is visible; its subject is the reviewer PROFILE, not the document parser",
+  "control_corpus": "control.lts",
+  "oracle_version": 10,
+  "graph": {
+    "document": {
+      "domain": "met.selfcheck",
+      "document_tag": "SELFCHECK",
+      "frontmatter": {
+        "title": "\"FactLattice parser self-verification control corpus\"",
+        "id": "\"SELFCHECK:CTRL-DOC\"",
+        "domain": "met.selfcheck",
+        "audience": "engine",
+        "status": "active",
+        "created": "2025-06-02"
+      }
+    },
+    "node_count": 35,
+    "edge_count": 52,
+    "finding_count": 1,
+    "flagged_line_count": 3,
+    "nodes": {
+      "CTRL-DOC": {
+        "title": "Parser self-verification control",
+        "type_prefix": "CTRL",
+        "parent_section": null,
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "id_table": {
+            "CTRL-T3": "Requirement: an ID table under an untagged heading lands on its ANCESTOR node; verify.machine: test_orphan_id_table_attaches_to_ancestor"
+          }
+        }
+      },
+      "CASE-P1-SIMPLE": {
+        "title": "P1 simple property form",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "active",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "active",
+          "owner": "selfcheck"
+        }
+      },
+      "CASE-P2-BOLD": {
+        "title": "P2 bold-key property form",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "audience": "architect"
+        }
+      },
+      "CASE-P3-MULTI": {
+        "title": "P3 multi-value property form over a REL_PROPERTY_EDGES key",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "see-also": "[CASE-P1-SIMPLE], [CASE-P2-BOLD]"
+        }
+      },
+      "CASE-P4-NESTED": {
+        "title": "P4 nested-list property form",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "depends-on": [
+            "[CASE-P1-SIMPLE]",
+            "[CASE-P3-MULTI]"
+          ]
+        }
+      },
+      "CASE-P5-MAPPING": {
+        "title": "P5 YAML-mapping property form",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "provenance": {
+            "authored_by": "selfcheck",
+            "authored_at": "2025-06-02"
+          }
+        }
+      },
+      "CASE-CONFIDENCE": {
+        "title": "SPEC 7.1 confidence mapping",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "confidence": {
+            "value": "0.85",
+            "blast_radius": "high",
+            "rationale": "measured against silent-loss-classes v4",
+            "assessed_by": "ui-architect",
+            "assessed_at": "2025-06-02T00:00:00Z"
+          }
+        }
+      },
+      "CASE-CONTEXT-FOR-CHANGE": {
+        "title": "SPEC 8.1 mapping with a KEYED invalidating_assumption",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "change": "the parser gained the P5 mapping form",
+          "context_for_change": {
+            "prior_state": "a mapping under a key-only head collected nothing",
+            "reasoning": "SPEC 8.1 specifies the primitive AS a YAML mapping",
+            "rejected_alternative": "reading the indented block as a list of strings",
+            "counter_argument": "a list would preserve every character the author wrote",
+            "counter_response": "a list is not queryable by sub-field, which is the whole point",
+            "invalidating_assumption": "that SPEC 2.2's four enumerated forms are exhaustive",
+            "implication": "sub-fields become first-class queryable fields"
+          }
+        }
+      },
+      "CASE-FLOW-DECISION": {
+        "title": "Flow decision step with labelled branches",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "condition": "did the indented block parse?",
+          "actor": "lts-engine",
+          "if-true": "[CASE-FLOW-PASS]",
+          "if-false": "[CASE-FLOW-FAIL]"
+        }
+      },
+      "CASE-FLOW-PASS": {
+        "title": "Flow step reached when the block parsed",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "next-step": "[CASE-FLOW-DONE]"
+        }
+      },
+      "CASE-FLOW-FAIL": {
+        "title": "Flow step reached when the block did not parse",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "next-step": "[CASE-FLOW-DONE]"
+        }
+      },
+      "CASE-FLOW-DONE": {
+        "title": "Flow terminal step",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "terminal",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "terminal"
+        }
+      },
+      "CASE-SL18-NAMESPACE": {
+        "title": "SL-18 a multi-segment namespaced verb keeps its namespace",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "note": "the edge for this case is authored in the triples section below"
+        }
+      },
+      "CASE-SL11-SUBSTRING": {
+        "title": "SL-11 a verb inside a target id mints nothing",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "note": "the edge for this case is authored in the triples section below"
+        }
+      },
+      "CASE-TARGET-SUPERSEDES-55": {
+        "title": "SL-11 target whose id CONTAINS the core verb",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "note": "nothing may be minted from the verb substring inside this node id"
+        }
+      },
+      "CASE-REL-BULLETED": {
+        "title": "Source of a BULLETED triple",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "note": "the triple naming this node carries a leading hyphen bullet"
+        }
+      },
+      "CASE-REL-UNBULLETED": {
+        "title": "Source of an UNBULLETED triple",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "note": "the triple naming this node has no leading bullet"
+        }
+      },
+      "CASE-SL1-SYMBOL": {
+        "title": "SL-1 a symbol-prefixed key does not parse",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-SL2-CAPS": {
+        "title": "SL-2 a capitalised key does not parse",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-SL13-DASH": {
+        "title": "SL-13 an en-dash bullet does not parse",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-SL14-NOSPACE": {
+        "title": "SL-14 a colon with no following space does not parse",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-MIXED-BLOCK": {
+        "title": "Mixed P4 bullets and P5 mapping entries under one head",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-LOWER-BRACKET": {
+        "title": "A lowercase bracket is prose, not a reference",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "see-also": "[not-an-id]",
+          "status": "negative-case"
+        }
+      },
+      "CASE-WRAPPED-VALUE": {
+        "title": "A property value WRAPPED across physical lines",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "active",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "requirement": "a wrapped value is ONE value -- the parser joins each continuation line to the head, collapsing the newline to a single space and keeping the author's internal spacing verbatim",
+          "status": "active"
+        }
+      },
+      "CASE-WRAPPED-EXCLUSION": {
+        "title": "An indented BULLET under a valued head is not a continuation",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "boundary": "the indented bullet below opens its own structure and must not be folded into this value"
+        }
+      },
+      "CASE-ID-TABLE": {
+        "title": "A table whose first column is an identifier column is DATA",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "id_table": {
+            "CTRL-T1": "Requirement: a wrapped value is joined, not truncated; verify.machine: test_wrapped_value_is_joined",
+            "CTRL-T2": "Requirement: an ID table reaches the graph; verify.machine: test_id_table_rows_become_properties"
+          }
+        }
+      },
+      "CASE-PLAIN-TABLE": {
+        "title": "A table with NO identifier column stays ignorable",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {}
+      },
+      "CASE-QUAL-PAREN": {
+        "title": "SL-21 a PARENTHETICAL qualifier in the KEY REGION",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "delta": "(leading paren in value) form (measured): the paren is in the VALUE, so it parses",
+          "status": "negative-case"
+        }
+      },
+      "CASE-QUAL-DASH": {
+        "title": "SL-22 an EM-DASH qualifier in the KEY REGION",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "boundary": "an em-dash inside a value — and a colon after it: both stay in the value",
+          "status": "negative-case"
+        }
+      },
+      "CASE-CITED-NOT-DECLARED": {
+        "_note": "SL-23, THE ID-HIJACK. This node's very presence under the CITATION's id IS the expectation. The heading declares [CASE-ID-HIJACK] at the end and cites [CASE-CITED-NOT-DECLARED] in the middle; the grammar takes the FIRST id-shaped bracket, so the citation becomes the node and the declaration survives only as characters inside `title`. Note the title below: the citation has been REMOVED from it (the parser strips the bracket it consumed) while the intended id is still sitting there as text. That asymmetry is the whole tell.",
+        "title": "23. SL-23 a citation  hijacks the id declared at the end [CASE-ID-HIJACK]",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "negative-case"
+        }
+      },
+      "CASE-RELATES-TO": {
+        "title": "SL-24 `relates-to` — the natural spelling of RELATED_TO",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "relates-to": "[CASE-P1-SIMPLE]"
+        }
+      },
+      "CASE-SUPERSEDED-BY": {
+        "title": "SL-25 `superseded-by` — the REVERSE voice of SUPERSEDES",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "superseded-by": "[CASE-P1-SIMPLE]"
+        }
+      },
+      "CASE-VERIFY": {
+        "title": "SL-26 `verify` — the spelling authors reach for instead of `tested-by`",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "verify": "[CASE-P2-BOLD]"
+        }
+      },
+      "CASE-SPAWNS": {
+        "title": "SL-27 `spawns` — an observation causing a decision",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "spawns": "[CASE-P2-BOLD]"
+        }
+      },
+      "CASE-PROSE-CITES": {
+        "title": "SL-28 a PROSE property citing an id must mint NOTHING",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "rationale": "chosen because [CASE-P1-SIMPLE] already owns it, so the leaf pays once",
+          "status": "negative-case"
+        }
+      },
+      "CASE-MALFORMED-REF": {
+        "title": "SL-33 a mixed-case bracket is an ATTEMPTED ref, not plain prose",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": "negative-case",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "relates-to": "[Mixed-Case-Attempt]",
+          "status": "negative-case"
+        }
+      },
+      "CASE-CANONICAL": {
+        "title": "SL-38 `canonical-node` -- a legacy node pointing at its canonical node (NOT supersession)",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "canonical-node": "[CASE-P1-SIMPLE]"
+        }
+      },
+      "CASE-CANONICAL-BARE": {
+        "title": "SL-38b bare `canonical` is free-text status prose and must mint NOTHING",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "canonical": "false -- NOT yet canonical/live; see [CASE-P1-SIMPLE]"
+        }
+      },
+      "CASE-REV-HOOK": {
+        "title": "SL-39 a review hook -- the node a REVPROC attaches to",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "role": "the target of an attaches-to-hook edge"
+        }
+      },
+      "CASE-REV-PROC": {
+        "title": "SL-39 attaches-to-hook and applies-rule -- one review PROC step",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "attaches-to-hook": "[CASE-REV-HOOK]",
+          "applies-rule": "[CASE-REV-RULE]",
+          "order": "1"
+        }
+      },
+      "CASE-REV-RULE": {
+        "title": "SL-39 applies-rule -- a review rule POINTING at an existing rule node",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "applies-rule": "[CASE-P1-SIMPLE]"
+        }
+      },
+      "CASE-REV-BARE": {
+        "title": "SL-39b look-alike spellings are prose and must mint NOTHING",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "applies-to": "[CASE-REV-HOOK]",
+          "attaches-to": "[CASE-REV-HOOK]"
+        }
+      }
+    },
+    "findings": [
+      {
+        "kind": "mixed_property_block",
+        "node_id": "CASE-MIXED-BLOCK",
+        "key": "mixed-block",
+        "source_line": 124,
+        "conflict_line": 126,
+        "form_seen_first": "list",
+        "form_seen_second": "mapping"
+      },
+      {
+        "kind": "malformed_ref",
+        "node_id": "CASE-LOWER-BRACKET",
+        "key": "see-also",
+        "source_line": 129,
+        "raw": "not-an-id",
+        "_note": "this one was ALREADY here before SL-33 was added: `not-an-id` is a single, all-lowercase, hyphenated token, which the literal A4 grammar classifies MALFORMED-REF (identifier-shaped, not well-formed, carries a dash) even with no upper-initial. LOWERCASE-BRACKET-IS-PROSE's own edge-minting assertion is UNCHANGED (still no RELATED_TO edge) -- only a diagnostic was added, per Era 0's own compatibility contract."
+      },
+      {
+        "kind": "malformed_ref",
+        "node_id": "CASE-MALFORMED-REF",
+        "key": "relates-to",
+        "source_line": 227,
+        "raw": "Mixed-Case-Attempt"
+      }
+    ]
+  },
+  "lines": {
+    "1": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_delimiter"
+    },
+    "2": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "3": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "4": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "5": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "6": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "7": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_field"
+    },
+    "8": {
+      "disposition": "CONSUMED",
+      "branch": "frontmatter_delimiter"
+    },
+    "9": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CTRL-DOC"
+        }
+      ]
+    },
+    "10": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "11": {
+      "disposition": "IGNORABLE",
+      "kind": "blockquote"
+    },
+    "12": {
+      "disposition": "IGNORABLE",
+      "kind": "blockquote"
+    },
+    "13": {
+      "disposition": "IGNORABLE",
+      "kind": "blockquote"
+    },
+    "14": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "15": {
+      "disposition": "IGNORABLE",
+      "kind": "thematic_break"
+    },
+    "16": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "17": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-P1-SIMPLE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "18": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "19": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P1-SIMPLE",
+          "key": "status"
+        }
+      ]
+    },
+    "20": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P1-SIMPLE",
+          "key": "owner"
+        }
+      ]
+    },
+    "21": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "22": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-P2-BOLD"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-P2-BOLD",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "23": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "24": {
+      "disposition": "CONSUMED",
+      "branch": "property_bold",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P2-BOLD",
+          "key": "audience"
+        }
+      ]
+    },
+    "25": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "26": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-P3-MULTI"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P3-MULTI",
+          "type": "RELATED_TO",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P3-MULTI",
+          "type": "RELATED_TO",
+          "target": "CASE-P2-BOLD",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-P3-MULTI",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "27": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "28": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P3-MULTI",
+          "key": "see-also"
+        }
+      ]
+    },
+    "29": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "30": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-P4-NESTED"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P4-NESTED",
+          "type": "DEPENDS_ON",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P4-NESTED",
+          "type": "DEPENDS_ON",
+          "target": "CASE-P3-MULTI",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-P4-NESTED",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "31": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "32": {
+      "disposition": "CONSUMED",
+      "branch": "property_key_only",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P4-NESTED",
+          "key": "depends-on"
+        }
+      ]
+    },
+    "33": {
+      "disposition": "CONSUMED",
+      "branch": "property_nested_item",
+      "contributes": [
+        {
+          "artifact": "property_item",
+          "node": "CASE-P4-NESTED",
+          "key": "depends-on",
+          "index": 0
+        }
+      ]
+    },
+    "34": {
+      "disposition": "CONSUMED",
+      "branch": "property_nested_item",
+      "contributes": [
+        {
+          "artifact": "property_item",
+          "node": "CASE-P4-NESTED",
+          "key": "depends-on",
+          "index": 1
+        }
+      ]
+    },
+    "35": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "36": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-P5-MAPPING"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-P5-MAPPING",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "37": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "38": {
+      "disposition": "CONSUMED",
+      "branch": "property_key_only",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-P5-MAPPING",
+          "key": "provenance"
+        }
+      ]
+    },
+    "39": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-P5-MAPPING",
+          "key": "provenance",
+          "subkey": "authored_by"
+        }
+      ]
+    },
+    "40": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-P5-MAPPING",
+          "key": "provenance",
+          "subkey": "authored_at"
+        }
+      ]
+    },
+    "41": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "42": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-CONFIDENCE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-CONFIDENCE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "43": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "44": {
+      "disposition": "CONSUMED",
+      "branch": "property_key_only",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence"
+        }
+      ]
+    },
+    "45": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "value"
+        }
+      ]
+    },
+    "46": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "blast_radius"
+        }
+      ]
+    },
+    "47": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "rationale"
+        }
+      ]
+    },
+    "48": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "assessed_by"
+        }
+      ]
+    },
+    "49": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "assessed_at"
+        }
+      ]
+    },
+    "50": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "51": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-CONTEXT-FOR-CHANGE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-CONTEXT-FOR-CHANGE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "52": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "53": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "change"
+        }
+      ]
+    },
+    "54": {
+      "disposition": "CONSUMED",
+      "branch": "property_key_only",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change"
+        }
+      ]
+    },
+    "55": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "prior_state"
+        }
+      ]
+    },
+    "56": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "reasoning"
+        }
+      ]
+    },
+    "57": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "rejected_alternative"
+        }
+      ]
+    },
+    "58": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "counter_argument"
+        }
+      ]
+    },
+    "59": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "counter_response"
+        }
+      ]
+    },
+    "60": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "invalidating_assumption"
+        }
+      ]
+    },
+    "61": {
+      "disposition": "CONSUMED",
+      "branch": "property_mapping_entry",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "implication"
+        }
+      ]
+    },
+    "62": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "63": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-FLOW-DECISION"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-FLOW-DECISION",
+          "type": "BEFORE",
+          "target": "CASE-FLOW-PASS",
+          "layer": "temporal",
+          "inference": "property",
+          "flags": [],
+          "label": "yes"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-FLOW-DECISION",
+          "type": "BEFORE",
+          "target": "CASE-FLOW-FAIL",
+          "layer": "temporal",
+          "inference": "property",
+          "flags": [],
+          "label": "no"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-FLOW-DECISION",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "64": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "65": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-DECISION",
+          "key": "condition"
+        }
+      ]
+    },
+    "66": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-DECISION",
+          "key": "actor"
+        }
+      ]
+    },
+    "67": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-DECISION",
+          "key": "if-true"
+        }
+      ]
+    },
+    "68": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-DECISION",
+          "key": "if-false"
+        }
+      ]
+    },
+    "69": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "70": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-FLOW-PASS"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-FLOW-PASS",
+          "type": "BEFORE",
+          "target": "CASE-FLOW-DONE",
+          "layer": "temporal",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-FLOW-PASS",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "71": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "72": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-PASS",
+          "key": "next-step"
+        }
+      ]
+    },
+    "73": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "74": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-FLOW-FAIL"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-FLOW-FAIL",
+          "type": "BEFORE",
+          "target": "CASE-FLOW-DONE",
+          "layer": "temporal",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-FLOW-FAIL",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "75": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "76": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-FAIL",
+          "key": "next-step"
+        }
+      ]
+    },
+    "77": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "78": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-FLOW-DONE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-FLOW-DONE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "79": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "80": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-FLOW-DONE",
+          "key": "status"
+        }
+      ]
+    },
+    "81": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "82": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL18-NAMESPACE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL18-NAMESPACE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "83": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "84": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL18-NAMESPACE",
+          "key": "note"
+        }
+      ]
+    },
+    "85": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "86": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL11-SUBSTRING"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL11-SUBSTRING",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "87": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "88": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL11-SUBSTRING",
+          "key": "note"
+        }
+      ]
+    },
+    "89": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "90": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-TARGET-SUPERSEDES-55"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-TARGET-SUPERSEDES-55",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "91": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "92": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-TARGET-SUPERSEDES-55",
+          "key": "note"
+        }
+      ]
+    },
+    "93": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "94": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REL-BULLETED"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REL-BULLETED",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "95": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "96": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REL-BULLETED",
+          "key": "note"
+        }
+      ]
+    },
+    "97": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "98": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REL-UNBULLETED"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REL-UNBULLETED",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "99": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "100": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REL-UNBULLETED",
+          "key": "note"
+        }
+      ]
+    },
+    "101": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "102": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL1-SYMBOL"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL1-SYMBOL",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "103": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "104": {
+      "disposition": "FLAGGED",
+      "kind": "near_miss_property",
+      "variant": "symbol_prefix",
+      "key": "blocked-on",
+      "near_branch": "_PROP_SIMPLE_RE"
+    },
+    "105": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL1-SYMBOL",
+          "key": "status"
+        }
+      ]
+    },
+    "106": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "107": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL2-CAPS"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL2-CAPS",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "108": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "109": {
+      "disposition": "FLAGGED",
+      "kind": "near_miss_property",
+      "variant": "case",
+      "key": "Owner",
+      "near_branch": "_PROP_SIMPLE_RE"
+    },
+    "110": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL2-CAPS",
+          "key": "status"
+        }
+      ]
+    },
+    "111": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "112": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL13-DASH"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL13-DASH",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "113": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "114": {
+      "disposition": "IGNORABLE",
+      "kind": "prose",
+      "_note": "SL-13 is a KNOWN-SILENT class in silent-loss-classes v4 (detected: NO). An en-dash is not a Markdown bullet, so the coverage classifier's _BULLET_RE never matches and the line reads as prose. The control pins the ACTUAL behaviour -- the property is NOT set (that is the SL-13 assertion) and the line is NOT flagged (that is the recorded gap). Promoting this to FLAGGED is a parser/classifier change plus a class-list version bump, not an oracle edit."
+    },
+    "115": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL13-DASH",
+          "key": "status"
+        }
+      ]
+    },
+    "116": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "117": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SL14-NOSPACE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SL14-NOSPACE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "118": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "119": {
+      "disposition": "IGNORABLE",
+      "kind": "list_prose",
+      "_note": "SL-14 is a KNOWN-SILENT class in silent-loss-classes v4 (detected: NO). _KEY_COLON_RE requires whitespace after the colon -- the requirement that keeps https:// and doc:// URIs out of the finding set -- so `- owner:selfcheck` is not even near-miss-shaped. Same discipline as line 114: the property being ABSENT is the assertion; the line being unflagged is the recorded gap."
+    },
+    "120": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SL14-NOSPACE",
+          "key": "status"
+        }
+      ]
+    },
+    "121": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "122": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-MIXED-BLOCK"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-MIXED-BLOCK",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "123": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "124": {
+      "disposition": "FLAGGED",
+      "kind": "near_miss_property",
+      "variant": "empty_block",
+      "key": "mixed-block",
+      "near_branch": "_PROP_KEY_ONLY_RE",
+      "_note": "TWO independent alarms for one shape, both required: the parser raises a mixed_property_block FINDING, and because it consumes NO line the coverage lint ALSO reports the head. Either alarm alone would be a single point of failure."
+    },
+    "125": {
+      "disposition": "IGNORABLE",
+      "kind": "nested_list_prose"
+    },
+    "126": {
+      "disposition": "IGNORABLE",
+      "kind": "prose"
+    },
+    "127": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-MIXED-BLOCK",
+          "key": "status"
+        }
+      ]
+    },
+    "128": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "129": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-LOWER-BRACKET"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-LOWER-BRACKET",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "130": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "131": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-LOWER-BRACKET",
+          "key": "see-also"
+        }
+      ],
+      "_note": "The line IS consumed and the property IS set to the literal text. What must not happen is an EDGE: [not-an-id] fails _UPPER_ID_RE, so it is prose in brackets, and see-also mints nothing from it. Note the heading (line 129) therefore carries NO RELATED_TO edge."
+    },
+    "132": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-LOWER-BRACKET",
+          "key": "status"
+        }
+      ]
+    },
+    "133": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "134": {
+      "disposition": "CONSUMED",
+      "branch": "heading_divider"
+    },
+    "135": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "136": {
+      "disposition": "CONSUMED",
+      "branch": "heading_divider"
+    },
+    "137": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "138": {
+      "disposition": "CONSUMED",
+      "branch": "edge_relationships",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-REL-BULLETED",
+          "type": "DEPENDS_ON",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "authored",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "139": {
+      "disposition": "IGNORABLE",
+      "kind": "prose"
+    },
+    "140": {
+      "disposition": "IGNORABLE",
+      "kind": "prose"
+    },
+    "141": {
+      "disposition": "IGNORABLE",
+      "kind": "prose"
+    },
+    "142": {
+      "disposition": "IGNORABLE",
+      "kind": "prose",
+      "_note": "THE DISCRIMINATING EXCLUSION LINE. Lines 139-141 are indented and would classify as prose/nested_list_prose anywhere. Line 142 is a COLUMN-0 `- key: value` bullet -- the exact shape that fires near_miss_property everywhere else in this file (see lines 104/109). It is prose ONLY because classify_line short-circuits inside a `## Relationships` section. Delete that short-circuit and this line, and only this line, turns red. That is what makes the exclusion measurable rather than vacuous."
+    },
+    "143": {
+      "disposition": "CONSUMED",
+      "branch": "edge_relationships",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-REL-UNBULLETED",
+          "type": "IMPLEMENTS",
+          "target": "CASE-P2-BOLD",
+          "layer": "semantic",
+          "inference": "authored",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "144": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "145": {
+      "disposition": "CONSUMED",
+      "branch": "heading_divider"
+    },
+    "146": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "147": {
+      "disposition": "CONSUMED",
+      "branch": "edge_relationships",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-SL18-NAMESPACE",
+          "type": "dom.sub.DEPENDS_ON",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "authored",
+          "flags": [
+            "unregistered_ns"
+          ],
+          "label": null
+        }
+      ],
+      "_note": "SL-18. The declared type is the WHOLE dotted token. The bare suffix is deliberately a CORE verb (DEPENDS_ON): with a non-core suffix a tokenizer regression would make the edge VANISH, which line accounting already catches. With a core suffix the regression instead SUBSTITUTES a bare, unflagged DEPENDS_ON that line accounting is structurally blind to -- which is the actual SL-18 defect, and the thing this case exists to catch."
+    },
+    "148": {
+      "disposition": "CONSUMED",
+      "branch": "edge_relationships",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-SL11-SUBSTRING",
+          "type": "DOCUMENTS",
+          "target": "CASE-TARGET-SUPERSEDES-55",
+          "layer": "semantic",
+          "inference": "authored",
+          "flags": [
+            "unregistered_verb"
+          ],
+          "label": null
+        }
+      ],
+      "_note": "SL-11. ONE edge, carrying the AUTHORED verb and the WHOLE target id. The target id contains the core verb SUPERSEDES as a substring; the positional token scan would match it and emit an edge to the literal string '-55]'. The anchored `[SRC] VERB [` form must win first. The line-level record cannot express 'and nothing else', so the case also carries no_edge_matching assertions."
+    },
+    "149": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "150": {
+      "disposition": "CONSUMED",
+      "branch": "heading_divider"
+    },
+    "151": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "152": {
+      "disposition": "IGNORABLE",
+      "kind": "fenced_code"
+    },
+    "153": {
+      "disposition": "CONSUMED",
+      "branch": "edge_causal",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-FLOW-DECISION",
+          "type": "CAUSES",
+          "target": "CASE-FLOW-FAIL",
+          "layer": "causal",
+          "inference": "authored",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "154": {
+      "disposition": "CONSUMED",
+      "branch": "edge_causal",
+      "contributes": [
+        {
+          "artifact": "edge",
+          "source": "CASE-P5-MAPPING",
+          "type": "ENABLES",
+          "target": "CASE-CONTEXT-FOR-CHANGE",
+          "layer": "causal",
+          "inference": "authored",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "155": {
+      "disposition": "IGNORABLE",
+      "kind": "fenced_code"
+    },
+    "156": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "157": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-WRAPPED-VALUE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-WRAPPED-VALUE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "158": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "159": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-VALUE",
+          "key": "requirement"
+        }
+      ]
+    },
+    "160": {
+      "disposition": "CONSUMED",
+      "branch": "property_continuation",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-VALUE",
+          "key": "requirement"
+        }
+      ]
+    },
+    "161": {
+      "disposition": "CONSUMED",
+      "branch": "property_continuation",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-VALUE",
+          "key": "requirement"
+        }
+      ]
+    },
+    "162": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-VALUE",
+          "key": "status"
+        }
+      ]
+    },
+    "163": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "164": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-WRAPPED-EXCLUSION"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-WRAPPED-EXCLUSION",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "165": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "166": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-EXCLUSION",
+          "key": "boundary"
+        }
+      ]
+    },
+    "167": {
+      "disposition": "CONSUMED",
+      "branch": "property_continuation",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-WRAPPED-EXCLUSION",
+          "key": "boundary"
+        }
+      ]
+    },
+    "168": {
+      "disposition": "IGNORABLE",
+      "kind": "nested_list_prose",
+      "_note": "THE WRAP EXCLUSION LINE. Indented deeper than its `- note:` head, non-blank, immediately below a continuation line that WAS folded (167) -- every property of a continuation except one: it opens with a bullet. A fold rule that reached one column further would swallow this line and, worse, would swallow the P4 sub-list idiom everywhere in the corpora. It is the only line in this file that is indented, adjacent to a folded value, and still ignorable."
+    },
+    "169": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "170": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-ID-TABLE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-ID-TABLE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "171": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "172": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_header",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-ID-TABLE",
+          "key": "id_table"
+        }
+      ]
+    },
+    "173": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_rule"
+    },
+    "174": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_row",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-ID-TABLE",
+          "key": "id_table",
+          "subkey": "CTRL-T1"
+        }
+      ]
+    },
+    "175": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_row",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CASE-ID-TABLE",
+          "key": "id_table",
+          "subkey": "CTRL-T2"
+        }
+      ]
+    },
+    "176": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "177": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-PLAIN-TABLE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-PLAIN-TABLE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "178": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "179": {
+      "disposition": "IGNORABLE",
+      "kind": "table_row"
+    },
+    "180": {
+      "disposition": "IGNORABLE",
+      "kind": "table_row"
+    },
+    "181": {
+      "disposition": "IGNORABLE",
+      "kind": "table_row",
+      "_note": "THE TABLE DISCRIMINATION LINE. Byte-for-byte the same SHAPE as line 174 -- a `|`-delimited row inside an `[ID]`-bearing node body, under a header and a rule. It is ignorable for exactly one structural reason: its first column is not an identifier column (header `Layer`, cells `narrative`/`grid`). Loosen the discriminator and this line, and lines 179/180/182, turn into properties on CASE-PLAIN-TABLE. That is what makes the exclusion measurable rather than asserted."
+    },
+    "182": {
+      "disposition": "IGNORABLE",
+      "kind": "table_row"
+    },
+    "183": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "184": {
+      "disposition": "CONSUMED",
+      "branch": "heading_divider"
+    },
+    "185": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "186": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_header",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CTRL-DOC",
+          "key": "id_table"
+        }
+      ]
+    },
+    "187": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_rule"
+    },
+    "188": {
+      "disposition": "CONSUMED",
+      "branch": "id_table_row",
+      "contributes": [
+        {
+          "artifact": "property_entry",
+          "node": "CTRL-DOC",
+          "key": "id_table",
+          "subkey": "CTRL-T3"
+        }
+      ]
+    },
+    "189": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "190": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-QUAL-PAREN"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-QUAL-PAREN",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "191": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "192": {
+      "disposition": "FLAGGED",
+      "kind": "near_miss_qualified_key_paren",
+      "variant": "qualified_paren",
+      "key": "requirement",
+      "near_branch": "_PROP_SIMPLE_RE",
+      "_note": "SL-21. FLAGGED, and DELIBERATELY NOT PARSED. `requirement (qualified)` is genuinely ambiguous -- the key could be `requirement` or `requirement (qualified)` -- and accepting it means GUESSING. A guessed key is a SUBSTITUTION, which SL-18 established is worse than a loss: a missing property is detectable, a plausible wrong one is not. The paired assertion is no_property_anywhere, which is what proves the parser did not quietly pick one."
+    },
+    "193": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-QUAL-PAREN",
+          "key": "delta"
+        }
+      ],
+      "_note": "THE PAREN DISCRIMINATION LINE, one line below its positive and in the same node. It carries TWO parentheticals and a SECOND COLON, and it PARSES -- because all of that is in the VALUE, after the FIRST colon. MEASURED, so the claim is not folklore: widen `_PROP_SIMPLE_RE`'s key to a greedy `[a-z].*` (the 'just accept the qualified form' fix the ruling forbids) and the split lands on the LAST colon -- this node's property becomes `delta: (leading paren in value) form (measured)` and the assertion names the damage. ⛔ WHAT THIS LINE DOES *NOT* CATCH, also measured: an over-eager COVERAGE CLASSIFIER. `classify_line` returns KIND_CONSUMED before it ever reaches the near-miss check, so a classifier regex that searched the whole line instead of the key region leaves the control 33/33 GREEN. The exclusion pins the KEY-BOUNDARY rule in the PARSER, which is where the ruling's 'do not guess the key' actually lives; it is not a guard on the classifier's precision."
+    },
+    "194": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-QUAL-PAREN",
+          "key": "status"
+        }
+      ]
+    },
+    "195": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "196": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-QUAL-DASH"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-QUAL-DASH",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "197": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "198": {
+      "disposition": "FLAGGED",
+      "kind": "near_miss_qualified_key_dash",
+      "variant": "qualified_dash",
+      "key": "requirement",
+      "near_branch": "_PROP_SIMPLE_RE",
+      "_note": "SL-22. Same ruling and same reasoning as line 192, DIFFERENT KIND -- the two are kept apart because their incidences are measured apart (151 parenthetical vs 12 dashed across the Acme corpora on the day they were named). Note this is NOT SL-13: there the en-dash IS the bullet marker and `_BULLET_RE` never matches; here the bullet is a proper hyphen and the dash sits inside the key region."
+    },
+    "199": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-QUAL-DASH",
+          "key": "boundary"
+        }
+      ],
+      "_note": "THE DASH DISCRIMINATION LINE, and the same measured story as line 193 in the dash spelling: an em-dash AND a colon after it, both inside the VALUE, and the line PARSES. Under the greedy-key mutation this node's property becomes `boundary: an em-dash inside a value — and a colon after it`. Same caveat as 193: it does not catch an over-eager classifier, because a consumed line never reaches the classifier's near-miss branch."
+    },
+    "200": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-QUAL-DASH",
+          "key": "status"
+        }
+      ]
+    },
+    "201": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "202": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-CITED-NOT-DECLARED"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-CITED-NOT-DECLARED",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-23. ⛔ THE LINE IS FULLY CONSUMED AND FULLY WRONG. Line accounting is GREEN here, the key-loss rule sees nothing (no bullet), and `lts_lint` reported no diagnostic of any kind on this shape before the id-hijack rule existed — because nothing was LOST. A node was minted, it parses, it is queryable, and it is the WRONG NODE. Every other class in this control makes something DISAPPEAR; this one makes something LIE, which is why it needed its own case and could not be folded into a coverage or key-region assertion."
+    },
+    "203": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "204": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CITED-NOT-DECLARED",
+          "key": "status"
+        }
+      ],
+      "_note": "And the substitution's second half: this property is attributed to the CITATION, not to the node the author declared. In the live shape — where the cited id is also defined elsewhere — the two collide and first-root-wins drops one section out of the graph entirely."
+    },
+    "205": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "206": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-RELATES-TO"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-RELATES-TO",
+          "type": "RELATED_TO",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-RELATES-TO",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "⛔ EDGE PROVENANCE IS THE HEADING LINE, NOT THE PROPERTY LINE. The E4 minter stamps `source_line` from the node's HEADING, so a property edge is attributed here rather than to the `- key: value` that authored it. Recorded because the oracle was written the other way round and this control caught it — the same line-attribution assumption would misplace any future per-line edge report."
+    },
+    "207": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "208": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-RELATES-TO",
+          "key": "relates-to"
+        }
+      ],
+      "_note": "SL-24. The defect that opened the 2026-08-15 work: `relates-to` is the natural spelling of RELATED_TO and appeared 140 times across 11 files in the acme corpora, minting NOTHING, while `lts_lint` reported every one of those files CLEAN and `lts_selfcheck` returned PASS 34/34 with a matching digest. The class was not on the list, so the control was green and the graph was wrong."
+    },
+    "209": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "210": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SUPERSEDED-BY"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P1-SIMPLE",
+          "type": "SUPERSEDES",
+          "target": "CASE-SUPERSEDED-BY",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SUPERSEDED-BY",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "⛔ EDGE PROVENANCE IS THE HEADING LINE, NOT THE PROPERTY LINE. The E4 minter stamps `source_line` from the node's HEADING, so a property edge is attributed here rather than to the `- key: value` that authored it. Recorded because the oracle was written the other way round and this control caught it — the same line-attribution assumption would misplace any future per-line edge report."
+    },
+    "211": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "212": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SUPERSEDED-BY",
+          "key": "superseded-by"
+        }
+      ],
+      "_note": "SL-25. ⛔ REVERSED. The edge runs referenced_id -> node, so the SOURCE is CASE-P1-SIMPLE. A direction error here would be a SUBSTITUTION, not a loss: the graph would answer supersession traversals confidently and backwards."
+    },
+    "213": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "214": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-VERIFY"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-P2-BOLD",
+          "type": "TESTED_BY",
+          "target": "CASE-VERIFY",
+          "layer": "entity",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-VERIFY",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "⛔ EDGE PROVENANCE IS THE HEADING LINE, NOT THE PROPERTY LINE. The E4 minter stamps `source_line` from the node's HEADING, so a property edge is attributed here rather than to the `- key: value` that authored it. Recorded because the oracle was written the other way round and this control caught it — the same line-attribution assumption would misplace any future per-line edge report."
+    },
+    "215": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "216": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-VERIFY",
+          "key": "verify"
+        }
+      ],
+      "_note": "SL-26. ⛔ REVERSED. `verify` had 35 pure uses in the live corpora while `tested-by` — the official spelling of the same edge — had ZERO. The expressive name is the one an author reaches for."
+    },
+    "217": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "218": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-SPAWNS"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-SPAWNS",
+          "type": "CAUSES",
+          "target": "CASE-P2-BOLD",
+          "layer": "causal",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-SPAWNS",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "⛔ EDGE PROVENANCE IS THE HEADING LINE, NOT THE PROPERTY LINE. The E4 minter stamps `source_line` from the node's HEADING, so a property edge is attributed here rather than to the `- key: value` that authored it. Recorded because the oracle was written the other way round and this control caught it — the same line-attribution assumption would misplace any future per-line edge report."
+    },
+    "219": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "220": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-SPAWNS",
+          "key": "spawns"
+        }
+      ],
+      "_note": "SL-27. An insight SPAWNS a decision — the core causal CAUSES, forward."
+    },
+    "221": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "222": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-PROSE-CITES"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-PROSE-CITES",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "223": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "224": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-PROSE-CITES",
+          "key": "rationale"
+        }
+      ],
+      "_note": "SL-28. ⛔ THE ANTI-OVER-REACH CONTROL, and it is as load-bearing as the four above. `rationale` carries a bracketed id INSIDE A SENTENCE. Measured over the acme corpora, `rationale` (96 occurrences), `definition` (94) and `requirement` (58) are 0% pure reference lists. This line MUST mint no edge: a table that harvested every bracketed id would turn every inline citation into a graph edge and destroy what a traversal means. `contributes` carries the property and NO edge, so a regression in either direction fails here."
+    },
+    "225": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-PROSE-CITES",
+          "key": "status"
+        }
+      ]
+    },
+    "226": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "227": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-MALFORMED-REF"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-MALFORMED-REF",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "228": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "229": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-MALFORMED-REF",
+          "key": "relates-to"
+        }
+      ],
+      "_note": "SL-33. The line IS consumed and `relates-to` IS set to the literal text `[Mixed-Case-Attempt]`. `relates-to` MINTS (a built-in RELATED_TO key since 2026-08-15) but this bracket fails `_UPPER_ID_RE` (mixed case), so `_property_refs` extracts zero refs and no edge is minted -- exactly the CASE-LOWER-BRACKET pattern one case over. What's NEW: the bracket is bracket-SHAPED like an ATTEMPTED id (an upper-initial plus dashes, unlike `not-an-id`'s all-lowercase shape), so `classify_bracket_token` calls it MALFORMED-REF rather than PROSE-BRACKET, and the parser now raises `ParseFinding(kind='malformed_ref')` for it (SPEC A4 / C1)."
+    },
+    "230": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-MALFORMED-REF",
+          "key": "status"
+        }
+      ]
+    },
+    "231": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "232": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-CANONICAL"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-CANONICAL",
+          "type": "CANONICAL",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-CANONICAL",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-38. FORWARD: the edge runs legacy (CASE-CANONICAL) -> canonical (CASE-P1-SIMPLE). Edge provenance is the heading line, as for the other property-edge cases."
+    },
+    "233": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "234": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CANONICAL",
+          "key": "canonical-node"
+        }
+      ],
+      "_note": "SL-38. `canonical-node` was a plain stored property that minted nothing (a bracketed id stored as TEXT: the property exists, the file looks right, lint is clean, the relationship is invisible to traversal). It is now a minting key. It is NOT `superseded-by`: no SUPERSEDES edge is minted."
+    },
+    "235": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "236": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-CANONICAL-BARE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-CANONICAL-BARE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-38b. No CANONICAL edge on the heading line: the bare key does not mint."
+    },
+    "237": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "238": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-CANONICAL-BARE",
+          "key": "canonical"
+        }
+      ],
+      "_note": "SL-38b. `canonical` is ALREADY free-text status prose on 7 acme-docs nodes (`canonical: true -- cutover accepted...`, `canonical: false -- NOT yet canonical/live ... see [ID]`). Minting it would turn that prose into a wrong edge (review F1, 2026-10-03). The property is stored as literal text and no edge exists."
+    },
+    "239": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "240": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REV-HOOK"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REV-HOOK",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-39. The hook is only a target: nothing is minted on its own heading line."
+    },
+    "241": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "242": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-HOOK",
+          "key": "role"
+        }
+      ]
+    },
+    "243": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "244": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REV-PROC"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-REV-PROC",
+          "type": "ATTACHES_TO_HOOK",
+          "target": "CASE-REV-HOOK",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-REV-PROC",
+          "type": "APPLIES_RULE",
+          "target": "CASE-REV-RULE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REV-PROC",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-39. FORWARD: both edges run from the PROC step. Edge provenance is the heading line, as for the other property-edge cases."
+    },
+    "245": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "246": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-PROC",
+          "key": "attaches-to-hook"
+        }
+      ],
+      "_note": "SL-39. `attaches-to-hook` and `applies-rule` were plain stored properties that minted nothing (a bracketed id stored as TEXT: the property exists, lint is clean, the relationship is invisible to traversal). They are now minting keys (0 prior uses over 58 registered roots)."
+    },
+    "247": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-PROC",
+          "key": "applies-rule"
+        }
+      ]
+    },
+    "248": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-PROC",
+          "key": "order"
+        }
+      ],
+      "_note": "SL-39. Ordering within a hook is an integer PROPERTY. It mints no edge (`precedes`/`follows` already have other uses)."
+    },
+    "249": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "250": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REV-RULE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-REV-RULE",
+          "type": "APPLIES_RULE",
+          "target": "CASE-P1-SIMPLE",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REV-RULE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-39. A review rule POINTS at an existing rule node (never copies it): REVRULE -> existing rule, forward."
+    },
+    "251": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "252": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-RULE",
+          "key": "applies-rule"
+        }
+      ]
+    },
+    "253": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "254": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-REV-BARE"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-REV-BARE",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-39b. No review edge on the heading line: the look-alike spellings do not mint."
+    },
+    "255": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "256": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-BARE",
+          "key": "applies-to"
+        }
+      ],
+      "_note": "SL-39b. `applies-to` is the REVRULE selector property: free text by design. It must stay prose, or every selector citing an id would become an edge."
+    },
+    "257": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-REV-BARE",
+          "key": "attaches-to"
+        }
+      ],
+      "_note": "SL-39b. A near-miss of `attaches-to-hook`: stored as text, mints nothing."
+    }
+  },
+  "cases": [
+    {
+      "case_id": "FRONTMATTER",
+      "title": "F1 frontmatter block, including the `audience` field",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "document"
+        }
+      ]
+    },
+    {
+      "case_id": "DOCTYPE-TAG",
+      "title": "N2 document type tag on the h1, inherited by every node in the file",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "nodes": [
+        "CTRL-DOC"
+      ],
+      "assertions": [
+        {
+          "assert": "all_nodes_document_tag",
+          "value": "SELFCHECK"
+        }
+      ]
+    },
+    {
+      "case_id": "P1-SIMPLE",
+      "title": "SPEC 2.2 P1 -- the simple `- key: value` property form",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "nodes": [
+        "CASE-P1-SIMPLE"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "P2-BOLD",
+      "title": "SPEC 2.2 P2 -- the bold-key `- **key**: value` form, bold stripped",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        22,
+        23,
+        24,
+        25
+      ],
+      "nodes": [
+        "CASE-P2-BOLD"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "P3-MULTI",
+      "title": "SPEC 2.2 P3 -- multi-value, and an edge-bearing key from REL_PROPERTY_EDGES (see-also)",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "nodes": [
+        "CASE-P3-MULTI"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "P4-NESTED",
+      "title": "SPEC 2.2 P4 -- nested list, and a second REL_PROPERTY_EDGES key (depends-on)",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "nodes": [
+        "CASE-P4-NESTED"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "P5-MAPPING",
+      "title": "P5 -- the YAML-mapping property form (a DICT value, not a list of strings)",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        36,
+        37,
+        38,
+        39,
+        40,
+        41
+      ],
+      "nodes": [
+        "CASE-P5-MAPPING"
+      ],
+      "assertions": [
+        {
+          "assert": "property_is_mapping",
+          "node": "CASE-P5-MAPPING",
+          "key": "provenance"
+        }
+      ]
+    },
+    {
+      "case_id": "CONFIDENCE-7-1",
+      "title": "SPEC 7.1 -- the confidence annotation, specified as a mapping",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "nodes": [
+        "CASE-CONFIDENCE"
+      ],
+      "assertions": [
+        {
+          "assert": "property_is_mapping",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence"
+        },
+        {
+          "assert": "mapping_subkey",
+          "node": "CASE-CONFIDENCE",
+          "key": "confidence",
+          "subkey": "blast_radius",
+          "value": "high"
+        }
+      ]
+    },
+    {
+      "case_id": "CONTEXT-FOR-CHANGE-8-1",
+      "title": "SPEC 8.1 -- {change, context_for_change} with invalidating_assumption as a KEYED sub-field",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "nodes": [
+        "CASE-CONTEXT-FOR-CHANGE"
+      ],
+      "assertions": [
+        {
+          "assert": "property_is_mapping",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change"
+        },
+        {
+          "assert": "mapping_subkey",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "key": "context_for_change",
+          "subkey": "invalidating_assumption",
+          "value": "that SPEC 2.2's four enumerated forms are exhaustive"
+        },
+        {
+          "assert": "properties_absent",
+          "node": "CASE-CONTEXT-FOR-CHANGE",
+          "keys": [
+            "invalidating_assumption",
+            "prior_state",
+            "reasoning"
+          ],
+          "reason": "the sub-fields are KEYED INSIDE the mapping, never flattened up to the node"
+        }
+      ]
+    },
+    {
+      "case_id": "FLOW-STEPS",
+      "title": "Flow spine -- next-step / if-true / if-false from FLOW_PROPERTY_EDGES, with labelled branches",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "nodes": [
+        "CASE-FLOW-DECISION",
+        "CASE-FLOW-PASS",
+        "CASE-FLOW-FAIL",
+        "CASE-FLOW-DONE"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-FLOW-DECISION",
+            "type": "CONDITION"
+          },
+          "reason": "`condition` and `actor` are DESCRIPTIVE -- they change how a node is drawn, and mint nothing"
+        }
+      ]
+    },
+    {
+      "case_id": "SL-18-NAMESPACE-SURVIVES",
+      "title": "SL-18 -- a multi-segment domain namespace on an edge verb must SURVIVE, not be stripped",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-18"
+      ],
+      "lines": [
+        82,
+        83,
+        84,
+        85,
+        145,
+        146,
+        147
+      ],
+      "nodes": [
+        "CASE-SL18-NAMESPACE"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-SL18-NAMESPACE",
+            "type": "DEPENDS_ON"
+          },
+          "reason": "the BARE type is the SL-18 defect: a stripped namespace is indistinguishable from any other domain's DEPENDS_ON, voids the P3 deconfliction guarantee, and carries no flag"
+        }
+      ]
+    },
+    {
+      "case_id": "SL-11-SUBSTRING-MINTS-NOTHING",
+      "title": "SL-11 -- a verb appearing as a SUBSTRING inside a target id must mint nothing",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-11"
+      ],
+      "lines": [
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        148
+      ],
+      "nodes": [
+        "CASE-SL11-SUBSTRING",
+        "CASE-TARGET-SUPERSEDES-55"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-SL11-SUBSTRING",
+            "type": "SUPERSEDES"
+          },
+          "reason": "SUPERSEDES must never be fabricated from the substring inside CASE-TARGET-SUPERSEDES-55. ⛔ NARROWED 2026-08-15: this was an unscoped `type: SUPERSEDES` assertion, which worked only while the corpus contained NO authored SUPERSEDES edge at all. CASE-SUPERSEDED-BY now authors one legitimately, so the assertion is scoped to the substring node it was always about. An unscoped negative assertion silently doubles as 'this feature does not exist'."
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "target_contains": "]"
+          },
+          "reason": "the observed fabrication emitted an edge to the literal string '-55]' -- a target carrying a bracket is a torn id, never a node"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "flag": "unresolved_target"
+          },
+          "reason": "every triple in this corpus resolves to a real bracketed target; an unresolved_target here means a verb matched mid-id and the remainder was scraped as prose"
+        }
+      ]
+    },
+    {
+      "case_id": "REL-TRIPLES-BOTH-FORMS",
+      "title": "E2 -- `## Relationships` triples parse in BOTH the bulleted and the unbulleted form (SL-10)",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-10"
+      ],
+      "lines": [
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        134,
+        135,
+        136,
+        137,
+        138,
+        143,
+        144
+      ],
+      "nodes": [
+        "CASE-REL-BULLETED",
+        "CASE-REL-UNBULLETED"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "REL-CONTINUATION-EXCLUSION",
+      "title": "EXCLUSION -- indented continuation-shaped lines inside `## Relationships` are NOT properties and NOT near-misses",
+      "kind": "exclusion",
+      "sl_classes": [],
+      "lines": [
+        139,
+        140,
+        141,
+        142
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "no_property_anywhere",
+          "keys": [
+            "prior_state",
+            "reasoning",
+            "note"
+          ],
+          "except_nodes": [
+            "CASE-SL18-NAMESPACE",
+            "CASE-SL11-SUBSTRING",
+            "CASE-TARGET-SUPERSEDES-55",
+            "CASE-REL-BULLETED",
+            "CASE-REL-UNBULLETED"
+          ],
+          "reason": "lines 139-140 are `key: value`-shaped inside `## Relationships`; if the property grammar ever reached them, prior_state/reasoning would appear as top-level properties on some node. The excepted nodes carry an authored `note` property of their own (lines 84/88/92/96/100), which is why `note` is excepted rather than dropped from the check."
+        },
+        {
+          "assert": "flagged_line_count",
+          "value": 5,
+          "reason": "the whole corpus produces exactly five flagged lines -- 104, 109, 124, and (ORACLE v3) 192, 198. If the Relationships exclusion regressed, line 142 would become a sixth. 3 -> 5 is a MEASURED consequence of the twelve appended lines, not a re-baseline: lines 139-142 and their dispositions are byte-identical."
+        }
+      ]
+    },
+    {
+      "case_id": "SL-1-SYMBOL-PREFIX",
+      "title": "SL-1 -- a symbol-prefixed key does not parse, and IS flagged",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-1"
+      ],
+      "lines": [
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "nodes": [
+        "CASE-SL1-SYMBOL"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-SL1-SYMBOL",
+          "keys": [
+            "blocked-on"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SL-2-CAPITALISED-KEY",
+      "title": "SL-2 -- a capitalised key does not parse, and IS flagged",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-2"
+      ],
+      "lines": [
+        107,
+        108,
+        109,
+        110,
+        111
+      ],
+      "nodes": [
+        "CASE-SL2-CAPS"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-SL2-CAPS",
+          "keys": [
+            "Owner",
+            "owner"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SL-13-ENDASH-BULLET",
+      "title": "SL-13 -- an en-dash bullet does not parse (KNOWN-SILENT: not flagged today)",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-13"
+      ],
+      "detection_status": "silent -- silent-loss-classes v4 records SL-13 as detected: NO",
+      "lines": [
+        112,
+        113,
+        114,
+        115,
+        116
+      ],
+      "nodes": [
+        "CASE-SL13-DASH"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-SL13-DASH",
+          "keys": [
+            "owner"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SL-14-NO-SPACE-AFTER-COLON",
+      "title": "SL-14 -- `- key:value` does not parse (KNOWN-SILENT: not flagged today)",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-14"
+      ],
+      "detection_status": "silent -- silent-loss-classes v4 records SL-14 as detected: NO",
+      "lines": [
+        117,
+        118,
+        119,
+        120,
+        121
+      ],
+      "nodes": [
+        "CASE-SL14-NOSPACE"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-SL14-NOSPACE",
+          "keys": [
+            "owner"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "MIXED-P4-P5-BLOCK",
+      "title": "A block mixing P4 bullets and P5 mapping entries under one head is a FINDING; the property is NOT set",
+      "kind": "negative",
+      "sl_classes": [],
+      "lines": [
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128
+      ],
+      "nodes": [
+        "CASE-MIXED-BLOCK"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-MIXED-BLOCK",
+          "keys": [
+            "mixed-block"
+          ],
+          "reason": "an ambiguous block yields NOTHING -- never a guess at which half the author meant"
+        },
+        {
+          "assert": "finding",
+          "kind": "mixed_property_block",
+          "node": "CASE-MIXED-BLOCK",
+          "key": "mixed-block",
+          "source_line": 124,
+          "conflict_line": 126
+        }
+      ]
+    },
+    {
+      "case_id": "LOWERCASE-BRACKET-IS-PROSE",
+      "title": "A lowercase bracket is prose -- the property holds the text, and NO edge is minted",
+      "kind": "negative",
+      "sl_classes": [],
+      "lines": [
+        129,
+        130,
+        131,
+        132,
+        133
+      ],
+      "nodes": [
+        "CASE-LOWER-BRACKET"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-LOWER-BRACKET",
+            "type": "RELATED_TO"
+          },
+          "reason": "MODEL-ID: the uppercase requirement is the mechanical signal that separates an id from ordinary bracketed prose"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "target": "not-an-id"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "CAUSAL-GRAPH",
+      "title": "E1/E3 -- a `## Causal Graph` section, read even inside a fence",
+      "kind": "positive",
+      "sl_classes": [],
+      "lines": [
+        150,
+        151,
+        152,
+        153,
+        154,
+        155
+      ],
+      "nodes": [],
+      "assertions": []
+    },
+    {
+      "case_id": "WRAPPED-VALUE",
+      "title": "A `- key: value` whose value WRAPS is ONE value -- the tail is joined, not truncated",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-19"
+      ],
+      "lines": [
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163
+      ],
+      "nodes": [
+        "CASE-WRAPPED-VALUE"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-WRAPPED-VALUE",
+          "key": "requirement",
+          "value": "a wrapped value is ONE value -- the parser joins each continuation line to the head, collapsing the newline to a single space and keeping the author's internal spacing verbatim",
+          "reason": "the whole point is the EXACT joined string. `starts_with` would pass on a parser that had gone back to keeping only the first physical line, which is the defect being pinned: measured on 41-example-wrapped-values.lts, 61 of 61 wrapped properties truncated to their first line and line accounting still reported 100.0% / 0 unaccounted."
+        }
+      ]
+    },
+    {
+      "case_id": "WRAPPED-VALUE-EXCLUSION",
+      "title": "EXCLUSION -- an indented BULLET under a valued head opens new structure and is NOT folded",
+      "kind": "exclusion",
+      "sl_classes": [],
+      "lines": [
+        164,
+        165,
+        166,
+        167,
+        168,
+        169
+      ],
+      "nodes": [
+        "CASE-WRAPPED-EXCLUSION"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-WRAPPED-EXCLUSION",
+          "key": "boundary",
+          "value": "the indented bullet below opens its own structure and must not be folded into this value",
+          "reason": "line 167 IS folded and line 168 is NOT, one line apart, at the same indent. If the fold ever reaches a bullet, this value grows and the assertion names the exact regression."
+        },
+        {
+          "assert": "flagged_line_count",
+          "value": 5,
+          "reason": "the corpus produces exactly five flagged lines -- 104, 109, 124 (the original three), plus 192 and 198 (the two QUAL classes, ORACLE v3). Neither the fold, the ID table, nor the qualified-key detector may invent a sixth. 3 -> 5 is a MEASURED consequence of the twelve appended lines, not a re-baseline: lines 104/109/124 are byte-identical and still flagged with the same kinds and variants."
+        }
+      ]
+    },
+    {
+      "case_id": "ID-TABLE",
+      "title": "A table whose first column is an identifier column becomes an `id_table` mapping property",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-20"
+      ],
+      "lines": [
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176
+      ],
+      "nodes": [
+        "CASE-ID-TABLE"
+      ],
+      "assertions": [
+        {
+          "assert": "property_is_mapping",
+          "node": "CASE-ID-TABLE",
+          "key": "id_table"
+        },
+        {
+          "assert": "mapping_subkey",
+          "node": "CASE-ID-TABLE",
+          "key": "id_table",
+          "subkey": "CTRL-T1",
+          "value": "Requirement: a wrapped value is joined, not truncated; verify.machine: test_wrapped_value_is_joined"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-ID-TABLE",
+            "type": "RELATED_TO"
+          },
+          "reason": "row cells are TEXT. Harvesting refs out of them would mint edges no corpus authored -- the same rule `_property_refs` already applies to a P5 mapping."
+        }
+      ]
+    },
+    {
+      "case_id": "PLAIN-TABLE-STAYS-IGNORABLE",
+      "title": "EXCLUSION -- a table with no identifier column is decoration and reaches the graph as nothing",
+      "kind": "exclusion",
+      "sl_classes": [],
+      "lines": [
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183
+      ],
+      "nodes": [
+        "CASE-PLAIN-TABLE"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-PLAIN-TABLE",
+          "keys": [
+            "id_table",
+            "Layer",
+            "layer"
+          ],
+          "reason": "a decorative table wrongly promoted pollutes the graph, which is worse than one left out. This node must carry NO properties at all."
+        }
+      ]
+    },
+    {
+      "case_id": "ORPHAN-ID-TABLE-ASCENDS",
+      "title": "An ID table under an UNTAGGED heading lands on its nearest `[ID]`-bearing ancestor",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-20"
+      ],
+      "lines": [
+        184,
+        185,
+        186,
+        187,
+        188
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "mapping_subkey",
+          "node": "CTRL-DOC",
+          "key": "id_table",
+          "subkey": "CTRL-T3",
+          "value": "Requirement: an ID table under an untagged heading lands on its ANCESTOR node; verify.machine: test_orphan_id_table_attaches_to_ancestor",
+          "reason": "a node body ends at the NEXT heading of any level, so this table sits in no node body. The live shape it copies is `29-example-embedded.lts`'s `## 4. Compliance` -- a 12-row acceptance table under an untagged heading, which reached the graph as nothing while that file was cited as the CLEAN control."
+        }
+      ]
+    },
+    {
+      "case_id": "QUAL-PAREN-SL21",
+      "title": "SL-21 -- a PARENTHETICAL qualifier in the key region does not parse, and IS flagged",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-21"
+      ],
+      "detection_status": "detected -- silent-loss-classes v6 records SL-21 as detected: YES (added with this control)",
+      "lines": [
+        189,
+        190,
+        191,
+        192,
+        194,
+        195
+      ],
+      "nodes": [
+        "CASE-QUAL-PAREN"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-QUAL-PAREN",
+          "keys": [
+            "requirement",
+            "requirement (qualified)"
+          ],
+          "reason": "BOTH spellings, and that is the point of the class. The ruling is FLAG, DO NOT PARSE: the parser must not store the property under EITHER candidate key, because choosing one is a guess and a guessed key is a SUBSTITUTION (SL-18). Asserting only the absence of `requirement` would still pass on a parser that had silently minted `requirement (qualified)`."
+        },
+        {
+          "assert": "no_property_anywhere",
+          "keys": [
+            "requirement (qualified)"
+          ],
+          "except_nodes": [],
+          "reason": "corpus-wide closure on the substitution: nowhere in the graph may a key with a parenthetical in it appear. A per-node check would miss a parser that attached the guessed key to the wrong node."
+        }
+      ]
+    },
+    {
+      "case_id": "QUAL-PAREN-EXCLUSION",
+      "title": "EXCLUSION -- a parenthesis in the VALUE is fine and must keep parsing",
+      "kind": "exclusion",
+      "sl_classes": [],
+      "lines": [
+        193
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-QUAL-PAREN",
+          "key": "delta",
+          "value": "(leading paren in value) form (measured): the paren is in the VALUE, so it parses",
+          "reason": "the EXACT value, because the discriminator is positional. This line sits one below its positive, in the same node, and carries two parentheticals and a second colon; the key region is everything before the FIRST colon, so all of that is value text. MEASURED discriminating power: widening `_PROP_SIMPLE_RE`'s key to a greedy `[a-z].*` -- i.e. parsing the qualified form instead of flagging it, which is what the ruling forbids -- turns THIS assertion red (`delta` disappears, replaced by the key `delta: (leading paren in value) form (measured)`) at the same time as it turns line 192 red. MEASURED non-power, recorded so nobody over-claims it: an over-eager COVERAGE CLASSIFIER cannot turn this line red, because `classify_line` short-circuits on KIND_CONSUMED before the near-miss check runs."
+        }
+      ]
+    },
+    {
+      "case_id": "QUAL-DASH-SL22",
+      "title": "SL-22 -- an EN/EM-DASH qualifier in the key region does not parse, and IS flagged",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-22"
+      ],
+      "detection_status": "detected -- silent-loss-classes v6 records SL-22 as detected: YES (added with this control)",
+      "lines": [
+        196,
+        197,
+        198,
+        200
+      ],
+      "nodes": [
+        "CASE-QUAL-DASH"
+      ],
+      "assertions": [
+        {
+          "assert": "properties_absent",
+          "node": "CASE-QUAL-DASH",
+          "keys": [
+            "requirement",
+            "requirement — dashed"
+          ],
+          "reason": "same substitution guard as SL-21, in the dash spelling."
+        },
+        {
+          "assert": "no_property_anywhere",
+          "keys": [
+            "requirement — dashed"
+          ],
+          "except_nodes": [],
+          "reason": "corpus-wide closure on the substitution."
+        }
+      ]
+    },
+    {
+      "case_id": "QUAL-DASH-EXCLUSION",
+      "title": "EXCLUSION -- an em-dash (and a later colon) in the VALUE is fine and must keep parsing",
+      "kind": "exclusion",
+      "sl_classes": [],
+      "lines": [
+        199
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-QUAL-DASH",
+          "key": "boundary",
+          "value": "an em-dash inside a value — and a colon after it: both stay in the value",
+          "reason": "the em-dash appears AFTER the first colon and is followed by a colon of its own -- the exact substring a key-boundary rule that guesses would latch onto. Same measured result as QUAL-PAREN-EXCLUSION: the greedy-key mutation replaces `boundary` with the key `boundary: an em-dash inside a value — and a colon after it`, and an over-eager classifier cannot reach this line at all."
+        }
+      ]
+    },
+    {
+      "case_id": "ID-HIJACK-SL23",
+      "title": "SL-23 -- a CITATION in the heading hijacks the node id, and the declared id never becomes a node",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-23"
+      ],
+      "detection_status": "detected -- silent-loss-classes v7 records SL-23 as detected: YES (added with this control; `lint.id_hijack` fires at error severity)",
+      "_note": "IN THE LIVE CORPUS SHAPE, DELIBERATELY. The measured instance is `## 8. Independent replication of [FLCD-CONNECTIVITY], on a second corpus, by an author who did not know it existed [FL-RECALL-REPLICATION]` -- an ordinal, a mid-sentence citation, and the real id declared ID-LAST. A control that exercised a simpler shape than the corpus uses would certify a narrower class than its name claims, which is the exact criticism that grew this control twice before. The ONE thing held back is the collision: the live citation is ALSO defined in another file, so first-root-wins drops a whole section out of the graph. Reproducing that here would corrupt the sibling cases, and duplicate-id behaviour is already covered; the substitution is the part unique to SL-23.",
+      "lines": [
+        201,
+        202,
+        203,
+        204
+      ],
+      "nodes": [
+        "CASE-CITED-NOT-DECLARED"
+      ],
+      "assertions": [
+        {
+          "assert": "no_property_anywhere",
+          "keys": [
+            "CASE-ID-HIJACK"
+          ],
+          "except_nodes": [],
+          "reason": "closure: the declared id did not sneak in as a property key either."
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-ID-HIJACK"
+          },
+          "reason": "the id the author DECLARED mints no node, so it can be the source of nothing. The whole-graph node-set closure (`the oracle's node set equals the parsed node set`) is what asserts its absence as a node; this closes the edge half."
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "target": "CASE-ID-HIJACK"
+          },
+          "reason": "and nothing points at it, so no dangle diagnostic raises the alarm either -- which is why this class stayed silent."
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-CITED-NOT-DECLARED",
+          "key": "status",
+          "value": "negative-case",
+          "reason": "⛔ THE SUBSTITUTION, ASSERTED POSITIVELY. The property is real, parsed and queryable -- and it is attributed to the CITATION rather than to the node the author declared. Every other negative case in this control asserts that something is ABSENT; this one asserts that something is PRESENT ON THE WRONG NODE, because that is what makes SL-23 worse than a loss: the result looks well-formed."
+        }
+      ]
+    },
+    {
+      "case_id": "GRAPH-TOTALS",
+      "title": "Whole-graph totals -- exact counts, never `non-zero`",
+      "kind": "invariant",
+      "sl_classes": [],
+      "lines": [
+        149
+      ],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "node_count",
+          "value": 42
+        },
+        {
+          "assert": "edge_count",
+          "value": 63
+        },
+        {
+          "assert": "finding_count",
+          "value": 3
+        },
+        {
+          "assert": "flagged_line_count",
+          "value": 5
+        },
+        {
+          "assert": "line_count",
+          "value": 257
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-MALFORMED-REF",
+      "title": "SL-33 -- a mixed-case bracket at a minting-key value is a malformed_ref finding, and still mints no edge",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-33"
+      ],
+      "lines": [
+        226,
+        227,
+        228,
+        229,
+        230
+      ],
+      "nodes": [
+        "CASE-MALFORMED-REF"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-MALFORMED-REF",
+            "type": "RELATED_TO"
+          },
+          "reason": "MALFORMED-REF still does not bind silently -- Era 0 adds the diagnostic, it does not change what parses (no ratification, no breakage per the Era 0 compatibility contract)"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "target": "Mixed-Case-Attempt"
+          }
+        },
+        {
+          "assert": "finding",
+          "kind": "malformed_ref",
+          "node": "CASE-MALFORMED-REF",
+          "key": "relates-to",
+          "source_line": 227,
+          "conflict_line": null
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-RELATES-TO",
+      "title": "SL-24 `relates-to` mints RELATED_TO — the 140-occurrence silent loss",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-24"
+      ],
+      "lines": [
+        205,
+        206,
+        207,
+        208
+      ],
+      "nodes": [
+        "CASE-RELATES-TO"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-RELATES-TO",
+          "key": "relates-to",
+          "value": "[CASE-P1-SIMPLE]"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-SUPERSEDED-BY",
+      "title": "SL-25 `superseded-by` mints a REVERSED SUPERSEDES",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-25"
+      ],
+      "lines": [
+        209,
+        210,
+        211,
+        212
+      ],
+      "nodes": [
+        "CASE-SUPERSEDED-BY"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-SUPERSEDED-BY",
+            "type": "SUPERSEDES"
+          },
+          "reason": "the reverse voice must NEVER mint a forward edge; the line-level `contributes` pins the correct direction"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-VERIFY",
+      "title": "SL-26 `verify` mints a REVERSED TESTED_BY",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-26"
+      ],
+      "lines": [
+        213,
+        214,
+        215,
+        216
+      ],
+      "nodes": [
+        "CASE-VERIFY"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-VERIFY",
+            "type": "TESTED_BY"
+          },
+          "reason": "reverse voice: source must be the referenced node"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-CANONICAL",
+      "title": "SL-38 `canonical-node` mints a FORWARD CANONICAL edge (legacy -> canonical), never SUPERSEDES",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-38"
+      ],
+      "lines": [
+        231,
+        232,
+        233,
+        234
+      ],
+      "nodes": [
+        "CASE-CANONICAL"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-CANONICAL",
+          "key": "canonical-node",
+          "value": "[CASE-P1-SIMPLE]"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-P1-SIMPLE",
+            "type": "CANONICAL"
+          },
+          "reason": "forward only: the canonical node never points back at the legacy one; the line-level `contributes` pins the correct direction"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-CANONICAL",
+            "type": "SUPERSEDES"
+          },
+          "reason": "CANONICAL is not supersession -- the legacy node's content stays valid"
+        }
+      ]
+    },
+    {
+      "case_id": "NOMINT-CANONICAL-BARE",
+      "title": "SL-38b bare `canonical` (free-text status prose) mints NOTHING -- the key is `canonical-node`",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-38"
+      ],
+      "lines": [
+        235,
+        236,
+        237,
+        238
+      ],
+      "nodes": [
+        "CASE-CANONICAL-BARE"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-CANONICAL-BARE",
+            "type": "CANONICAL"
+          },
+          "reason": "bare `canonical` is prose on 10 live nodes; an edge here would assert the opposite of its text"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "target": "CASE-P1-SIMPLE",
+            "type": "CANONICAL",
+            "source": "CASE-CANONICAL-BARE"
+          },
+          "reason": "the bracketed id in the sentence stays text"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-REV-ATTACHES",
+      "title": "SL-39 `attaches-to-hook` mints a FORWARD ATTACHES_TO_HOOK edge (REVPROC -> REVHOOK)",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-39"
+      ],
+      "lines": [
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246
+      ],
+      "nodes": [
+        "CASE-REV-HOOK",
+        "CASE-REV-PROC"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-REV-PROC",
+          "key": "attaches-to-hook",
+          "value": "[CASE-REV-HOOK]"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-HOOK",
+            "type": "ATTACHES_TO_HOOK"
+          },
+          "reason": "forward only: the hook never points back at the step; the line-level `contributes` pins the direction"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-REV-APPLIES",
+      "title": "SL-39 `applies-rule` mints a FORWARD APPLIES_RULE edge on both hops (REVPROC -> REVRULE, REVRULE -> existing rule)",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-39"
+      ],
+      "lines": [
+        247,
+        248,
+        249,
+        250,
+        251,
+        252
+      ],
+      "nodes": [
+        "CASE-REV-RULE"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-REV-PROC",
+          "key": "applies-rule",
+          "value": "[CASE-REV-RULE]"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-REV-PROC",
+          "key": "order",
+          "value": "1"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-REV-RULE",
+          "key": "applies-rule",
+          "value": "[CASE-P1-SIMPLE]"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-P1-SIMPLE",
+            "type": "APPLIES_RULE"
+          },
+          "reason": "pointing, never copying: the existing rule node does not point back"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-PROC",
+            "type": "BEFORE"
+          },
+          "reason": "`order` is an integer property, never an edge"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-PROC",
+            "type": "SEQUENCE"
+          },
+          "reason": "`order` is an integer property, never an edge"
+        }
+      ]
+    },
+    {
+      "case_id": "NOMINT-REV-BARE",
+      "title": "SL-39b look-alike spellings (`applies-to`, `attaches-to`) are prose and mint NOTHING",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-39"
+      ],
+      "lines": [
+        253,
+        254,
+        255,
+        256,
+        257
+      ],
+      "nodes": [
+        "CASE-REV-BARE"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-BARE",
+            "type": "APPLIES_RULE"
+          },
+          "reason": "`applies-to` is the REVRULE selector (free text)"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-BARE",
+            "type": "ATTACHES_TO_HOOK"
+          },
+          "reason": "only the exact key `attaches-to-hook` mints"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-REV-BARE",
+            "type": "RELATED_TO"
+          },
+          "reason": "nor does either fall through to a generic relation"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-SPAWNS",
+      "title": "SL-27 `spawns` mints a forward causal CAUSES",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-27"
+      ],
+      "lines": [
+        217,
+        218,
+        219,
+        220
+      ],
+      "nodes": [
+        "CASE-SPAWNS"
+      ],
+      "assertions": []
+    },
+    {
+      "case_id": "PROSE-CITATION-MINTS-NOTHING",
+      "title": "SL-28 a prose property citing an id mints NO edge",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-28"
+      ],
+      "lines": [
+        221,
+        222,
+        223,
+        224,
+        225
+      ],
+      "nodes": [
+        "CASE-PROSE-CITES"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-PROSE-CITES",
+            "type": "RELATED_TO"
+          },
+          "reason": "`rationale` is prose that CITES. 0% of its 96 live occurrences are pure reference lists. If a future table harvested every bracketed id, this fires."
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-PROSE-CITES",
+            "type": "DEPENDS_ON"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "EDGETYPE-CORE-SHADOW",
+      "title": "SL-29 a profile redefining a CORE edge type is REFUSED at load, even identically",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-29"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "profile_refused",
+          "given_profile": {
+            "domain": {
+              "id": "rogue",
+              "namespaces": [
+                "rogue"
+              ]
+            },
+            "edge_types": [
+              {
+                "type": "PART_OF",
+                "layer": "causal",
+                "property_key": "contained-by"
+              }
+            ]
+          },
+          "error_contains": [
+            "PART_OF",
+            "CORE edge type",
+            "semantic"
+          ],
+          "reason": "Before the guard this LOADED CLEAN, and the graph then carried PART_OF edges in TWO layers at once — lts_traverse(layers=['semantic']) returned half of them while lts_lint called the corpus clean. A redefined edge is a LIE, not a loss."
+        },
+        {
+          "assert": "profile_refused",
+          "given_profile": {
+            "domain": {
+              "id": "rogue",
+              "namespaces": [
+                "rogue"
+              ]
+            },
+            "edge_types": [
+              {
+                "type": "PART_OF",
+                "layer": "semantic"
+              }
+            ]
+          },
+          "error_contains": [
+            "PART_OF",
+            "EVEN IDENTICALLY"
+          ],
+          "reason": "Refused even when the redefinition changes nothing — the SAME answer the property-key path gives. A rule with an exception is a rule every future author has to re-derive."
+        }
+      ]
+    },
+    {
+      "case_id": "EDGETYPE-NAME-SHAPE",
+      "title": "SL-30 an edge-type name the parser would read as SOMETHING ELSE is REFUSED",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-30"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "profile_refused",
+          "given_profile": {
+            "domain": {
+              "id": "d",
+              "namespaces": [
+                "d"
+              ]
+            },
+            "edge_types": [
+              {
+                "type": "clin-ical.GOVERNS",
+                "layer": "semantic"
+              }
+            ]
+          },
+          "error_contains": [
+            "clin-ical.GOVERNS",
+            "SUBSTITUTED"
+          ],
+          "reason": "Measured: the parser reads `clin-ical.GOVERNS` as the edge type `ical.GOVERNS` and emits it with NO flag — the [SL-18] substitution class. Line accounting is blind to it because the line WAS consumed."
+        },
+        {
+          "assert": "profile_refused",
+          "given_profile": {
+            "domain": {
+              "id": "d",
+              "namespaces": [
+                "d"
+              ]
+            },
+            "edge_types": [
+              {
+                "type": "CONTRA-INDICATES",
+                "layer": "semantic"
+              }
+            ]
+          },
+          "error_contains": [
+            "CONTRA-INDICATES",
+            "INERT"
+          ],
+          "reason": "A hyphen makes the name unrecognisable to every one of the parser's verb recognisers, so the registration would be inert while reading as functional."
+        }
+      ]
+    },
+    {
+      "case_id": "EDGETYPE-CROSS-PROFILE",
+      "title": "SL-31 two profiles disagreeing about one edge type REFUSE, naming both; agreement merges",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-31"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "profiles_merge_refused",
+          "merge": "edge_types",
+          "given_profiles": [
+            {
+              "domain": {
+                "id": "team-a",
+                "namespaces": [
+                  "a"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "GOVERNS",
+                  "property_key": "governs",
+                  "layer": "semantic"
+                }
+              ]
+            },
+            {
+              "domain": {
+                "id": "team-b",
+                "namespaces": [
+                  "b"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "GOVERNS",
+                  "property_key": "governed-under",
+                  "layer": "entity"
+                }
+              ]
+            }
+          ],
+          "error_contains": [
+            "GOVERNS",
+            "team-a",
+            "team-b",
+            "semantic",
+            "entity"
+          ],
+          "reason": "The two profiles use DIFFERENT property keys, which is exactly why the key-level guard shipped in 3f9a2c1 stayed silent on this. corpora/acme-specs/ is a root of THREE registered corpora, so this is live, not hypothetical."
+        },
+        {
+          "assert": "profiles_merge_refused",
+          "merge": "edge_types",
+          "given_profiles": [
+            {
+              "domain": {
+                "id": "team-b",
+                "namespaces": [
+                  "b"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "GOVERNS",
+                  "property_key": "governed-under",
+                  "layer": "entity"
+                }
+              ]
+            },
+            {
+              "domain": {
+                "id": "team-a",
+                "namespaces": [
+                  "a"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "GOVERNS",
+                  "property_key": "governs",
+                  "layer": "semantic"
+                }
+              ]
+            }
+          ],
+          "error_contains": [
+            "GOVERNS",
+            "team-a",
+            "team-b"
+          ],
+          "reason": "Both orders refuse. A verdict that depended on argument order would be first-wins wearing a hat."
+        },
+        {
+          "assert": "profiles_merge_accepted",
+          "merge": "edge_types",
+          "given_profiles": [
+            {
+              "domain": {
+                "id": "team-a",
+                "namespaces": [
+                  "a"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "EXEMPLIFIES",
+                  "layer": "semantic"
+                }
+              ]
+            },
+            {
+              "domain": {
+                "id": "team-b",
+                "namespaces": [
+                  "b"
+                ]
+              },
+              "edge_types": [
+                {
+                  "type": "EXEMPLIFIES",
+                  "layer": "semantic"
+                },
+                {
+                  "type": "plt.OWNS",
+                  "layer": "entity"
+                }
+              ]
+            }
+          ],
+          "value": {
+            "EXEMPLIFIES": "semantic",
+            "plt.OWNS": "entity"
+          },
+          "reason": "⛔ THE ACCEPTANCE HALF. Without it, a merge that refused EVERYTHING would score green on both refusals above. Same answer as the property-key path: agreement merges, disagreement refuses."
+        }
+      ]
+    },
+    {
+      "case_id": "EDGETYPE-LEGITIMATE",
+      "title": "SL-32 a legitimate profile registration still loads and is VISIBLE",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-32"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "profile_accepted",
+          "given_profile": {
+            "domain": {
+              "id": "lib.ops",
+              "namespaces": [
+                "lib.ops"
+              ]
+            },
+            "edge_types": [
+              {
+                "type": "EXEMPLIFIES",
+                "property_key": "exemplifies",
+                "layer": "semantic"
+              },
+              {
+                "type": "plt.GOVERNS",
+                "layer": "causal"
+              }
+            ]
+          },
+          "edge_types": {
+            "EXEMPLIFIES": "semantic",
+            "plt.GOVERNS": "causal"
+          },
+          "property_edges": {
+            "exemplifies": [
+              "EXEMPLIFIES",
+              "semantic",
+              false
+            ]
+          },
+          "reason": "⛔ THE NEGATIVE CONTROL ON THE GUARDS THEMSELVES. Four refusal assertions above prove the loader CAN refuse; only this proves it does not refuse everything. It also pins that a namespaced type declared purely for its LAYER reaches Profile.edge_types — which is what lts_profile_audit reads to report a registered-but-unused edge type."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-VERSION-ABSENT",
+      "kind": "negative",
+      "title": "SL-34 NO `lts:` marker == LEGACY mode -- the state of the entire installed base",
+      "sl_classes": [
+        "SL-34"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "parse_mode",
+          "given_document": "# Case [SPEC:VER-DOC]\n\n## [VER-A] a node\n- definition: a core key\n- see-also: [VER-B]\n\n## [VER-B] b\n",
+          "format_version": null,
+          "mode": "legacy",
+          "reason": "VERIFIED before A1 shipped: zero of 94 live corpus files carry any version-ish frontmatter key. Absence therefore means LEGACY and MUST never become an error, or the amendment breaks the installed base on the day it lands."
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# Case [SPEC:VER-DOC]\n\n## [VER-A] a node\n- definition: a core key\n- see-also: [VER-B]\n\n## [VER-B] b\n",
+          "kind": "legacy_document",
+          "count": 1,
+          "severity": "warning",
+          "reason": "A1: a parser MUST NOT refuse a legacy document; it MUST warn once per file. This is how an operator counts the un-migrated tail."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-VERSION-PRESENT",
+      "kind": "positive",
+      "title": "SL-34 `lts: \"1.1\"` == STRICT mode, and the GRAPH is byte-identical to legacy",
+      "sl_classes": [
+        "SL-34"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "parse_mode",
+          "given_document": "---\nlts: \"1.1\"\nscope: s\naudience: a\nboundary: b\n---\n\n# Case [SPEC:VER-DOC]\n\n## [VER-A] a node\n- definition: a core key\n- see-also: [VER-B]\n\n## [VER-B] b\n",
+          "format_version": "1.1",
+          "mode": "strict",
+          "graph_identical_to": "# Case [SPEC:VER-DOC]\n\n## [VER-A] a node\n- definition: a core key\n- see-also: [VER-B]\n\n## [VER-B] b\n",
+          "reason": "⛔ THE WHOLE A1 CONTRACT IN ONE ASSERTION. The same content parsed with and without the marker must yield the SAME nodes and the SAME edges, differing ONLY in finding severity. If the marker ever changes the GRAPH, strictness has stopped being stageable and a corpus can no longer migrate one file at a time."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-VERSION-UNSUPPORTED",
+      "kind": "negative",
+      "title": "SL-34 an UNKNOWN version does not silently degrade to legacy",
+      "sl_classes": [
+        "SL-34"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "parse_mode",
+          "given_document": "---\nlts: \"9.9\"\n---\n\n# C [SPEC:U-DOC]\n\n## [U-A] a\n",
+          "format_version": "9.9",
+          "mode": "strict",
+          "reason": "`lts: \"9.9\"` is an author asserting a contract this parser does not implement. Treating it as legacy would answer confidently under the WRONG RULES -- the exact 'signal agrees with the wrong answer' shape [ACME-VISION-EPISTEMICS] names. It is a finding AND the conservative (strict) reading."
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"9.9\"\n---\n\n# C [SPEC:U-DOC]\n\n## [U-A] a\n",
+          "kind": "format_version_unsupported",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-KEY-DECLARED-OR-MARKED",
+      "kind": "negative",
+      "title": "SL-35 A2 -- core parses, `x-` parses exempt, undeclared is named, a typo gets its suggestion",
+      "sl_classes": [
+        "SL-35"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# Case [SPEC:KEY-DOC]\n\n## [KEY-A] a node\n- definition: a CORE key, always legal\n- x-observed-tonight: an EXPLICITLY PRIVATE key, exempt by the marker\n- see-alos: a one-character typo of the core key `see-also`\n- utterly-invented-key: near nothing declared\n",
+          "kind": "undeclared_key",
+          "keys": [
+            "see-alos",
+            "utterly-invented-key"
+          ],
+          "severity": "warning",
+          "reason": "⛔ THE DISCRIMINATION IS THE CASE, not the count. `definition` is CORE and must NOT be flagged; `x-observed-tonight` is EXPLICITLY PRIVATE and must NOT be flagged -- that exemption is the valve that makes the whole regime affordable (2,655 hapax lines migrate mechanically with zero data loss). Only the two genuinely undeclared keys are named. A rule that flagged the core key or the marked key would be switched off within a day, which is the documented fate of every over-firing heuristic in this parser's history."
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# Case [SPEC:KEY-DOC]\n\n## [KEY-A] a node\n- definition: a CORE key, always legal\n- x-observed-tonight: an EXPLICITLY PRIVATE key, exempt by the marker\n- see-alos: a one-character typo of the core key `see-also`\n- utterly-invented-key: near nothing declared\n",
+          "kind": "undeclared_key",
+          "suggestions": {
+            "see-alos": [
+              "see-also"
+            ],
+            "utterly-invented-key": []
+          },
+          "reason": "⛔ AND THE EMPTY LIST IS AS LOAD-BEARING AS THE POPULATED ONE. `see-alos` is one edit from a DECLARED name, so the diagnostic can say 'did you mean'. `utterly-invented-key` is near nothing, so it must NOT guess -- it says declare/mark/rewrite instead. Closed membership is what buys this precision; the shape-heuristic it replaces measured 96% false-positive on real corpora."
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\n---\n\n# Case [SPEC:KEY-DOC]\n\n## [KEY-A] a node\n- definition: a CORE key, always legal\n- x-observed-tonight: an EXPLICITLY PRIVATE key, exempt by the marker\n- see-alos: a one-character typo of the core key `see-also`\n- utterly-invented-key: near nothing declared\n",
+          "kind": "undeclared_key",
+          "severity": "error",
+          "keys": [
+            "see-alos",
+            "utterly-invented-key"
+          ],
+          "reason": "THE SAME BYTES, one marker apart: warning in legacy, ERROR in strict. That difference IS the amendment."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-KEY-PROFILE-DECLARED",
+      "kind": "positive",
+      "title": "SL-35 A2 -- a profile-DECLARED key is clean, proving the check is not just 'is it core?'",
+      "sl_classes": [
+        "SL-35"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# C [SPEC:D-DOC]\n\n## [D-A] a\n- lifecycle-position: ratified\n",
+          "given_declared_keys": [
+            "lifecycle-position"
+          ],
+          "kind": "undeclared_key",
+          "count": 0,
+          "reason": "⛔ THE NEGATIVE CONTROL FOR THE KEY CHECK. Without this, a check that simply flagged every non-core key would score green on the case above and the profile-declaration tier -- half the regime -- would be inert while reading as functional (SPEC §1.3.1 constraint 3's own words, one level up, which is exactly how V5 happened)."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-VERB-PROSE-TARGET",
+      "kind": "negative",
+      "title": "SL-36 A3 -- an unregistered verb with a PROSE target no longer vanishes silently",
+      "sl_classes": [
+        "SL-36"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# Case [SPEC:VRB-DOC]\n\n## [VRB-A] a\n\n## [VRB-B] b\n\n## Relationships\n### Semantic\n- [VRB-A] BUILDS_ON the earlier design, described in prose\n- [VRB-A] UPHOLDS [VRB-B]\n",
+          "given_domain_verbs": [],
+          "kind": "unrecognized_verb_line",
+          "count": 1,
+          "reason": "MEASURED before the fix: `- [VRB-A] BUILDS_ON the earlier design` is inside `## Relationships`, so its author unambiguously meant an edge -- and the parser's `_find_edge_type` returned None and the WHOLE LINE was dropped with no flag, no finding and no coverage record. SPEC §2.4's 'preserved but flagged' covers the bracket-anchored case only; this one was never specified at all (review V11, class b). It still does not MINT -- minting an unknown verb would fabricate a type -- but it is no longer silent."
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "# Case [SPEC:VRB-DOC]\n\n## [VRB-A] a\n\n## [VRB-B] b\n\n## Relationships\n### Semantic\n- [VRB-A] BUILDS_ON the earlier design, described in prose\n- [VRB-A] UPHOLDS [VRB-B]\n",
+          "given_domain_verbs": [
+            "UPHOLDS"
+          ],
+          "kind": "unregistered_verb",
+          "count": 0,
+          "reason": "⛔ THE NEGATIVE CONTROL FOR THE VERB CHECK. Register UPHOLDS and its finding must DISAPPEAR. Without this arm, a check that flagged every verb unconditionally would score green above -- and `domain_verbs` reaching the parse is precisely the V5b hook whose deadness this whole era exists to close."
+        }
+      ]
+    },
+    {
+      "case_id": "ERA1-ENTRY-POINT-EQUIVALENCE",
+      "kind": "positive",
+      "title": "SL-37 the parse is a function of (bytes, config) -- the ENTRY POINT is not an input",
+      "sl_classes": [
+        "SL-37"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "entry_point_equivalent",
+          "negative_control": true,
+          "reason": "⛔ THE CASE THAT WOULD HAVE CAUGHT V5 IN ALL THREE OF ITS FORMS. MEASURED Era 0: 5 divergences across 3 production paths -- `property_edges` reached ZERO of them, `domain_verbs` and `profile_layers` reached one DIFFERENT path each, and (V5c, found in Era 1) a corpus's own registered `profile:` reached the SERVED graph through none. MEASURED Era 1 after C3/C4: 0. `negative_control` re-runs the comparison with one path deliberately starved and requires it to go red -- because an instrument that can only report SUCCESS is not an instrument."
+        }
+      ]
+    },
+    {
+      "case_id": "REVIEWER-SHAPES-VALID",
+      "kind": "positive",
+      "title": "SL-40 one valid node of each review and extension shape passes the SHIPPED reviewer profile",
+      "sl_classes": [
+        "SL-40"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "reviewer_shapes",
+          "given_document": "---\nlts: \"1.1\"\ntitle: \"reviewer shapes control\"\n---\n# Review shape [REVIEW-CTL-20261007T000000Z-AB12]\n\n- review-format-version: 2\n- verdict: in-progress\n- reviewed-corpus: example\n- reviewed-document: /example/doc.lts\n- reviewed-document-hash: sha256:0\n- node-count-reviewed: 0\n- route: mcp\n- engine-build: example\n- query-surface: present\n- core-proc-source: engine\n- core-proc-hash: sha256:0\n- extensions-applied: none\n- findings-by-severity: none\n- not-examined: nothing recorded\n- caller-context: example\n- write-root-caveat: example\n- reviewer-model: example\n- creation-ledger-state: recorded\n- site-config: none\n- site-overrides: MISSING\n- registry-mcp: env /example/registry.json sha256:0\n- registry-cli: env /example/registry.json sha256:0\n## Unreviewed shape [UNREVIEWED-CTL-20261007T000000Z-AB12]\n\n- review-format-version: 2\n- reviewed-corpus: example\n- reviewed-document: /example/doc.lts\n- reviewed-document-hash: sha256:0\n- stop-reason: example\n- gate-output: example\n- route: mcp\n- engine-build: example\n- creation-ledger-state: recorded\n- site-config: none\n- site-overrides: MISSING\n- registry-mcp: env /example/registry.json sha256:0\n- registry-cli: env /example/registry.json sha256:0\n## Revfinding shape [REVFINDING-CTL-20261007T000000Z-AB12-1]\n\n- rule: example:REVRULE-CTL-1\n- rule-hash: sha256:0\n- rule-reliability: validated\n- about-node: example:DOC-1\n- about-node-hash: sha256:0\n- severity: minor\n- evidence: example\n- evidence-lines: 1-1\n- hook: REVHOOK-DETERMINISTIC\n- kind: example\n- part-of: [REVIEW-CTL-20261007T000000Z-AB12]\n## Revcheck shape [REVCHECK-CTL-20261007T000000Z-AB12-1]\n\n- rule: example:REVRULE-CTL-1\n- rule-hash: sha256:0\n- outcome: passed\n- reason: example\n- part-of: [REVIEW-CTL-20261007T000000Z-AB12]\n## Revprov shape [REVPROV-CTL-20261007T000000Z-AB12-1]\n\n- kind: example\n- source: engine\n- hash: sha256:0\n- loaded-via: lts_node\n- part-of: [REVIEW-CTL-20261007T000000Z-AB12]\n- realpath: /example/path.lts\n## Revext shape [REVEXT-CTL]\n\n- applies-to: example\n- version: 1\n- authority: example\n- hook-contract-version: 1\n## Revhook shape [REVHOOK-CTL-STRUCTURE]\n\n- hook-contract-version: 1\n- stub-of: factlattice-reviewer:REVHOOK-STRUCTURE\n## Revproc shape [REVPROC-CTL-1]\n\n- order: 1\n- attaches-to-hook: [REVHOOK-CTL-STRUCTURE]\n- applies-rule: [REVRULE-CTL-1]\n## Revrule shape [REVRULE-CTL-1]\n\n- applies-to: example\n- kind: example\n- severity: minor\n- authority: example\n- on-fail: finding\n- planted-violation: ../fixtures/example-planted.lts\n- clean-twin: ../fixtures/example-clean.lts\n- note: a rule the control exercises\n",
+          "given_node_prefixes": {
+            "REVIEW-CTL-20261007T000000Z-AB12": "REVIEW",
+            "UNREVIEWED-CTL-20261007T000000Z-AB12": "UNREVIEWED",
+            "REVFINDING-CTL-20261007T000000Z-AB12-1": "REVFINDING",
+            "REVCHECK-CTL-20261007T000000Z-AB12-1": "REVCHECK",
+            "REVPROV-CTL-20261007T000000Z-AB12-1": "REVPROV",
+            "REVEXT-CTL": "REVEXT",
+            "REVHOOK-CTL-STRUCTURE": "REVHOOK",
+            "REVPROC-CTL-1": "REVPROC",
+            "REVRULE-CTL-1": "REVRULE"
+          },
+          "expect_strict_mode": true,
+          "expect_v3": [],
+          "expect_undeclared_keys": [],
+          "reason": "A-E4. The document is stamped lts 1.1, so an undeclared key would be a lint ERROR in a real review. Every key the shapes carry is declared by the profile and every required key is present. Paired with the stripped twin: a profile whose required lists were silently emptied also gives zero V3 findings here, which is exactly why the twin exists."
+        }
+      ]
+    },
+    {
+      "case_id": "REVIEWER-SHAPES-STRIPPED",
+      "kind": "negative",
+      "title": "SL-40 the same nine nodes with every required property removed give EXACTLY the expected V3 findings",
+      "sl_classes": [
+        "SL-40"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "reviewer_shapes",
+          "given_document": "---\nlts: \"1.1\"\ntitle: \"reviewer shapes control\"\n---\n# Review shape [REVIEW-CTL-20261007T000000Z-AB12]\n\n- note: stripped of every required property\n## Unreviewed shape [UNREVIEWED-CTL-20261007T000000Z-AB12]\n\n- note: stripped of every required property\n## Revfinding shape [REVFINDING-CTL-20261007T000000Z-AB12-1]\n\n- note: stripped of every required property\n## Revcheck shape [REVCHECK-CTL-20261007T000000Z-AB12-1]\n\n- note: stripped of every required property\n## Revprov shape [REVPROV-CTL-20261007T000000Z-AB12-1]\n\n- note: stripped of every required property\n## Revext shape [REVEXT-CTL]\n\n- note: stripped of every required property\n## Revhook shape [REVHOOK-CTL-STRUCTURE]\n\n- note: stripped of every required property\n## Revproc shape [REVPROC-CTL-1]\n\n- note: stripped of every required property\n## Revrule shape [REVRULE-CTL-1]\n\n- note: stripped of every required property\n",
+          "given_node_prefixes": {
+            "REVIEW-CTL-20261007T000000Z-AB12": "REVIEW",
+            "UNREVIEWED-CTL-20261007T000000Z-AB12": "UNREVIEWED",
+            "REVFINDING-CTL-20261007T000000Z-AB12-1": "REVFINDING",
+            "REVCHECK-CTL-20261007T000000Z-AB12-1": "REVCHECK",
+            "REVPROV-CTL-20261007T000000Z-AB12-1": "REVPROV",
+            "REVEXT-CTL": "REVEXT",
+            "REVHOOK-CTL-STRUCTURE": "REVHOOK",
+            "REVPROC-CTL-1": "REVPROC",
+            "REVRULE-CTL-1": "REVRULE"
+          },
+          "expect_strict_mode": true,
+          "expect_v3": [
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "review-format-version"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "verdict"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "reviewed-corpus"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "reviewed-document"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "reviewed-document-hash"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "node-count-reviewed"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "route"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "engine-build"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "query-surface"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "core-proc-source"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "core-proc-hash"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "extensions-applied"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "findings-by-severity"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "not-examined"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "caller-context"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "write-root-caveat"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "reviewer-model"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "creation-ledger-state"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "site-config"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "site-overrides"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "registry-mcp"
+            ],
+            [
+              "REVIEW-CTL-20261007T000000Z-AB12",
+              "registry-cli"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "review-format-version"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "reviewed-corpus"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "reviewed-document"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "reviewed-document-hash"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "stop-reason"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "gate-output"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "route"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "engine-build"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "creation-ledger-state"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "site-config"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "site-overrides"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "registry-mcp"
+            ],
+            [
+              "UNREVIEWED-CTL-20261007T000000Z-AB12",
+              "registry-cli"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "rule"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "rule-hash"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "rule-reliability"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "about-node"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "about-node-hash"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "severity"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "evidence"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "evidence-lines"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "hook"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "kind"
+            ],
+            [
+              "REVFINDING-CTL-20261007T000000Z-AB12-1",
+              "part-of"
+            ],
+            [
+              "REVCHECK-CTL-20261007T000000Z-AB12-1",
+              "rule"
+            ],
+            [
+              "REVCHECK-CTL-20261007T000000Z-AB12-1",
+              "rule-hash"
+            ],
+            [
+              "REVCHECK-CTL-20261007T000000Z-AB12-1",
+              "outcome"
+            ],
+            [
+              "REVCHECK-CTL-20261007T000000Z-AB12-1",
+              "reason"
+            ],
+            [
+              "REVCHECK-CTL-20261007T000000Z-AB12-1",
+              "part-of"
+            ],
+            [
+              "REVPROV-CTL-20261007T000000Z-AB12-1",
+              "kind"
+            ],
+            [
+              "REVPROV-CTL-20261007T000000Z-AB12-1",
+              "source"
+            ],
+            [
+              "REVPROV-CTL-20261007T000000Z-AB12-1",
+              "hash"
+            ],
+            [
+              "REVPROV-CTL-20261007T000000Z-AB12-1",
+              "loaded-via"
+            ],
+            [
+              "REVPROV-CTL-20261007T000000Z-AB12-1",
+              "part-of"
+            ],
+            [
+              "REVEXT-CTL",
+              "applies-to"
+            ],
+            [
+              "REVEXT-CTL",
+              "version"
+            ],
+            [
+              "REVEXT-CTL",
+              "authority"
+            ],
+            [
+              "REVEXT-CTL",
+              "hook-contract-version"
+            ],
+            [
+              "REVHOOK-CTL-STRUCTURE",
+              "hook-contract-version"
+            ],
+            [
+              "REVPROC-CTL-1",
+              "order"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "applies-to"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "kind"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "severity"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "authority"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "on-fail"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "planted-violation"
+            ],
+            [
+              "REVRULE-CTL-1",
+              "clean-twin"
+            ]
+          ],
+          "expect_undeclared_keys": [],
+          "reason": "A-E4. All V1-V10 findings are WARNINGS (F3), so required fields are enforced by counting V3 findings, never by a lint exit code. The expected list is written here, in the oracle, from the spec's section 4.2 and the addendum (C3b, C4b, ruling B); it is NOT read from the profile it checks. If the profile loses a required key this list is longer than what is produced and the case goes red; if it gains one, shorter."
+        }
+      ]
+    }
+  ]
+}

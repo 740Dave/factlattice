@@ -1,0 +1,326 @@
+---
+title: "Domain Profile: Clinical / Medical"
+id: "DOMAIN:CLN"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding patient-specific medical knowledge — problems, medications, functional status, care goals, provenance-tracked observations, and the disputes and gates that arise across care settings — as a time-indexed factbase for a single patient"
+created: 2026-04-01
+updated: 2026-04-01
+---
+# Domain Profile: Clinical / Medical [DOMAIN:CLN]
+
+> Encodes what is known about the care of a single patient. Every clinical assertion is time-indexed, attributed to a source, and qualified by the mode in which it holds. The factbase is patient-specific by design: it is not a medical textbook but the durable, queryable record of one person's situation, decisions, and unresolved conflicts.
+
+> Contradiction is data, not error. When two sources — a physician, a facility, a family member — assert incompatible things, both assertions are retained and joined by a contradiction edge. Resolution is a separate, later act, not a precondition for recording.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | CLN |
+| Sub-Namespaces | CLN.PT (patient record), CLN.CARE (care-team and institutional actors), CLN.EVID (evidence and communications log) |
+| Location | Per-patient corpus, access-restricted |
+| Conventions File | This profile |
+| Maturity | Reference profile — generic, adopt and extend per care context |
+
+---
+
+## 2. Structure
+
+### 2.1 Patient Record (CLN.PT)
+
+The clinical substrate: the patient's problems, diagnoses, risks, medications, orders, and functional status. Each node is time-indexed (`as_of`) and carries provenance. Nodes here answer "what is true about this patient, as of when, according to whom."
+
+Contents:
+- Patient profile and baseline
+- Problems and diagnoses
+- Medications, orders, and restrictions
+- Functional status, mode-qualified
+- Risks and their mitigations
+- Care goals and discharge gates
+
+### 2.2 Care Team and Actors (CLN.CARE)
+
+The people and institutions involved: clinicians, family members, advocates, and facilities. Institutional actors are first-class because their positions can conflict with one another and with the clinical record.
+
+Contents:
+- Clinicians and care providers
+- Family members and patient advocates
+- Facilities and care settings
+- Institutional positions (a facility's stated stance on a discharge, an order, or a dispute)
+
+### 2.3 Evidence and Communications (CLN.EVID)
+
+The provenance layer: the observations, documents, and communications that back every clinical assertion, plus the administrative and dispute record that arises when positions conflict.
+
+Contents:
+- Clinical observations with source and confidence
+- Communications log (who said what, when, in what channel)
+- Documents and administrative proceedings
+- Conflict records linking incompatible positions
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-CLN-1: Patient-Specific, Not General Medical Knowledge
+
+- decision: This domain encodes facts about one patient. General clinical knowledge (drug interactions in the abstract, disease natural history) lives elsewhere and is referenced, not duplicated.
+- rationale: A patient record and a medical knowledge base have different truth conditions. "Metformin is contraindicated with severe renal impairment" is general; "this patient's metformin was held on 2026-02-25 due to an eGFR of 22" is specific. Conflating them produces a record that is neither a reliable chart nor a reliable reference.
+- status: foundational
+
+### 3.2 DD-CLN-2: Every Assertion Is Time-Indexed
+
+- decision: Every clinical node carries `as_of`. There are no timeless clinical facts.
+- rationale: Clinical truth is perishable. A functional baseline, a medication list, and a risk assessment are all valid only as of an observation. Omitting the date makes stale facts indistinguishable from current ones.
+- status: foundational
+
+### 3.3 DD-CLN-3: Provenance Is Mandatory
+
+- decision: Every clinical assertion carries `source` (who asserted it) and `confidence`. Unattributed clinical facts fail linting.
+- rationale: In a multi-actor care situation the same claim from an attending physician and from an intake form are epistemically different. Provenance is what lets the record survive disagreement.
+- status: foundational
+
+### 3.4 DD-CLN-4: Mode Qualification for Functional Claims
+
+- decision: Functional-status assertions carry a `mode-match` qualifier naming the context in which they hold (e.g. "with a walker" vs "unassisted").
+- rationale: "Ambulatory" is meaningless without its mode. A patient who walks with an assistive device and cannot walk without one is not contradicted — the two claims hold in different modes. Encoding the mode prevents a real distinction from reading as an error.
+- status: foundational
+
+### 3.5 DD-CLN-5: Contradictions Are Retained, Not Resolved on Write
+
+- decision: When two sources assert incompatible things, both nodes are kept and joined by a `cln.CONTRADICTS` edge. A `CONFLICT-` node may summarize the dispute. Resolution, if it comes, is a later node with its own provenance.
+- rationale: In adversarial care situations (a family and a facility disagreeing about a discharge), premature resolution destroys the evidence that the disagreement existed. The record's value is that it holds both positions with equal fidelity.
+- status: foundational
+
+### 3.6 DD-CLN-6: Confidentiality Is a First-Class Property
+
+- decision: Patient nodes carry a `confidentiality` marker. Restricted nodes are excluded from any traversal or rendering surface not explicitly cleared for protected health information.
+- rationale: A medical factbase carries protected information by construction. Confidentiality must be structural, not a matter of where the file happens to sit.
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Patient Record Prefixes (CLN.PT)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| PT- | Patient profile / baseline | [PT-PROFILE], [PT-BASELINE-MOBILITY] |
+| PROB- | Problem | [PROB-CHF], [PROB-DELIRIUM] |
+| DX- | Diagnosis | [DX-PRIMARY], [DX-COMORBID-1] |
+| RISK- | Clinical risk | [RISK-FALLS], [RISK-READMISSION] |
+| MED- | Medication | [MED-ANTICOAGULANT], [MED-HELD-1] |
+| ORD- | Order / restriction | [ORD-NPO], [ORD-FALL-PRECAUTIONS] |
+| FUNC- | Functional status | [FUNC-AMBULATION], [FUNC-ADL] |
+| GOAL- | Care goal | [GOAL-RETURN-HOME], [GOAL-PAIN-CONTROL] |
+| GATE- | Discharge / transition gate | [GATE-SAFE-DISCHARGE], [GATE-PT-CLEARANCE] |
+
+### 4.2 Care Team Prefixes (CLN.CARE)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| CLIN- | Clinician / provider | [CLIN-ATTENDING], [CLIN-PT] |
+| FAM- | Family member / advocate | [FAM-ADVOCATE], [FAM-POA] |
+| FACIL- | Facility / care setting | [FACIL-HOSPITAL], [FACIL-SNF] |
+| POS- | Institutional position | [POS-FACIL-DISCHARGE-READY] |
+
+### 4.3 Evidence Prefixes (CLN.EVID)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| OBS- | Clinical observation | [OBS-GAIT-2026-02-25], [OBS-VITALS] |
+| COMM- | Communication log entry | [COMM-CARE-CONFERENCE-1] |
+| DOC- | Document / administrative record | [DOC-DISCHARGE-PLAN], [DOC-APPEAL] |
+| CONFLICT- | Conflict record | [CONFLICT-DISCHARGE-DISPUTE] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Provenance Properties (All Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| as_of | date | Date the assertion was valid |
+| source | string | Who asserted it (role and, where relevant, name) |
+| confidence | enum | high, medium, low |
+| confidentiality | enum | routine, restricted |
+
+### 5.2 Clinical Properties (CLN.PT)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| diagnosis | string | Clinical diagnosis |
+| medication | string | Medication name and dose |
+| contraindication | string | Contraindicated drug, treatment, or activity |
+| mode-match | string | Context in which a functional claim holds |
+| current_setting | enum | hospital, skilled-nursing, home, other |
+| admission_date | date | Date of admission to current setting |
+| admitting_diagnosis | string | Reason for admission |
+| functional_note | string | Narrative qualifier on a functional-status node |
+| status | enum | active, resolved, held, monitoring |
+
+### 5.3 Care-Team Properties (CLN.CARE)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| role | string | Clinical or advocacy role |
+| contact | string | Contact channel (restricted) |
+| authority | string | Scope of decision authority (e.g. power of attorney) |
+| stated-position | string | The actor's asserted stance on a contested question |
+
+### 5.4 Evidence Properties (CLN.EVID)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| channel | enum | in-person, phone, portal, letter, care-conference |
+| observed-by | string | Clinician or party who made the observation |
+| contradicts | reference | Node id this observation or position contradicts |
+| disposition | enum | open, escalated, resolved, withdrawn |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| cln.CONTRADICTS | semantic | One position or observation contradicts another; both retained |
+| cln.SUPERSEDES_CLINICALLY | temporal | A newer observation supersedes an older one for the same measure |
+| cln.CONDITIONAL_ON | causal | A functional claim holds only in a stated mode or condition |
+| cln.RISK_OF | causal | A problem or diagnosis creates a risk |
+| cln.MITIGATED_BY | causal | A risk is mitigated by an order, intervention, or precaution |
+| cln.ASSERTED_BY | entity | A clinical node is attributed to a care-team actor |
+| cln.EVIDENCED_BY | semantic | A clinical assertion is backed by an observation or document |
+| cln.GATES | causal | A gate node blocks a transition until criteria are met |
+
+---
+
+## 7. Document Type Tags
+
+| Tag | Description |
+|-----|-------------|
+| PATIENT | Patient record document (problems, meds, functional status) |
+| CARE-TEAM | Care-team and institutional-actor roster |
+| OBSERVATION | Time-indexed clinical observation set |
+| COMMS | Communications log |
+| CONFLICT | Dispute and administrative-proceeding record |
+| GOALS | Care goals and discharge gates |
+| RESTRICTED | Contains protected health information (excluded from uncleared traversal) |
+
+---
+
+## 8. Confidence Methodology
+
+Confidence is a required, coarse-grained annotation (`high`, `medium`, `low`) rather than a numeric score, because clinical certainty is rarely quantifiable at the point of assertion.
+
+- **high** — directly observed by a clinician, or documented in the chart
+- **medium** — reported second-hand, or inferred from consistent indirect evidence
+- **low** — single unverified source, or an assertion in active dispute
+
+Confidence decays with staleness: a functional-status node more than one care-setting transition old is downgraded until re-observed. A node in an open `CONFLICT-` is capped at `medium` regardless of source, because the contradiction is itself evidence of uncertainty.
+
+---
+
+## 9. Temporal Semantics
+
+### 9.1 Time-Indexing
+
+Every clinical assertion carries `as_of`. A traversal engine SHOULD prefer the most recent assertion for a given measure and SHOULD flag any assertion whose `as_of` predates the current care setting's admission.
+
+### 9.2 Clinical Supersession
+
+When a newer observation replaces an older one for the same measure, a `cln.SUPERSEDES_CLINICALLY` edge is created and the older node is retained with `status: resolved` or `status: monitoring`. The record preserves what was believed and when.
+
+### 9.3 Mode-Qualified Validity
+
+A functional claim carrying `mode-match` is valid only within its stated mode. Two mode-qualified claims about the same function are not a contradiction unless they share a mode.
+
+---
+
+## 10. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["PT-PROFILE"]
+  primary_layers: [temporal, causal]
+  focus_areas:
+    profile:
+      entry: ["PT-PROFILE"]
+      layers: [entity, semantic]
+      keywords: ["patient", "baseline", "who", "overview"]
+    problems:
+      entry: ["PROB-INDEX"]
+      layers: [causal, semantic]
+      keywords: ["problem", "diagnosis", "condition", "risk"]
+    medications:
+      entry: ["MED-INDEX"]
+      layers: [semantic]
+      keywords: ["medication", "drug", "dose", "contraindication", "held"]
+    functional:
+      entry: ["FUNC-INDEX"]
+      layers: [temporal, causal]
+      keywords: ["function", "mobility", "ambulation", "adl", "mode"]
+    disposition:
+      entry: ["GOAL-INDEX", "GATE-INDEX"]
+      layers: [causal]
+      keywords: ["goal", "discharge", "gate", "transition", "home"]
+    conflicts:
+      entry: ["CONFLICT-INDEX"]
+      layers: [semantic, temporal]
+      keywords: ["conflict", "dispute", "contradiction", "appeal", "disagreement"]
+    evidence:
+      entry: ["OBS-INDEX", "COMM-INDEX"]
+      layers: [semantic, temporal]
+      keywords: ["observation", "communication", "source", "document", "evidence"]
+```
+
+---
+
+## 11. Corpus Structure (Per-Patient)
+
+```
+<patient>/
+├── RESTRICTED-*.md                    # Protected identifiers, contacts (excluded from traversal)
+├── record/                            # CLN.PT
+│   ├── 01-profile.lts                 # PT- nodes
+│   ├── 02-problems.lts                # PROB-, DX-, RISK- nodes
+│   ├── 03-medications.lts             # MED-, ORD- nodes
+│   ├── 04-functional-status.lts       # FUNC- nodes (mode-qualified)
+│   └── 05-goals-gates.lts             # GOAL-, GATE- nodes
+├── care-team/                         # CLN.CARE
+│   ├── 10-providers.lts               # CLIN- nodes
+│   ├── 11-family-advocates.lts        # FAM- nodes
+│   └── 12-institutions.lts            # FACIL-, POS- nodes
+├── evidence/                          # CLN.EVID
+│   ├── 20-observations.lts            # OBS- nodes
+│   ├── 21-communications.lts          # COMM- nodes
+│   ├── 22-documents.lts               # DOC- nodes
+│   └── 23-conflicts.lts               # CONFLICT- nodes
+├── events/
+│   └── quality.jsonl                  # Quality event stream
+└── deltas/
+    └── DELTA-{date}-{short-sha}.lts
+```
+
+---
+
+## 12. Why This Domain Exercises the Format
+
+The clinical domain stresses parts of the format that first-party technical domains do not:
+
+1. **Provenance and confidence are load-bearing, not decorative** — every assertion has a source and a certainty because the record must survive disagreement between actors.
+2. **Contradiction is a first-class edge** — the format holds incompatible positions with equal fidelity rather than forcing resolution on write.
+3. **Mode qualification** — a distinct temporal/conditional mechanism (`mode-match`, `cln.CONDITIONAL_ON`) that other domains rarely need.
+4. **Confidentiality as structure** — restricted nodes are excluded from traversal by construction, demonstrating access control at the graph layer.
+
+A format that encodes both a software architecture and a contested patient discharge with the same structural discipline is domain-agnostic in fact, not just in claim.
+
+---
+
+**Version**: 1.0
+**Created**: 2026-04-01
+**Updated**: 2026-04-01
+**Status**: Draft

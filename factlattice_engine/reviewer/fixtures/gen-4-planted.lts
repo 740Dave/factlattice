@@ -1,0 +1,10 @@
+# Fixture: a caveat with no date [SPEC:FIXTURE-GEN4-PLANTED]
+
+## [FX4P-A] Limits of the measurement
+
+- caveat: measured on one machine only
+
+## [FX4P-B] Another limit
+
+- caveat: the sample excludes weekends
+- caveat-date: 2026-10-01

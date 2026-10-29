@@ -1,0 +1,11 @@
+# Fixture: a document that is consistent [SPEC:FIXTURE-GEN1-CLEAN]
+
+## [FX1C-A] Cache policy
+
+- claim: the response cache is enabled for read requests
+- source: the design note
+
+## [FX1C-B] Cache in production
+
+- claim: the response cache is enabled for read requests in production and bypassed for writes
+- source: The deployment note

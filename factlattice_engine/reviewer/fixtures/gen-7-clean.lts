@@ -1,0 +1,6 @@
+# Fixture: a document with no credential [SPEC:FIXTURE-GEN7-CLEAN]
+
+## [FX7C-A] Deployment note
+
+- note: the deploy user reads its access key from the secrets manager at start and never stores it
+- source: the runbook

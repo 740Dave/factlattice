@@ -1,0 +1,65 @@
+---
+title: "Verb-parity conformance profile"
+id: "PROFILE:PROFILE-VERB-PARITY"
+domain: cf.parity
+scope: "A profile whose ONLY purpose is to register bare relationship verbs, so the verb-surface parity conformance family has a validated extension to cross-product against. Not a description of any deployment."
+audience: "tests/test_verb_surface_parity.py, and any reader asking what a relationship_verbs registration looks like in .lts form."
+boundary: "Registers verbs and a namespace. No prefixes, no doctags, no enums, no lifecycle — a profile that declared those would make this fixture a validator test as well, and it is not."
+not-this: "Not a deployment profile. The verbs below are chosen to span the interesting shapes: a plain verb, a multi-word UPPER_SNAKE verb, and a verb whose kebab property key collides with an English word a corpus already writes as prose."
+status: draft
+created: 2026-08-13
+---
+# Verb-parity conformance profile [PROFILE:PROFILE-VERB-PARITY]
+
+> ⛔ THE POINT OF THIS FILE. The parity test must read its verbs FROM A PROFILE, because
+> transcribing them into a Python literal is the exact move that produced the defect it
+> exists to catch: `control.expected.json` hand-picked two members of a table the engine
+> enumerates, both worked, and the suite was green while four other verbs minted nothing.
+> Registration here, assertion in the test, and NOTHING in between that re-states the list.
+>
+> ⛔ BOOTSTRAPPING INVARIANT (`factlattice/profile.py::_assert_core_only_parse`). A profile
+> is parsed with CORE notation only — it cannot use the vocabulary it registers. There is
+> therefore no `## Relationships` section here and no relationship-bearing property.
+
+## [PROFILE-DOMAIN] Domain identity
+
+- domain-id: cf.parity
+- domain-name: Conformance — verb-surface parity fixture
+- domain-version: 1.0
+- namespaces: cf.parity
+
+## Registered relationship verbs
+
+> BARE verbs. Registration is what makes `[A] VERB [B]` a recognised triple — and, since
+> [FL-VERB-PARITY], what makes `- verb: [B]` mint the same edge. One registration, two
+> surfaces, by derivation rather than by a second table someone has to remember.
+
+### [EDGETYPE-USES] A consumes or applies B
+
+- edge-type: USES
+- tier: domain
+- definition: A consumes or applies B. The single-word shape, and the verb whose property key `uses` was measured minting zero edges across 13 authored lines.
+
+### [EDGETYPE-UPHOLDS] A preserves invariant B
+
+- edge-type: UPHOLDS
+- tier: domain
+- definition: A preserves the invariant B. The verb whose property key `upholds` was measured minting zero edges across 14 authored lines.
+
+### [EDGETYPE-DOCUMENTS] A is the provenance record for B
+
+- edge-type: DOCUMENTS
+- tier: domain
+- definition: A is the provenance record for B. Its property key `documents` reads as an ordinary English plural, which is exactly why an author writes it and exactly why nobody noticed it minted nothing.
+
+### [EDGETYPE-REALIZES] A makes design B real
+
+- edge-type: REALIZES
+- tier: domain
+- definition: A makes the design B real.
+
+### [EDGETYPE-APPLIES-AT-PHASE] A applies at phase B
+
+- edge-type: APPLIES_AT_PHASE
+- tier: domain
+- definition: The MULTI-WORD UPPER_SNAKE shape, present so the kebab derivation (`APPLIES_AT_PHASE` -> `applies-at-phase`) is checked rather than assumed.

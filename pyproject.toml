@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factlattice"
+version = "0.1.0"
+description = "FactLattice (.lts) parser and factlattice-engine (service name lts-engine) with a deterministic core (no model inference) — the LTS-tooling library with four composed API layers (query, analytics, lint, render) over the graph index, plus preview and typed writers."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "740Dave" }]
+keywords = ["factlattice", "lts", "lts-engine", "knowledge-graph", "parser", "graph-analytics", "linter"]
+
+# The COPIED CORE (parser/index_builder/hashing/constants/build) is stdlib-only.
+# YAML is needed ONLY by the net-new §5 profile loader, and only for .yaml profiles
+# — hence an optional extra, not a hard dependency. The parser core is stdlib-only, but the
+# authoring gate (factlattice/authoring/schema.py) uses pydantic, and lint and the `call`
+# command import it, so pydantic is a declared dependency.
+dependencies = ["pydantic>=2"]
+
+[project.optional-dependencies]
+profile = ["PyYAML>=5.1"]
+# The OPTIONAL model stack. The core engine's only required dependency is pydantic (above); without
+# these extras it reports semantic suggestions as "unavailable".
+semantic = ["numpy>=1.24", "onnxruntime>=1.17"]
+test = ["pytest>=7", "PyYAML>=5.1"]
+
+[project.scripts]
+factlattice-build = "factlattice.build:main"
+
+[tool.setuptools]
+packages = [
+    "factlattice",
+    "factlattice.selfcheck",
+    "factlattice_engine",
+    "factlattice_engine.analytics",
+    "factlattice_engine.semantic",
+    "factlattice_engine.lint",
+    "factlattice_engine.selfcheck",
+    "factlattice.authoring",
+    "factlattice_engine.render",
+    "factlattice_engine.reviewer",
+]
+
+# The parser self-verification CONTROL PAIR must ship with the INSTALLED package: the
+# point of `lts_selfcheck` is that a RUNNING server — possibly a wheel on another
+# machine — can re-parse the control on demand. A control that only exists in a source
+# checkout cannot answer the question the tool exists to ask.
+[tool.setuptools.package-data]
+"factlattice.selfcheck" = ["control.lts", "control.expected.json"]
+# [X8 SHIPPED-ISSUE-PACKAGE-DATA] The factlattice-reviewer corpus (core procedure, hooks, generic rules, config,
+# profile) and each rule's planted-violation / clean-twin fixtures. A deployment without a checkout reads the core
+# procedure from the installed package when the engine does not serve the corpus (Spec A, A-E6).
+"factlattice_engine.reviewer" = ["shipped/*.lts", "fixtures/*.lts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

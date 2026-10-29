@@ -1,0 +1,135 @@
+---
+title: "FactLattice decision record"
+id: "DECISION:FL-DECISIONS"
+domain: MET.FACTLATTICE
+scope: "The load-bearing design decisions behind FactLattice, each with its reasoning, its rejected alternative, and the assumption whose change would reopen it"
+boundary: "Records why the format and engine are shaped as they are. What they do is specified in FL-MODEL, FL-ENGINE and FL-FRESHNESS."
+not-this: "Not a changelog. A changelog records what changed; this records why, and under what premise."
+status: draft
+created: 2026-07-23
+updated: 2026-07-23
+---
+# FactLattice decision record [DECISION:FL-DECISIONS]
+
+> Each decision below carries an `invalidating_assumption`. That field is the contract
+> with a future reader: while the premise holds, defend the decision; when it moves,
+> reopen it. Decisions are append-only — a reversed decision is superseded, not deleted.
+
+---
+
+## [DEC-DERIVED-NOT-STORED] Diagrams are derived from the graph, never stored
+
+- part-of: [FL-DECISIONS]
+- see-also: [INV-DERIVED]
+- see-also: [LAYER-RENDER]
+- status: accepted
+- decision-date: 2026-07-23
+- change: "Hand-embedded diagrams are deprecated; the RENDER layer derives every diagram from the graph at query time."
+- context_for_change:
+    prior_state: "Documents embedded diagrams as static visualization snapshots. The parser explicitly did not read them, so they were content, not knowledge, and nothing connected them to the relationships they depicted."
+    reasoning: "A stored diagram is a second copy of a fact that the graph already holds. Copies drift, and detecting drift requires policing machinery that itself fails quietly. Deriving the diagram at query time removes the second copy, so there is nothing to keep in sync."
+    rejected_alternative: "Keep embedded diagrams and add a freshness marker plus a CI check that re-derives and compares them. Rejected: it preserves the duplication and adds a process that must be maintained forever to catch a class of error that need not exist."
+    counter_argument: "An embedded diagram renders anywhere, with no engine — a plain Markdown viewer shows it."
+    counter_response: "True, and the cost is that it shows a diagram nobody can prove is current. A projection step that runs at publish time gives portable output without a durable second copy."
+    invalidating_assumption: "That the render path is available wherever the corpus is read. If a consumption surface has the documents but not the engine, embedded diagrams become the only option and this decision must be revisited for that surface."
+    implication: "Any prior convention describing embedded diagrams as the expected way to depict a relationship is superseded. A flow is authored as nodes and edges; the picture is a query result."
+
+---
+
+## [DEC-NO-LLM] No model inference anywhere on the query path
+
+- part-of: [FL-DECISIONS]
+- see-also: [INV-DETERMINISTIC]
+- status: accepted
+- decision-date: 2026-07-23
+- change: "Relationships are declared at authoring time and traversed deterministically at query time. No embedding, ranking, or inference step exists in the engine."
+- context_for_change:
+    prior_state: "The default approach to querying a document corpus is retrieval by embedding similarity, which answers with a ranked, probabilistic, model-version-dependent result."
+    reasoning: "For specifications, requirements, decisions and process flows, a confidently approximate answer is the failure mode being designed against. Determinism also makes the engine testable: a fixed corpus and a fixed query have exactly one correct output, which can be asserted."
+    rejected_alternative: "A hybrid — deterministic traversal with an embedding fallback for unlinked content. Rejected for now because a fallback that silently activates makes the whole answer probabilistic while looking deterministic. A clearly separated, explicitly-invoked semantic search alongside the engine remains viable."
+    counter_argument: "Declaring every relationship is expensive, and undeclared relationships are simply invisible."
+    counter_response: "Accepted as a real cost. It is bounded by machine authorship — the Intelligence composing the document declares the links as it writes — and its failure mode is visible: a missing edge shows up as an orphan, a wrong one as a dangle."
+    invalidating_assumption: "That authoring is machine-assisted. If documents were hand-authored at scale, the declaration burden would fall on humans and the trade would need re-pricing."
+    implication: "The engine ships with zero model dependencies and can run offline, in CI, and in a test harness."
+- amended-by: DEC-SEMANTIC-ASSIST (2026-10-02, the maintainer-ratified): the exact answer stays model-free; suggestions may be computed into their own labelled field, from an optional model stack.
+
+---
+
+## [DEC-CONTENT-HASH-ORACLE] Content hash decides freshness; mtime is only a hint
+
+- part-of: [FL-DECISIONS]
+- see-also: [INV-CONTENT-ORACLE]
+- see-also: [MECH-KERNEL]
+- status: accepted
+- decision-date: 2026-07-23
+- change: "Freshness is decided by a content hash. Modification time and size narrow which files are re-hashed and are never a verdict."
+- context_for_change:
+    prior_state: "The obvious implementation compares modification times, which is what most build tooling does."
+    reasoning: "mtime is wrong in both directions in ordinary situations — a checkout or a preserving copy moves content without moving mtime, and a touch moves mtime without moving content. One error serves stale data; the other refuses to serve fresh data."
+    rejected_alternative: "Trust mtime and accept the error rate. Rejected: the failure is silent in the direction that matters most."
+    counter_argument: "Hashing every file on every query is prohibitively expensive."
+    counter_response: "It would be, which is why the hash is maintained incrementally as a Merkle-style root over per-file leaves. The query-path check is an O(1) comparison and reads no files at all."
+    invalidating_assumption: "That corpora are file-backed and readable by the engine. A corpus served over an API that exposes a strong entity tag could use that tag as the oracle instead."
+    implication: "A periodic full re-verify is mandatory, because the mtime hint can miss a change class the fast path cannot see."
+
+---
+
+## [DEC-MACHINE-AUTHORED] Documents are machine-authored and human-reviewed
+
+- part-of: [FL-DECISIONS]
+- see-also: [FL-AUTHORSHIP]
+- status: accepted
+- decision-date: 2026-07-23
+- change: "Humans do not hand-edit .lts documents. An Intelligence composes them; humans read rendered output."
+- context_for_change:
+    prior_state: "Knowledge formats are conventionally optimized for a human author writing in a text editor, which caps how dense and how explicitly linked a document can be."
+    reasoning: "Removing the human-author constraint permits far denser encoding and, more importantly, makes exhaustive relationship declaration affordable — which is the precondition for deterministic traversal."
+    rejected_alternative: "A human-friendly subset that degrades gracefully. Rejected: a subset becomes the de facto format, and the density and link discipline that make the graph useful are the first things dropped."
+    counter_argument: "A format nobody can hand-edit is a format nobody can fix in an emergency."
+    counter_response: "It is plain UTF-8 text with a regular grammar and it can be edited by hand under duress. The constraint is a working convention, not a technical lock."
+    invalidating_assumption: "That capable authoring Intelligences are routinely available to the team maintaining the corpus. If they are not, the density trade inverts."
+    implication: "Human-facing surfaces — rendered sites, dashboards, derived diagrams — are not optional extras. They are the read path."
+
+---
+
+## [DEC-FOUR-LAYERS] The four graph layers are fixed core
+
+- part-of: [FL-DECISIONS]
+- see-also: [MODEL-LAYER]
+- see-also: [PROFILE-BOUNDARY]
+- status: accepted
+- decision-date: 2026-07-23
+- change: "Semantic, temporal, causal and entity are fixed. A domain adds edge types; it cannot add a layer."
+- context_for_change:
+    prior_state: "Every other extensibility surface in the format is pluggable, so layers were an obvious candidate for the same treatment."
+    reasoning: "Cross-domain traversal requires that every domain agrees on what kind of question an edge answers. If a domain could mint a fifth layer, a traversal scoped to 'causal' would silently miss that domain's causal edges, and there would be no mechanical way to notice."
+    rejected_alternative: "Allow namespaced layers with a declared mapping into the core four. Rejected as strictly worse than requiring the author to pick one of four at registration time, for the same result."
+    counter_argument: "Four layers will not fit some domain's relationship taxonomy."
+    counter_response: "The layer is a coarse routing dimension, not a taxonomy. A domain with a hundred edge types still only needs to say, for each, which of four questions it answers."
+    invalidating_assumption: "That a real domain's relationships all answer one of: what is this, when, why, or who. A domain producing a clear counter-example is grounds to reopen."
+    implication: "Layer assignment is mandatory metadata on every registered edge type."
+
+---
+
+## [DEC-SEMANTIC-ASSIST] Semantic retrieval is an assist in its own field, never the answer
+
+- part-of: [FL-DECISIONS]
+- amends: DEC-NO-LLM (the graph edge is the see-also reference)
+- see-also: [INV-DETERMINISTIC], [DEC-NO-LLM]
+- status: accepted
+- decision-date: 2026-10-02
+- ratified-by: The maintainer, 2026-10-02: "Ratify as written" (recorded decision); approval to amend: recorded decision
+- change: "The engine may compute SUGGESTIONS: candidates ranked by embedding similarity, optionally fused with a deterministic lexical-relevance score. It computes them on request (`lts_semantic_find`), and on a lexical zero (`lts_find` `semantic: on_miss`). Suggestions live only in a labelled field that is never the answer. The deterministic answer (nodes, count, total_matched, truncated, complete) stays model-free and byte-identical with suggestions on or off."
+- context_for_change:
+    prior_state: "[DEC-NO-LLM]: no embedding or inference step in the engine; zero model dependencies; a silently-activating embedding fallback rejected; an explicitly-invoked semantic search left viable."
+    reasoning: "Measured: lexical find is substring-over-structure, and stranger-phrased questions return confident zeros until reduced to the author's exact wording (the 2026-09-26 SMD recall gate had 128 of 1,443 misses, all of them retrieval; DS's 2026-10-02 probe Q6 'which vendor version made this Ledger' returned 0). The rejected alternative failed because the fallback was SILENT and made the answer probabilistic. This design is neither: the answer is untouched, and the assist is labelled at the field, item and extent level."
+    rejected_alternative: "Merging semantic hits into nodes, or re-ranking exact hits by similarity by default. Rejected for the original reason: the answer would become probabilistic while looking deterministic."
+    counter_argument: "A field that appears on a zero will be read as an answer by an agent in a hurry."
+    counter_response: "Accepted as the live risk. Controls: a calibrated floor (nothing below it is shown), margin-based 'ambiguous' labels, the matched text on every candidate, a confident-wrong ship gate on a frozen fixture, and a cold-agent findability probe before and after."
+    invalidating_assumption: "That the deterministic answer can be kept byte-identical with semantic on. If any future change lets a candidate reach nodes or a count, this decision fails and [DEC-NO-LLM] governs again unmodified."
+    implication: "The model stack is an optional extra: the core engine still installs and runs in CI with zero model dependencies. With the extra absent, semantic reports status unavailable. Weights are pinned by sha256 and loaded offline; no network at query or index time."
+- implementation-note: 2026-10-02, after S0 (review audit-SEMANTIC-QUERY-S1-S4 F1): two controls named in counter_response were measured and REPLACED, not built. The calibrated score floor was useless (negatives score like hits on cosine), and the 'ambiguous' label is replaced by agreement labels: 'strong match' only when BM25 top-1, embedding top-1 and the fused top-1 agree with embedding margin at least 0.02 and no query term unknown to the corpus; otherwise 'related, not asserted'. Every candidate carries its matched and UNMATCHED query terms and its scores; the suggestion block carries the model and the index version. Evidence: lts-semantic-recall-v1 fixture and the design doc's change log. The decision's change and invalidating_assumption are unaffected. (Wording corrected the same day, delta review F-D10: the index version is on the block, not on each candidate.)
+
+---
+
+*FL-DECISIONS — the decision record. Every entry is conditional on its stated premise.*

@@ -1,0 +1,45 @@
+---
+lts: "1.1"
+title: "factlattice-reviewer: the named hook points"
+id: "SPEC:REVIEWER-HOOKS"
+domain: factlattice-reviewer
+scope: "The five named hook points of the core review procedure and the contract version an extension is written against"
+audience: agent
+boundary: "Defines vocabulary and rules. Holds no site values and writes nothing."
+status: draft
+---
+# factlattice-reviewer: the named hook points [SPEC:REVIEWER-HOOKS]
+
+A hook is a named point in the core review procedure (REVPROC-CORE) where a review extension may attach steps. An extension carries a STUB node for each hook it uses, in its own corpus, with `stub-of: factlattice-reviewer:<hook id>` and the `hook-contract-version` it was written against. The reviewer resolves the last hop (stub to hook) itself: ids are partition-local, so no engine edge crosses corpora.
+
+The five hook names and the contract version are PINNED by a test. Renaming or removing a hook bumps `hook-contract-version`. An extension stub whose version is higher than the core's, or whose name is not a hook of the core ACTUALLY LOADED for the run, makes that extension invalid.
+
+## [REVHOOK-STRUCTURE] Structure gate
+
+- hook-contract-version: 1
+
+Where the reviewed document is checked as a document before any content is judged: lost properties, lint errors, dangling references. Steps attached here may add structural checks of their own; they run after the engine's checks and can only add findings or stop the review, never relax the engine's stops.
+
+## [REVHOOK-DETERMINISTIC] Deterministic rules
+
+- hook-contract-version: 1
+
+Where rules that are a query answer (an lts_find call and an expected result) are applied to the reviewed document. Steps attached here add rules of that kind, in `order`.
+
+## [REVHOOK-JUDGEMENT] Judgement rules
+
+- hook-contract-version: 1
+
+Where rules that need reading and a decision are applied, each as a question with pass criteria and examples. The generic rules run first, then the extensions' in `order`. A judgement rule that fails its own fixtures is applied but its findings are marked unreliable.
+
+## [REVHOOK-CROSS-DOCUMENT] Cross-document checks
+
+- hook-contract-version: 1
+
+Where the reviewed document is checked against what it points at, by edge within the reviewed corpus, recording the content hash of every node read.
+
+## [REVHOOK-REPORT] Report
+
+- hook-contract-version: 1
+
+Where the verdict is formed and the review is written. Steps attached here may add provenance and report content; they cannot set the verdict, which comes from the rules.

@@ -1,0 +1,12 @@
+# Fixture: a depends-on edge is not a citation and must not fire GEN-5 [SPEC:FIXTURE-GEN5-DEPENDS]
+
+## [FX5D-A] The retry limit
+
+- claim: retries are capped at three
+- source: the retry policy document
+- depends-on: [FX5D-B]
+
+## [FX5D-B] Retry policy
+
+- claim: retries use exponential backoff with jitter and no fixed cap
+- source: the retry policy document

@@ -1,0 +1,317 @@
+---
+title: "Domain Profile: Agentic Decisions"
+id: "DOMAIN:DEC"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding the decisions an autonomous or human-in-the-loop agentic system makes over its lifetime — as a queryable decision graph from which a future session can reconstruct WHAT was decided, WHEN, WHY, and what would invalidate it, without re-reading the transcripts"
+created: 2026-07-23
+updated: 2026-07-23
+---
+# Domain Profile: Agentic Decisions [DOMAIN:DEC]
+
+> A long-running agent — or a team of agents and humans — accumulates decisions faster than any transcript can be re-read. The transcript is the wrong substrate: it is linear, unindexed, and perishable. This domain encodes each decision as a first-class node in a graph, so the standing question "why is it this way, and is that still true?" is answered by a query, not by archaeology.
+
+> The decision graph is the durable memory of intent. Code, specs, and artifacts record WHAT is; the decision graph records WHY it is, WHEN it was chosen, WHAT it replaced, and the single assumption whose change would reopen it. A decision without its invalidating assumption is a fact with no expiry — indistinguishable from dogma.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | DEC |
+| Sub-Namespaces | DEC.CORE (decision records), DEC.DEFECT (defects and fixes), DEC.OPEN (open questions and tasks) |
+| Location | A per-project `decisions/` corpus, or co-located with the system it governs |
+| Conventions File | This profile |
+| Maturity | Reference profile — generic, adopt and extend per system |
+
+---
+
+## 2. Model
+
+### 2.1 A Decision Is a Node, Not a Message
+
+Every decision of consequence becomes one node with a stable ID, a lifecycle position, the session it was decided in, and — mandatorily — the assumption that would invalidate it. The node is authored at the moment of decision and amended as the decision moves through its lifecycle, never rewritten to erase history.
+
+### 2.2 Two Populations: Decisions and Their Consequences
+
+**Decisions** (what was chosen) and **defects** (where reality diverged from intent) coexist. A defect is not a decision; it is a signal that a prior decision's assumption failed. Keeping them distinct — and linking them — is what turns a flat log into a graph you can reason over.
+
+### 2.3 The Graph Is Re-Derivable
+
+Every decision SHOULD carry a `re-derive-via` property: the query, command, or procedure by which its conclusion could be reproduced from first principles. A decision that cannot be re-derived is an opinion; one that can is a result. This is the domain's central discipline.
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-DEC-1: Every Decision Carries Its Own Invalidation Trigger
+
+- decision: Every decision node MUST carry an `invalidating_assumption` — the single premise whose change reopens the decision. A decision without one is incomplete and MUST be flagged by lint.
+- rationale: Decisions are not permanent; they are correct relative to a context. Recording the context's load-bearing assumption is what lets a future session know whether the decision still holds without re-litigating it. It converts "we decided X" into "we decided X because Y, and Y is still true".
+- status: foundational
+
+### 3.2 DD-DEC-2: Lifecycle Position Is Mandatory and Monotonic
+
+- decision: Every decision node carries a `lifecycle-position` from a fixed vocabulary (see §8). Positions advance monotonically; a decision never silently regresses. A reversal is a NEW node that supersedes the old one, not an in-place edit of the position back down.
+- rationale: The lifecycle is the audit trail of intent maturing into reality. If a `committed` decision proves wrong, the honest record is a superseding decision, not a rewritten history that pretends the commitment never happened.
+- status: foundational
+
+### 3.3 DD-DEC-3: Decisions Are Stamped With the Session That Made Them
+
+- decision: Every decision carries `decided-in-session` — an opaque, sortable session identifier (a date, a run id, a commit range). It is provenance, not prose.
+- rationale: "When, and in what working context, was this chosen?" is the first question a returning session asks. A machine-sortable stamp makes decision rollups ("what did session N decide", "decisions per week") a query rather than a manual scan.
+- status: foundational
+
+### 3.4 DD-DEC-4: Supersession Preserves the Superseded
+
+- decision: When a decision is replaced, the new node links to the old one with `SUPERSEDES`, and the old node's `lifecycle-position` becomes `superseded` — but the old node is RETAINED. Nothing is deleted from the decision graph.
+- rationale: The set of decisions you have since abandoned is itself knowledge — it records paths already explored and why they were left. Deleting a superseded decision invites a future session to re-explore a dead end.
+- status: foundational
+
+### 3.5 DD-DEC-5: Importance Is Declared, Not Inferred
+
+- decision: Every decision carries an `importance` (see §5). It is set by the author at decision time, not computed from graph position.
+- rationale: A decision's blast radius is known best at the moment it is made. Declared importance lets a returning session triage — load the `high` decisions first — without traversing the whole graph. Inferring importance from degree conflates "much-referenced" with "load-bearing", which are not the same.
+- status: foundational
+
+### 3.6 DD-DEC-6: Relationship Verbs Are a Closed, Small Set
+
+- decision: Decision-to-decision relationships use a small closed vocabulary: `SUPERSEDES`, `RELATED_TO`, `DEPENDS_ON`, `PART_OF` (see §6). Domain-specific verbs are added only by frequency-driven promotion, never ad hoc.
+- rationale: A small verb set keeps the graph traversable by generic tooling and keeps two authors from inventing three names for one relationship. Breadth in the graph comes from the node population, not from an ever-growing edge vocabulary.
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Decision Prefixes (DEC.CORE)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| DEC- | A decision of consequence | [DEC-STORAGE-BACKEND], [DEC-AUTH-MODEL] |
+| DD- | A foundational design decision (governs many others) | [DD-1], [DD-NAMING] |
+| SUP- | A supersession record (optional; when the reversal deserves its own rationale node) | [SUP-STORAGE-BACKEND-V2] |
+
+### 4.2 Defect Prefixes (DEC.DEFECT)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| FIX- | A defect and its resolution | [FIX-RACE-ON-STARTUP], [FIX-STALE-CACHE] |
+| REG- | A regression (a defect a prior fix reintroduced) | [REG-STALE-CACHE-2] |
+
+### 4.3 Open-Item Prefixes (DEC.OPEN)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| Q- | An open question not yet decided | [Q-RETENTION-POLICY] |
+| TASK- | A committed piece of work arising from a decision | [TASK-MIGRATE-STORE] |
+| RISK- | A known risk a decision accepts | [RISK-VENDOR-LOCKIN] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Decision Properties (All Decision Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| lifecycle-position | enum | Position in the decision lifecycle (§8) — raised, decided, built, committed, superseded, parked |
+| decided-in-session | string | Opaque, sortable id of the session/run that made the decision (date, run id, commit range) |
+| importance | enum | Declared blast radius: low, medium, high, critical |
+| invalidating_assumption | string | The single premise whose change reopens this decision (mandatory) |
+| re-derive-via | string | The query/command/procedure that reproduces this decision's conclusion from first principles |
+| decision | string | The decision itself, stated as a claim |
+| rationale | string | Why this and not the alternatives |
+| status | enum | Coarse status where lifecycle is too fine: foundational, active, deprecated |
+
+### 5.2 Change-Capture Properties (Optional, on Amended Decisions)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| change | string | What changed about this decision in the amendment |
+| prior_state | string | The state before the change |
+| reasoning | string | Why the change was made |
+| rejected_alternative | string | What was considered and not chosen |
+
+### 5.3 Defect Properties (FIX- / REG- Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| symptom | string | The observable failure |
+| root-cause | string | The underlying cause (often: a failed assumption of some decision) |
+| resolution | string | How it was fixed |
+| detected-in-session | string | When the defect surfaced |
+| severity | enum | trivial, minor, major, critical |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+### 6.1 Decision-to-Decision Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| dec.SUPERSEDES | temporal | This decision replaces an earlier one (the earlier one becomes `superseded`) |
+| dec.RELATED_TO | semantic | Two decisions bear on each other without one governing the other |
+| dec.DEPENDS_ON | causal | This decision is only valid while another holds |
+| dec.PART_OF | semantic | This decision is one facet of a larger foundational decision |
+
+### 6.2b Decision-to-Principle Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| dec.EXEMPLIFIES | semantic | This decision is a concrete instance of a collaboration/design PRINCIPLE (`[PRINCIPLE-*]` in principles.lts); the reverse traversal answers "which decisions embody principle P" and the absence of the edge is the exemplifies-coverage gap. |
+
+### 6.2c Strategy-to-Phase Edges (DEC.STRATEGY)
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| dec.APPLIES_AT_PHASE | semantic | A working STRATEGY (`[STRATEGY-*]` in strategies.lts) applies at a maturity PHASE (`[MATURITY-*]` — TEENAGER/ADULT/SENIOR context bands). The reverse traversal answers "which strategies serve the instance at phase P", which is exactly the boot-read query (`lts_find(prefix=STRATEGY)` filtered by phase). A strategy may apply at more than one phase (multiple edges). This is the sibling of `dec.EXEMPLIFIES`: EXEMPLIFIES links a decision to the timeless principle it embodies; APPLIES_AT_PHASE links a strategy to the context-lifecycle phase where it is the right move. |
+
+### 6.2 Decision-to-Consequence Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| dec.INVALIDATED_BY | causal | A defect or observation invalidated this decision's assumption |
+| dec.RESOLVES | causal | A fix resolves a defect |
+| dec.MOTIVATES | causal | A decision motivates a task or a follow-on question |
+| dec.ACCEPTS_RISK | semantic | A decision knowingly accepts a stated risk |
+
+---
+
+## 7. Document Type Tags
+
+| Tag | Description |
+|-----|-------------|
+| DECISION-GRAPH | The primary decision-record document for a project |
+| DEFECT-LOG | Defects and fixes |
+| OPEN-ITEMS | Unresolved questions, tasks, and accepted risks |
+| DECISION-DELTA | A point-in-time change record over the decision graph |
+
+---
+
+## 8. Lifecycle and Status Methodology
+
+### 8.1 The Decision Lifecycle
+
+`lifecycle-position` advances monotonically through:
+
+| Position | Meaning |
+|----------|---------|
+| raised | The question is on the table; no choice made yet |
+| decided | A choice is made but not yet realized |
+| built | The choice is realized (code/spec/artifact exists) but not proven |
+| committed | The choice is realized AND proven across real use |
+| superseded | A later decision has replaced this one (retained for audit) |
+| parked | Deliberately deferred; not abandoned, not active |
+
+A decision moves forward through this list, never silently backward. A reversal from `committed` is expressed as a new node that `SUPERSEDES` this one (DD-DEC-4), leaving this node at `superseded`.
+
+### 8.2 Importance Levels
+
+| Level | Meaning |
+|-------|---------|
+| low | Local; reversing it touches one component |
+| medium | Crosses a few components; reversible with effort |
+| high | Architectural; many decisions depend on it |
+| critical | Foundational; reversing it reopens the whole system |
+
+### 8.3 The Re-Derivation Discipline
+
+A decision at `committed` SHOULD have a non-empty `re-derive-via`. The linter SHOULD warn on a `committed` decision that lacks one — a committed decision no one can reproduce is a single point of institutional failure.
+
+---
+
+## 9. Temporal Semantics
+
+### 9.1 Session Ordering
+
+`decided-in-session` values MUST be lexicographically sortable so "decisions in order" and "decisions since session N" are pure comparisons. A date (`YYYY-MM-DD`), a zero-padded run id, or a monotonic commit marker all satisfy this.
+
+### 9.2 Supersession Chains
+
+A decision may be superseded more than once. The `SUPERSEDES` edges form a chain; the single node with no incoming `SUPERSEDES` and `lifecycle-position` not `superseded` is the current decision. Tooling reconstructs "the current position on topic X" by walking to the chain head.
+
+### 9.3 Reopening a Parked Decision
+
+A `parked` decision is reopened by moving it to `raised` or `decided` in a new session, with a `change`/`reasoning` amendment recording why the park ended. The park itself is never erased.
+
+---
+
+## 10. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["DEC-INDEX"]
+  primary_layers: [causal, temporal]
+  focus_areas:
+    current:
+      entry: ["DEC-INDEX"]
+      layers: [temporal]
+      keywords: ["current", "why", "state", "decided"]
+    dependencies:
+      entry: ["DD-1"]
+      layers: [causal]
+      keywords: ["depends", "foundational", "architecture", "load-bearing"]
+    history:
+      entry: ["DEC-INDEX"]
+      layers: [temporal]
+      keywords: ["superseded", "history", "changed", "reversed"]
+    defects:
+      entry: ["FIX-INDEX"]
+      layers: [causal]
+      keywords: ["defect", "bug", "fix", "regression", "root cause"]
+    open:
+      entry: ["Q-INDEX"]
+      layers: [semantic]
+      keywords: ["open", "question", "task", "risk", "todo"]
+```
+
+---
+
+## 11. Corpus Structure
+
+```
+decisions/
+├── 00-index.lts                 # DEC-INDEX entry node, links to the graphs below
+├── 01-decision-graph.lts        # DEC-, DD-, SUP- nodes (the primary record)
+├── 02-defect-log.lts            # FIX-, REG- nodes
+├── 03-open-items.lts            # Q-, TASK-, RISK- nodes
+└── deltas/
+    └── DELTA-{session}.lts       # Point-in-time decision-graph change records
+```
+
+---
+
+## 12. Section Template — A Decision Node
+
+```
+### [DEC-EXAMPLE] One-line decision title
+
+- decision: The choice, stated as a claim.
+- rationale: Why this and not the alternatives.
+- lifecycle-position: committed
+- decided-in-session: 2026-07-23
+- importance: high
+- invalidating_assumption: The single premise whose change reopens this.
+- re-derive-via: The query/command that reproduces this conclusion.
+```
+
+---
+
+## 13. Why This Domain Matters
+
+1. **It is the memory of intent.** Every other domain records what a system is; this records why. A returning session that can query the decision graph does not have to re-read the transcripts to know why the system is the way it is.
+
+2. **The invalidating assumption makes decisions falsifiable.** By requiring the one premise whose change reopens a decision, this domain turns a pile of settled opinions into a set of claims a future session can actively test — the difference between a knowledge base and a dogma.
+
+3. **Supersession-preserves-the-superseded keeps the dead ends visible.** The paths already explored and abandoned are knowledge; retaining superseded decisions stops a future session from re-walking them.
+
+4. **It is a bootstrap substrate.** An agentic system that records its decisions this way can reconstitute its own reasoning on a cold start — read the `high`/`critical` committed decisions, check their invalidating assumptions still hold, and resume with intent intact.
+
+---
+
+**Version**: 1.0
+**Created**: 2026-07-23
+**Updated**: 2026-07-23
+**Status**: Reference profile

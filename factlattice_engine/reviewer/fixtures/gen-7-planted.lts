@@ -1,0 +1,6 @@
+# Fixture: a document that contains a credential [SPEC:FIXTURE-GEN7-PLANTED]
+
+## [FX7P-A] Deployment note
+
+- password: not-a-real-value-placeholder
+- source: the runbook

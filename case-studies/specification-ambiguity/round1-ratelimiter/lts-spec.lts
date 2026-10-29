@@ -1,0 +1,83 @@
+---
+scope: "A per-user request rate limiter: the precise admit/reject semantics for allow_request(user_id, now)"
+audience: [implementer]
+boundary: "Defines the decision function's behavior only. Not transport, storage durability, or distribution across processes."
+domain: SWE.RATELIMIT
+---
+# Per-User Rate Limiter [SPEC:RATE-LIMITER]
+
+> The admit/reject decision for a single request, defined precisely enough that two independent implementations produce byte-identical accept/reject sequences on the same input.
+
+---
+
+## Interface
+
+### [DM-DECISION] allow_request(user_id, now) -> bool
+- signature: allow_request(user_id: str, now: float) -> bool
+- now: a timestamp in seconds. It is SUPPLIED BY THE CALLER and is monotonic non-decreasing across calls. The function never reads a wall clock itself.
+- returns: True if this request is ADMITTED, False if REJECTED.
+- part-of: [SPEC:RATE-LIMITER]
+
+---
+
+## Semantics
+
+### [DD-SLIDING-WINDOW] The window is sliding, not fixed
+- decision: A request at time `now` is admitted iff the number of PREVIOUSLY-ADMITTED requests for that same `user_id` with timestamp in the half-open interval `(now - 10.0, now]` is strictly less than 5.
+- rationale: The guarantee is a rolling rate: no user ever has more than 5 admitted requests in any 10-second span. The window slides continuously with `now`; it does not reset on fixed clock boundaries.
+- implements: [INV-ROLLING-RATE]
+- part-of: [SPEC:RATE-LIMITER]
+
+### [DD-ADMITTED-ONLY] Only admitted requests consume capacity
+- decision: A REJECTED request is not recorded and does not count toward the limit. Capacity is consumed only by requests that returned True.
+- rationale: A rejected request did no work; counting it would let a burst of rejections extend the lockout beyond the intended rate.
+- part-of: [SPEC:RATE-LIMITER]
+
+### [DD-STRICT-LESS-THAN] The fifth request is admitted; the sixth is not
+- decision: With an empty window, admit requests 1..5. The 6th request while 5 are already in the window is rejected. The comparison is `count < 5`, i.e. "at most 5 admitted per rolling 10 seconds".
+- part-of: [SPEC:RATE-LIMITER]
+
+### [DD-HALF-OPEN] The lower window bound is exclusive
+- decision: A prior admitted request at exactly `now - 10.0` has aged OUT and is excluded. The interval is `(now - 10.0, now]` — lower bound exclusive, upper bound inclusive.
+- part-of: [SPEC:RATE-LIMITER]
+
+### [DD-PER-USER] Users are independent
+- decision: The limit applies per `user_id`. One user's requests never affect another user's decision.
+- part-of: [SPEC:RATE-LIMITER]
+
+---
+
+## Invariants
+
+### [INV-ROLLING-RATE] No 10-second span ever contains more than 5 admitted requests
+- constraint: For any user and any time `t`, the count of admitted requests with timestamp in `(t - 10.0, t]` is <= 5. This holds ACROSS any boundary, not just within one.
+- part-of: [SPEC:RATE-LIMITER]
+
+### [INV-DETERMINISTIC] Same input sequence yields the same decisions
+- constraint: Given the same ordered sequence of (user_id, now) calls, the sequence of returned booleans is identical on every run. No wall-clock reads, no randomness.
+- part-of: [SPEC:RATE-LIMITER]
+
+---
+
+## Not-This
+
+- not-this: "A fixed-window counter that resets every 10 seconds" -> REJECTED. A fixed window admits up to 5 in `[0,10)` and another 5 in `[10,20)`, allowing up to 10 admitted requests in the rolling span `(5, 15]` — this violates [INV-ROLLING-RATE]. A burst straddling a boundary must never exceed 5 in any rolling 10 seconds. See [DD-SLIDING-WINDOW].
+- not-this: "A token bucket that refills continuously" -> REJECTED. That admits a different sequence at the boundaries; the required semantics are the exact sliding-window count in [DD-SLIDING-WINDOW], not a bucket approximation.
+- not-this: "Rejected requests count toward the limit / extend the lockout" -> REJECTED. See [DD-ADMITTED-ONLY].
+- part-of: [SPEC:RATE-LIMITER]
+
+---
+
+## Acceptance
+
+### [TEST-BOUNDARY-BURST] The straddling-burst case that separates sliding from fixed
+- subject: five admitted requests then a sixth, straddling a would-be fixed boundary
+- given: user "u", calls at now = 5,6,7,8,9 (all admitted; window now holds 5)
+- then: a call at now = 10 is REJECTED, because `(0.0, 10.0]` still holds all five of 5,6,7,8,9 -> count is 5, not < 5.
+- and: a fixed-window implementation would ADMIT that 6th request (new window `[10,20)`), which is the wrong answer.
+- part-of: [SPEC:RATE-LIMITER]
+
+### [TEST-AGE-OUT] A request re-opens capacity once the oldest ages out
+- given: user "u" admitted at now = 5,6,7,8,9
+- then: a call at now = 15.0001 is ADMITTED, because `(5.0001, 15.0001]` excludes the request at 5 -> count is 4.
+- part-of: [SPEC:RATE-LIMITER]

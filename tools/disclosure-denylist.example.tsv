@@ -1,0 +1,37 @@
+# DISCLOSURE GUARD — EXAMPLE rules file.
+#
+# Copy to `private/disclosure-denylist.tsv` (gitignored) and fill in the terms that
+# would disclose YOUR deployments. This example names nobody, on purpose: a denylist
+# that spells a customer's name discloses that customer, and a public repo is the
+# last place it belongs. Mechanism public, vocabulary private — the same narrow waist
+# the engine itself is built on.
+#
+#   cp tools/disclosure-denylist.example.tsv private/disclosure-denylist.tsv
+#   ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+#   tools/disclosure_guard.py --selftest
+#
+# FORMAT, TAB-SEPARATED:   pattern <TAB> control <TAB> why [<TAB> name]
+#
+#   pattern  a Python regex, matched case-insensitively.
+#   control  ⭐ a string the pattern MUST match. Refused at load time if it does not.
+#            This is what makes a green `--selftest` mean "the matcher ran" instead of
+#            "nothing was checked". You cannot add a rule without its evidence.
+#   why      printed on a hit. Name the RIGHT FIX. An author told only "denied string"
+#            deletes the word — the wrong repair when the real one is to move the test
+#            into private/tests/ or take the domain back out of the engine.
+#   name     optional short id for the output.
+#
+# ⛔ WHAT NO DENYLIST CAN DO. It catches only what somebody thought to add. A client
+#    named for the first time tomorrow, a project codename, an internal hostname, or a
+#    fixture full of one customer's distinctive jargon all pass untouched. Structural
+#    rules (absolute home paths) are built into the tool because they name nobody and
+#    are therefore safe to publish; identity rules belong here.
+
+# ⛔ NOTE the domain used below is `exampleco.ds`, NOT `acme.ds`. `acme.ds` is the
+#    SYNTHETIC domain the public test suite uses as the approved replacement, and the
+#    guard carries it as a NEGATIVE control. A rule denying it would make the guard
+#    forbid its own remedy — and a gate that fires on the fix gets switched off.
+
+examplecorp	  # copied from the ExampleCorp corpus	a customer's name. It belongs in no public artifact of this repo.	example-client-name
+exampledata	LIVE = os.path.expanduser("~/exampledata/corpora")	a customer's data root. Live-corpus tests belong in the gitignored private/tests/ overlay, not in tests/.	example-data-root
+\bexampleco\.ds\b	- domain-id: exampleco.ds	a real domain id. The engine loads domain vocabulary from a PROFILE at runtime, so an id in engine source is a fork across that seam. Use a synthetic domain with the same SHAPE.	example-domain-id

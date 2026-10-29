@@ -1,0 +1,108 @@
+---
+lts: "1.1"
+title: "factlattice-reviewer: the generic rules"
+id: "SPEC:REVIEWER-RULES"
+domain: factlattice-reviewer
+scope: "The generic review rules that apply to any document, each with a planted violation and a clean twin"
+audience: agent
+boundary: "Defines vocabulary and rules. Holds no site values and writes nothing."
+status: draft
+---
+# factlattice-reviewer: the generic rules [SPEC:REVIEWER-RULES]
+
+Seven rules that apply to any document, whatever its domain. Each ships with a planted violation and a clean twin (paths relative to this file). A rule is DETERMINISTIC (`query` is the arguments of one lts_find call and `expect` says which result count is a violation), a DETECTOR (`command` names a read-only reviewer command and `expect` says which result count is a violation), or JUDGEMENT (`question`, `pass-criteria`, `examples`). The generic rules are validated by the engine's own tests (their plant and twin are run in the test suite), not on every review; an extension's rules are validated on every review.
+
+For a deterministic rule, `expect` names the result count that is a VIOLATION: `nonzero` means every hit is a violation (the usual case), `zero` means finding no hit is the violation, `count:<n>` means exactly n hits is. Each hit becomes one finding about the hit node. A rule is validated before it is applied: run against its planted violation it must report a violation, run against its clean twin it must not. A rule that fails either is recorded as errored and is not applied.
+
+Severities, lowest to highest: info, minor, major, blocker. Rule ids carry the id of the extension that defines them; `GEN` is the core's own generic set.
+
+The deterministic generic rules read two conventional property keys, `claim` and `caveat`, with `source` and `caveat-date` as their companions. A document that records claims under other keys is not covered by them; an extension adds the rules for its own keys.
+
+## [REVRULE-GEN-1] A document must not contradict itself
+
+- kind: judgement
+- applies-to: every node of the reviewed document that asserts something
+- severity: major
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- question: Do two nodes of this document assert things that cannot both be true?
+- pass-criteria: Every pair of assertions about the same subject can be true together. A change of state described with its time ("was X, is now Y") is not a contradiction.
+- examples: A node saying a cache is always enabled and another saying it is disabled in production contradict. A node saying the cache is enabled for reads and another saying it is bypassed for writes do not.
+- planted-violation: ../fixtures/gen-1-planted.lts
+- clean-twin: ../fixtures/gen-1-clean.lts
+
+## [REVRULE-GEN-2] A term must be defined where it is used or in the document
+
+- kind: judgement
+- applies-to: every node of the reviewed document that uses a term of art
+- severity: minor
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- question: Does this node rely on a term that is neither common vocabulary nor defined in this document or its glossary?
+- pass-criteria: Every term of art is defined in the document, in a node it points to, or in a glossary the document names. Everyday words are not terms of art.
+- examples: A rollout that uses a quorum fence with no definition anywhere fails. The same rollout with a node defining a quorum fence passes.
+- planted-violation: ../fixtures/gen-2-planted.lts
+- clean-twin: ../fixtures/gen-2-clean.lts
+
+## [REVRULE-GEN-3] A claim carries a source
+
+- kind: deterministic
+- applies-to: nodes with a claim property
+- severity: major
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- query: {"where": [{"key": "claim", "has": true}, {"key": "source", "lacks": true}]}
+- expect: nonzero
+- planted-violation: ../fixtures/gen-3-planted.lts
+- clean-twin: ../fixtures/gen-3-clean.lts
+
+## [REVRULE-GEN-4] A caveat carries a date
+
+- kind: deterministic
+- applies-to: nodes with a caveat property
+- severity: minor
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- query: {"where": [{"key": "caveat", "has": true}, {"key": "caveat-date", "lacks": true}]}
+- expect: nonzero
+- planted-violation: ../fixtures/gen-4-planted.lts
+- clean-twin: ../fixtures/gen-4-clean.lts
+
+## [REVRULE-GEN-5] A citation's target says what the citing node claims
+
+- kind: judgement
+- applies-to: nodes whose claim names a source by an explicit citation key or a prose citation of a node (for example "per node X" or "see X")
+- severity: major
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- question: Read the citing node's claim and the node it names as its source. Does the target say what the citing node claims it says?
+- pass-criteria: The target states the claimed fact, or a fact from which it follows directly. A target on the same topic that says something different, or nothing relevant, fails. A depends-on edge is NOT a citation: it records a dependency, not that the target supports the claim, so a node with a depends-on edge and no citation in its claim is out of scope and must not be flagged.
+- examples: A claim that retries are capped at three, citing a node that describes backoff with no fixed cap, fails. Citing a node that states the cap of three passes. A node with a depends-on edge to that backoff node and a claim that cites nothing is not in scope (see the depends-on twin fixture, gen-5-depends-on.lts, which must not fire).
+- planted-violation: ../fixtures/gen-5-planted.lts
+- clean-twin: ../fixtures/gen-5-clean.lts
+
+## [REVRULE-GEN-6] The document should not address the review itself
+
+- kind: detector
+- applies-to: every line of the reviewed document, body prose included
+- severity: info
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- command: gen6-scan
+- expect: nonzero
+- planted-violation: ../fixtures/gen-6-planted.lts
+- clean-twin: ../fixtures/gen-6-clean.lts
+
+GEN-6 is an aid to a human reader, not a control. It flags text that addresses the review itself (the reviewer, the verdict or a pass, the review's rules, where the review is written, what to reply to the caller) so that a person reading the review can see it. It does not target instructions to a reader in general ("you must", "never", "stop and report" in a procedure are not hits). The control against such text is the definition's data-not-instructions line, not this rule. Its severity is one constant in the code (`GEN6_SEVERITY`) and this node's `severity` must equal it. It is an aid for a human reader; info severity because measured on real Acme procedure text it also fires on ordinary procedure prose (12 hits in 00-acme-team.lts, 3 in a worker agent definition, all false positives). A GEN-6 hit alone can therefore only yield pass-with-findings.
+
+## [REVRULE-GEN-7] A document must not contain a credential
+
+- kind: detector
+- applies-to: every line of the reviewed document
+- severity: major
+- authority: factlattice-reviewer:REVPROC-CORE
+- on-fail: finding
+- command: scan-secrets
+- expect: nonzero
+- planted-violation: ../fixtures/gen-7-planted.lts
+- clean-twin: ../fixtures/gen-7-clean.lts

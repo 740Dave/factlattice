@@ -1,0 +1,10 @@
+# Fixture: a procedure that instructs its OPERATOR and does not address a review [SPEC:FIXTURE-GEN6-CLEAN]
+
+## [FX6C-A] Shutdown procedure
+
+- note: operator checklist
+- claim: the pump is stopped before the valve is closed
+- source: the plant manual
+
+If the pump alarms you must stop and report to the shift lead. Never write outside the root of the log volume.
+Operators should record the reading, reply to the caller only after the valve is closed, and never skip the lockout step.

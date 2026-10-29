@@ -1,0 +1,4411 @@
+{
+ "find_text_hit": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "XL-M1",
+     "type_prefix": "XL",
+     "title": "Init",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      45,
+      49
+     ],
+     "content_hash": "sha256:d52bbddd58e076be23ce70e7febbd305c362f4867f2341545d214b1eec853c72",
+     "token_count": 20,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "input": "Borrower card CONTENTS (required)"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "borrower card contents"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "e04f7cd93a7c",
+    "text_len": 22
+   },
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "result_ids": [
+    "XL-M1"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_text_zero": {
+  "response": {
+   "success": true,
+   "nodes": [],
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "borrower contents"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "03a507369c90",
+    "text_len": 17
+   },
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "result_ids": [],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_text_single_char": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PLAN-QATAR",
+     "type_prefix": "PLAN",
+     "title": "Qatar plan",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      55,
+      59
+     ],
+     "content_hash": "sha256:cba48b491489e2845f0ba9e1579faf678d7ec093c182c830d21fa9e570574466",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "plan"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 3,
+   "total_matched": 3,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "qa"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "3f3ef786b34d",
+    "text_len": 2
+   },
+   "count": 3,
+   "total_matched": 3,
+   "truncated": false,
+   "result_ids": [
+    "PLAN-QATAR",
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_text_case": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "LANTERN"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "27cf72e0cf1a",
+    "text_len": 7
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_text_alias_list": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "second alias"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "5e03f3e16537",
+    "text_len": 12
+   },
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_prefix": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE2",
+     "type_prefix": "PROC",
+     "title": "go live now",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      36,
+      40
+     ],
+     "content_hash": "sha256:403c8591a4951a4f82733482ce8894ab87d609c053e6c805a2e9d199a624c977",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "tier": "gold"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE3",
+     "type_prefix": "PROC",
+     "title": "go to live",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      41,
+      44
+     ],
+     "content_hash": "sha256:fdc095b6d8d084249381f220aa1a85313918b5fddede2f268ad56ab4d1305ebf",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 5,
+   "total_matched": 5,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "PROC-"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC-"
+   },
+   "count": 5,
+   "total_matched": 5,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH",
+    "PROC-LIVE",
+    "PROC-LIVE2",
+    "PROC-LIVE3"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_prefix_nohyphen": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE2",
+     "type_prefix": "PROC",
+     "title": "go live now",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      36,
+      40
+     ],
+     "content_hash": "sha256:403c8591a4951a4f82733482ce8894ab87d609c053e6c805a2e9d199a624c977",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "tier": "gold"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE3",
+     "type_prefix": "PROC",
+     "title": "go to live",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      41,
+      44
+     ],
+     "content_hash": "sha256:fdc095b6d8d084249381f220aa1a85313918b5fddede2f268ad56ab4d1305ebf",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 5,
+   "total_matched": 5,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "PROC"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC"
+   },
+   "count": 5,
+   "total_matched": 5,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH",
+    "PROC-LIVE",
+    "PROC-LIVE2",
+    "PROC-LIVE3"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_status_bare": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PLAN-QATAR",
+     "type_prefix": "PLAN",
+     "title": "Qatar plan",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      55,
+      59
+     ],
+     "content_hash": "sha256:cba48b491489e2845f0ba9e1579faf678d7ec093c182c830d21fa9e570574466",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "plan"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE2",
+     "type_prefix": "PROC",
+     "title": "go live now",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      36,
+      40
+     ],
+     "content_hash": "sha256:403c8591a4951a4f82733482ce8894ab87d609c053e6c805a2e9d199a624c977",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "tier": "gold"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE3",
+     "type_prefix": "PROC",
+     "title": "go to live",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      41,
+      44
+     ],
+     "content_hash": "sha256:fdc095b6d8d084249381f220aa1a85313918b5fddede2f268ad56ab4d1305ebf",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "QS-ROOT",
+     "type_prefix": "QS",
+     "title": "Alpha doc",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      5,
+      8
+     ],
+     "content_hash": "sha256:01199e4add165f83a517658492e6cfcd3f4d39099b5a47c55acb8c4681fedce7",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": null,
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "XL-M1",
+     "type_prefix": "XL",
+     "title": "Init",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      45,
+      49
+     ],
+     "content_hash": "sha256:d52bbddd58e076be23ce70e7febbd305c362f4867f2341545d214b1eec853c72",
+     "token_count": 20,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "input": "Borrower card CONTENTS (required)"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "XL-M2",
+     "type_prefix": "XL",
+     "title": "Borrower notes",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      50,
+      54
+     ],
+     "content_hash": "sha256:c043dc8380b8e55963905bba6accaabda8e94e2c3db950e71e9db47575f7ae00",
+     "token_count": 21,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "description": "card contents differ"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-ABSENT",
+     "type_prefix": "Y",
+     "title": "Y absent",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      72,
+      75
+     ],
+     "content_hash": "sha256:3b561bf928852090577127883ed1c6ee47843f730d660d3edbfd8d88c17adec6",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AB",
+     "type_prefix": "Y",
+     "title": "Y list a b",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      66,
+      71
+     ],
+     "content_hash": "sha256:e8d39be5f7957dad4fc5c7e01bf44aa0518a86d45fc45a46ab52b5d92feed3cd",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "b"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AX",
+     "type_prefix": "Y",
+     "title": "Y list a x",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      60,
+      65
+     ],
+     "content_hash": "sha256:579c2bd4817487ba508674cc4bcb2c4438697478258af0c0cc15c0f2faa60456",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "x"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-MAP",
+     "type_prefix": "Y",
+     "title": "Y mapping",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      86,
+      91
+     ],
+     "content_hash": "sha256:a17b8461104d334819659889de00f389b97318f51c7f2a73c24bfc62a513af89",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ymap": {
+       "sub": "a"
+      }
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-SCALAR-A",
+     "type_prefix": "Y",
+     "title": "Y scalar a",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      81,
+      85
+     ],
+     "content_hash": "sha256:e3bcd4038bed03e438dd1fab84978d1f47211d4e97c67dc1a7b913042921a011",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": "a"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-SCALAR-X",
+     "type_prefix": "Y",
+     "title": "Y scalar x",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      76,
+      80
+     ],
+     "content_hash": "sha256:11faa2b9027885f15f3bc3f593ee2d8642a85f5ba4a7dde239af740636d79907",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": "x"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    }
+   ],
+   "count": 14,
+   "total_matched": 14,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "status",
+     "lifecycle-position",
+     "lifecycle_position"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "status": "operational"
+     }
+    },
+    "notes": [
+     "lifecycle sweep matched via {'status': 14}"
+    ],
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "status": "operational"
+   },
+   "count": 14,
+   "total_matched": 14,
+   "truncated": false,
+   "result_ids": [
+    "PLAN-QATAR",
+    "PROC-LANTERN-ARCH",
+    "PROC-LIVE",
+    "PROC-LIVE2",
+    "PROC-LIVE3",
+    "QS-ROOT",
+    "XL-M1",
+    "XL-M2",
+    "Y-ABSENT",
+    "Y-LIST-AB",
+    "Y-LIST-AX",
+    "Y-MAP",
+    "Y-SCALAR-A",
+    "Y-SCALAR-X"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "status",
+     "lifecycle-position",
+     "lifecycle_position"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_status_draft": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "UNT-NODE",
+     "type_prefix": "UNT",
+     "title": "Untagged node",
+     "domain": "PLT.QS",
+     "source_file": "b.lts",
+     "line_range": [
+      9,
+      12
+     ],
+     "content_hash": "sha256:a3723ee63c69793baefedaf934b47726474791c8e11e28df290ce4b27967884b",
+     "token_count": 14,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "note"
+     },
+     "parent_section": "UNT-ROOT",
+     "document_tag": null,
+     "definition_form": "header",
+     "matched_via": "status"
+    },
+    {
+     "corpus": "qs",
+     "id": "UNT-ROOT",
+     "type_prefix": "UNT",
+     "title": "Untagged doc",
+     "domain": "PLT.QS",
+     "source_file": "b.lts",
+     "line_range": [
+      5,
+      8
+     ],
+     "content_hash": "sha256:e5c4e89bb1969c413ee6b035f1d98ae094507207f3c06800fa29545cea290837",
+     "token_count": 11,
+     "status": "draft",
+     "properties": {
+      "status": "draft"
+     },
+     "parent_section": null,
+     "document_tag": null,
+     "definition_form": "header",
+     "matched_via": "status"
+    }
+   ],
+   "count": 3,
+   "total_matched": 3,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "status",
+     "lifecycle-position",
+     "lifecycle_position"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "status": "draft"
+     }
+    },
+    "notes": [
+     "lifecycle sweep matched via {'status': 3}"
+    ],
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "status": "draft"
+   },
+   "count": 3,
+   "total_matched": 3,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "UNT-NODE",
+    "UNT-ROOT"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "status",
+     "lifecycle-position",
+     "lifecycle_position"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_area": {
+  "response": {
+   "success": true,
+   "nodes": [],
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": "decisions"
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "area"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "area": "decisions"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "area": "decisions"
+   },
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "result_ids": [],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "area"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_since": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": "2026-09-10",
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "decided-in-session"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "since": "2026-09-10"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "since": "2026-09-10"
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LIVE"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "decided-in-session"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_since_until": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": "2026-09-01",
+    "until": "2026-09-30",
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "decided-in-session"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "since": "2026-09-01",
+      "until": "2026-09-30"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "since": "2026-09-01",
+    "until": "2026-09-30"
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LANTERN-ARCH",
+    "PROC-LIVE"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "decided-in-session"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_function": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "function"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "function": "alpha"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "function": "alpha"
+   },
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LIVE"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "function"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_service_text": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "service",
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "service": "svc1",
+      "text": "go"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "service": "svc1",
+    "text_sha": "4cd0e21a9a07",
+    "text_len": 2
+   },
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LIVE"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "service",
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_domain": {
+  "response": {
+   "success": true,
+   "nodes": [],
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "domain"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "domain": "plt.qs",
+      "prefix": "XL-"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "XL-",
+    "domain": "plt.qs"
+   },
+   "count": 0,
+   "total_matched": 0,
+   "truncated": false,
+   "result_ids": [],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "domain"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_rank_relevance": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE3",
+     "type_prefix": "PROC",
+     "title": "go to live",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      41,
+      44
+     ],
+     "content_hash": "sha256:fdc095b6d8d084249381f220aa1a85313918b5fddede2f268ad56ab4d1305ebf",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE2",
+     "type_prefix": "PROC",
+     "title": "go live now",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      36,
+      40
+     ],
+     "content_hash": "sha256:403c8591a4951a4f82733482ce8894ab87d609c053e6c805a2e9d199a624c977",
+     "token_count": 16,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "tier": "gold"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 4,
+   "total_matched": 4,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "text": "go"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   },
+   "rank_applied": {
+    "by": "bm25",
+    "scope": "the exact match set only",
+    "membership_changed": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "4cd0e21a9a07",
+    "text_len": 2
+   },
+   "count": 4,
+   "total_matched": 4,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LIVE3",
+    "PROC-LIVE2",
+    "PROC-LIVE",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_tier_digest": {
+  "response": {
+   "success": true,
+   "tier": "digest",
+   "digest": [
+    {
+     "id": "PROC-ALANTERN",
+     "title": "Alantern quality Aqaba",
+     "token_count": 34,
+     "property_count": 4,
+     "edge_count": 1,
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "timestamp": "2026-10-01",
+     "corpus": "qs"
+    },
+    {
+     "id": "PROC-LANTERN-ARCH",
+     "title": "Lantern architect note",
+     "token_count": 54,
+     "property_count": 5,
+     "edge_count": 1,
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "timestamp": "2026-09-01",
+     "corpus": "qs"
+    },
+    {
+     "id": "PROC-LIVE",
+     "title": "go-live checklist",
+     "token_count": 31,
+     "property_count": 4,
+     "edge_count": 1,
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "timestamp": "2026-09-15",
+     "corpus": "qs"
+    },
+    {
+     "id": "PROC-LIVE2",
+     "title": "go live now",
+     "token_count": 16,
+     "property_count": 2,
+     "edge_count": 1,
+     "source_file": "a.lts",
+     "line_range": [
+      36,
+      40
+     ],
+     "content_hash": "sha256:403c8591a4951a4f82733482ce8894ab87d609c053e6c805a2e9d199a624c977",
+     "timestamp": null,
+     "corpus": "qs"
+    },
+    {
+     "id": "PROC-LIVE3",
+     "title": "go to live",
+     "token_count": 12,
+     "property_count": 1,
+     "edge_count": 1,
+     "source_file": "a.lts",
+     "line_range": [
+      41,
+      44
+     ],
+     "content_hash": "sha256:fdc095b6d8d084249381f220aa1a85313918b5fddede2f268ad56ab4d1305ebf",
+     "timestamp": null,
+     "corpus": "qs"
+    }
+   ],
+   "count": 5,
+   "total_matched": 5,
+   "complete": true,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "PROC-"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC-",
+    "tier": "digest"
+   },
+   "count": 5,
+   "total_matched": 5,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH",
+    "PROC-LIVE",
+    "PROC-LIVE2",
+    "PROC-LIVE3"
+   ],
+   "result_ids_capped": false,
+   "tier": "digest",
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_tier_page": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "Y-ABSENT",
+     "type_prefix": "Y",
+     "title": "Y absent",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      72,
+      75
+     ],
+     "content_hash": "sha256:3b561bf928852090577127883ed1c6ee47843f730d660d3edbfd8d88c17adec6",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AB",
+     "type_prefix": "Y",
+     "title": "Y list a b",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      66,
+      71
+     ],
+     "content_hash": "sha256:e8d39be5f7957dad4fc5c7e01bf44aa0518a86d45fc45a46ab52b5d92feed3cd",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "b"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AX",
+     "type_prefix": "Y",
+     "title": "Y list a x",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      60,
+      65
+     ],
+     "content_hash": "sha256:579c2bd4817487ba508674cc4bcb2c4438697478258af0c0cc15c0f2faa60456",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "x"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-MAP",
+     "type_prefix": "Y",
+     "title": "Y mapping",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      86,
+      91
+     ],
+     "content_hash": "sha256:a17b8461104d334819659889de00f389b97318f51c7f2a73c24bfc62a513af89",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ymap": {
+       "sub": "a"
+      }
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-SCALAR-A",
+     "type_prefix": "Y",
+     "title": "Y scalar a",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      81,
+      85
+     ],
+     "content_hash": "sha256:e3bcd4038bed03e438dd1fab84978d1f47211d4e97c67dc1a7b913042921a011",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": "a"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-SCALAR-X",
+     "type_prefix": "Y",
+     "title": "Y scalar x",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      76,
+      80
+     ],
+     "content_hash": "sha256:11faa2b9027885f15f3bc3f593ee2d8642a85f5ba4a7dde239af740636d79907",
+     "token_count": 15,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": "x"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 6,
+   "total_matched": 6,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "Y-"
+     }
+    },
+    "body_scanned": false
+   },
+   "tier": "page",
+   "offset": 0,
+   "next_offset": null,
+   "complete": true
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "Y-",
+    "tier": "page"
+   },
+   "count": 6,
+   "total_matched": 6,
+   "truncated": false,
+   "result_ids": [
+    "Y-ABSENT",
+    "Y-LIST-AB",
+    "Y-LIST-AX",
+    "Y-MAP",
+    "Y-SCALAR-A",
+    "Y-SCALAR-X"
+   ],
+   "result_ids_capped": false,
+   "tier": "page",
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_tier_full": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "XL-M1",
+     "type_prefix": "XL",
+     "title": "Init",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      45,
+      49
+     ],
+     "content_hash": "sha256:d52bbddd58e076be23ce70e7febbd305c362f4867f2341545d214b1eec853c72",
+     "token_count": 20,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "input": "Borrower card CONTENTS (required)"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "XL-M2",
+     "type_prefix": "XL",
+     "title": "Borrower notes",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      50,
+      54
+     ],
+     "content_hash": "sha256:c043dc8380b8e55963905bba6accaabda8e94e2c3db950e71e9db47575f7ae00",
+     "token_count": 21,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "description": "card contents differ"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "XL-"
+     }
+    },
+    "body_scanned": false
+   },
+   "tier": "full",
+   "offset": 0,
+   "next_offset": null,
+   "complete": true
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "XL-",
+    "tier": "full"
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "XL-M1",
+    "XL-M2"
+   ],
+   "result_ids_capped": false,
+   "tier": "full",
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_limit_order": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LIVE",
+     "type_prefix": "PROC",
+     "title": "go-live checklist",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      29,
+      35
+     ],
+     "content_hash": "sha256:6c71e8a5d9ae2a8be50020ae2e841704fdd8a88dbcafe14b191394ead273ab5b",
+     "token_count": 31,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "function": "alpha",
+      "service": "svc1",
+      "decided-in-session": "2026-09-15"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 5,
+   "truncated": true,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "PROC-"
+     }
+    },
+    "body_scanned": false
+   },
+   "limit_applied": 2,
+   "windowed_total": 2,
+   "order_applied": {
+    "field": "decided-in-session",
+    "direction": "desc",
+    "unorderable_count": 0
+   },
+   "bound_reason": "none"
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC-"
+   },
+   "count": 2,
+   "total_matched": 5,
+   "truncated": true,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LIVE"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_offset_budget": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "Y-ABSENT",
+     "type_prefix": "Y",
+     "title": "Y absent",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      72,
+      75
+     ],
+     "content_hash": "sha256:3b561bf928852090577127883ed1c6ee47843f730d660d3edbfd8d88c17adec6",
+     "token_count": 12,
+     "status": "operational",
+     "properties": {
+      "status": "operational"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AB",
+     "type_prefix": "Y",
+     "title": "Y list a b",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      66,
+      71
+     ],
+     "content_hash": "sha256:e8d39be5f7957dad4fc5c7e01bf44aa0518a86d45fc45a46ab52b5d92feed3cd",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "b"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "Y-LIST-AX",
+     "type_prefix": "Y",
+     "title": "Y list a x",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      60,
+      65
+     ],
+     "content_hash": "sha256:579c2bd4817487ba508674cc4bcb2c4438697478258af0c0cc15c0f2faa60456",
+     "token_count": 17,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "ykey": [
+       "a",
+       "x"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 3,
+   "total_matched": 6,
+   "truncated": true,
+   "cursor": 3,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "Y-"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "Y-"
+   },
+   "count": 3,
+   "total_matched": 6,
+   "truncated": true,
+   "result_ids": [
+    "Y-ABSENT",
+    "Y-LIST-AB",
+    "Y-LIST-AX"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_reverse_digest": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "XL-M1",
+     "type_prefix": "XL",
+     "title": "Init",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      45,
+      49
+     ],
+     "content_hash": "sha256:d52bbddd58e076be23ce70e7febbd305c362f4867f2341545d214b1eec853c72",
+     "token_count": 20,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "input": "Borrower card CONTENTS (required)"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "reverse_digest": {
+      "total_referrers": 1,
+      "returned": 1,
+      "omitted": 0,
+      "truncated": false,
+      "sample": [
+       {
+        "corpus": "qs",
+        "node_id": "QS-ROOT",
+        "how": "edge:CONTAINS",
+        "layer": "entity",
+        "source_line": 45
+       }
+      ],
+      "complete": true,
+      "stale_corpora": [],
+      "see_also": "lts_reverse(corpus='qs', node_id='XL-M1') for the complete, paged referrer list"
+     }
+    },
+    {
+     "corpus": "qs",
+     "id": "XL-M2",
+     "type_prefix": "XL",
+     "title": "Borrower notes",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      50,
+      54
+     ],
+     "content_hash": "sha256:c043dc8380b8e55963905bba6accaabda8e94e2c3db950e71e9db47575f7ae00",
+     "token_count": 21,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "description": "card contents differ"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header",
+     "reverse_digest": {
+      "total_referrers": 1,
+      "returned": 1,
+      "omitted": 0,
+      "truncated": false,
+      "sample": [
+       {
+        "corpus": "qs",
+        "node_id": "QS-ROOT",
+        "how": "edge:CONTAINS",
+        "layer": "entity",
+        "source_line": 50
+       }
+      ],
+      "complete": true,
+      "stale_corpora": [],
+      "see_also": "lts_reverse(corpus='qs', node_id='XL-M2') for the complete, paged referrer list"
+     }
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "XL-"
+     }
+    },
+    "body_scanned": false
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "XL-"
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "XL-M1",
+    "XL-M2"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_no_corpus": {
+  "response": {
+   "success": true,
+   "nodes": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "type_prefix": "PROC",
+     "title": "Alantern quality Aqaba",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "content_hash": "sha256:ad9a055bae0c0693925db7c598cf25bbc80a57919672a08ef3c6ad940f307ed5",
+     "token_count": 34,
+     "status": "draft",
+     "properties": {
+      "status": "draft",
+      "kind": "Note",
+      "tier": "silver",
+      "decided-in-session": "2026-10-01"
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "type_prefix": "PROC",
+     "title": "Lantern architect note",
+     "domain": "PLT.QS",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "content_hash": "sha256:63bcfeca6d77bcc12de718f4c36968c390c5628c6c2063959c816cb1bde4b92c",
+     "token_count": 54,
+     "status": "operational",
+     "properties": {
+      "status": "operational",
+      "kind": "note",
+      "tier": "gold",
+      "decided-in-session": "2026-09-01",
+      "alias": [
+       "lantern qa checklist",
+       "second alias"
+      ]
+     },
+     "parent_section": "QS-ROOT",
+     "document_tag": "SPEC",
+     "definition_form": "header"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null,
+   "filters": {
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find",
+     "corpus": "ALL LOADED",
+     "filters": {
+      "text": "lantern"
+     }
+    },
+    "body_scanned": false,
+    "scope_note": "STRUCTURED SCOPE ONLY — id, title, and STRING property values were read; BODY PROSE WAS NOT. 18 of 18 nodes in scope carry source lines beyond their heading that this query did not read (index-derived, so it counts property lines too and is an UPPER BOUND on unread prose). A zero — or a thin non-zero — here is consistent with the term being present ONLY in prose. lts_find_in_prose(text=...) covers it and flags each hit body-only vs also-in-structure."
+   },
+   "stale_corpora": []
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "text_sha": "c5220b3c4266",
+    "text_len": 7
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "id",
+     "title",
+     "properties.*"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "find_unknown_corpus": {
+  "response": {
+   "success": false,
+   "error": "corpus not found: 'nope' — loaded corpora: 'qs'. Note: private corpora are searched only when named exactly.",
+   "corpus": "nope",
+   "did_you_mean": [],
+   "corpora_available": [
+    "qs"
+   ],
+   "note": "private corpora are searched only when named exactly"
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": false,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "nope",
+    "text_sha": "2d711642b726",
+    "text_len": 1
+   },
+   "count": null,
+   "total_matched": null,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "find_rank_needs_text": {
+  "response": {
+   "success": false,
+   "error": "rank='relevance' needs non-empty `text` (it ranks against the query)"
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": false,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs"
+   },
+   "count": null,
+   "total_matched": null,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "find_bad_semantic": {
+  "response": {
+   "success": false,
+   "error": "semantic='maybe' is not one of 'off' | 'on_miss'"
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find",
+   "ok": false,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs"
+   },
+   "count": null,
+   "total_matched": null,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "prose_text": {
+  "response": {
+   "success": true,
+   "filters": {
+    "text": "zorblax",
+    "body_only": false,
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "body_only_count": 1,
+   "also_in_structure_count": 0,
+   "nodes_scanned": 18,
+   "elapsed_ms": 0,
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find_in_prose",
+     "corpus": "qs",
+     "filters": {
+      "text": "zorblax"
+     }
+    },
+    "notes": [
+     "body scan: 18 nodes with body, 2 files read, 834 body chars, <ms>"
+    ],
+    "body_scanned": true,
+    "scope_note": "BODY SCOPE ONLY — this read source lines beneath each node's heading. It does NOT apply lts_find's structured predicate, so a node asserting the term in a property and never mentioning it in prose is ABSENT here. `finding: body-only` marks the hits lts_find(text=...) does not return; `also-in-structure` marks the ones it already does."
+   },
+   "hits": [
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "title": "Lantern architect note",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "lines": [
+      {
+       "line": 18,
+       "text": "Body prose mentions zorblax once."
+      }
+     ],
+     "match_lines": 1,
+     "lines_shown": 1,
+     "in_structure": false,
+     "structure_hit_in": [],
+     "finding": "body-only"
+    }
+   ],
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "cursor": null
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find_in_prose",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "433c2a9842d7",
+    "text_len": 7
+   },
+   "count": 1,
+   "total_matched": 1,
+   "truncated": false,
+   "result_ids": [
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "prose_body_only": {
+  "response": {
+   "success": true,
+   "filters": {
+    "text": "body prose",
+    "body_only": true,
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "body_only_count": 2,
+   "also_in_structure_count": 0,
+   "nodes_scanned": 18,
+   "elapsed_ms": 0,
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find_in_prose",
+     "corpus": "qs",
+     "filters": {
+      "text": "body prose",
+      "body_only": true
+     }
+    },
+    "notes": [
+     "body scan: 18 nodes with body, 2 files read, 834 body chars, <ms>"
+    ],
+    "body_scanned": true,
+    "scope_note": "BODY SCOPE ONLY — this read source lines beneath each node's heading. It does NOT apply lts_find's structured predicate, so a node asserting the term in a property and never mentioning it in prose is ABSENT here. `finding: body-only` marks the hits lts_find(text=...) does not return; `also-in-structure` marks the ones it already does."
+   },
+   "hits": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "title": "Alantern quality Aqaba",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "lines": [
+      {
+       "line": 27,
+       "text": "Body prose only."
+      }
+     ],
+     "match_lines": 1,
+     "lines_shown": 1,
+     "in_structure": false,
+     "structure_hit_in": [],
+     "finding": "body-only"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "title": "Lantern architect note",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "lines": [
+      {
+       "line": 18,
+       "text": "Body prose mentions zorblax once."
+      }
+     ],
+     "match_lines": 1,
+     "lines_shown": 1,
+     "in_structure": false,
+     "structure_hit_in": [],
+     "finding": "body-only"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "cursor": null
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find_in_prose",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "fb9238362172",
+    "text_len": 10
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "prose_digest": {
+  "response": {
+   "success": true,
+   "filters": {
+    "text": "prose",
+    "body_only": false,
+    "since": null,
+    "until": null,
+    "date_property": "decided-in-session",
+    "area": null
+   },
+   "body_only_count": 2,
+   "also_in_structure_count": 0,
+   "nodes_scanned": 5,
+   "elapsed_ms": 0,
+   "extent": {
+    "corpora_consulted": [
+     "qs"
+    ],
+    "corpora_skipped": [],
+    "nodes_in_scope": 18,
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index": {
+     "fresh": true,
+     "stale_corpora": [],
+     "built_at": {
+      "qs": "t"
+     }
+    },
+    "corpora_available": [
+     "qs"
+    ],
+    "root_paths": {
+     "qs": [
+      "<ROOT>"
+     ]
+    },
+    "scope": {
+     "tool": "lts_find_in_prose",
+     "corpus": "qs",
+     "filters": {
+      "prefix": "PROC-",
+      "text": "prose"
+     }
+    },
+    "notes": [
+     "body scan: 5 nodes with body, 2 files read, 834 body chars, <ms>"
+    ],
+    "body_scanned": true,
+    "scope_note": "BODY SCOPE ONLY — this read source lines beneath each node's heading. It does NOT apply lts_find's structured predicate, so a node asserting the term in a property and never mentioning it in prose is ABSENT here. `finding: body-only` marks the hits lts_find(text=...) does not return; `also-in-structure` marks the ones it already does."
+   },
+   "tier": "digest",
+   "digest": [
+    {
+     "corpus": "qs",
+     "id": "PROC-ALANTERN",
+     "title": "Alantern quality Aqaba",
+     "source_file": "a.lts",
+     "line_range": [
+      20,
+      28
+     ],
+     "match_lines": 1,
+     "in_structure": false,
+     "structure_hit_in": [],
+     "finding": "body-only"
+    },
+    {
+     "corpus": "qs",
+     "id": "PROC-LANTERN-ARCH",
+     "title": "Lantern architect note",
+     "source_file": "a.lts",
+     "line_range": [
+      9,
+      19
+     ],
+     "match_lines": 1,
+     "in_structure": false,
+     "structure_hit_in": [],
+     "finding": "body-only"
+    }
+   ],
+   "count": 2,
+   "total_matched": 2,
+   "complete": true,
+   "truncated": false,
+   "cursor": null
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find_in_prose",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC-",
+    "tier": "digest",
+    "text_sha": "8e8cc5a7ecc7",
+    "text_len": 5
+   },
+   "count": 2,
+   "total_matched": 2,
+   "truncated": false,
+   "result_ids": [
+    "PROC-ALANTERN",
+    "PROC-LANTERN-ARCH"
+   ],
+   "result_ids_capped": false,
+   "tier": "digest",
+   "extent": {
+    "nodes_in_scope": 18,
+    "corpora_consulted": [
+     "qs"
+    ],
+    "keys_consulted": [
+     "body:prose",
+     "body:property-lines"
+    ],
+    "index_fresh": true
+   }
+  }
+ },
+ "prose_empty": {
+  "response": {
+   "success": false,
+   "error": "lts_find_in_prose requires a non-empty `text` term — it searches body prose, and an empty term matches every line of every node. To enumerate a corpus use lts_find with tier='digest'."
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_find_in_prose",
+   "ok": false,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "text_sha": "6c179f21e6f6",
+    "text_len": 2
+   },
+   "count": null,
+   "total_matched": null,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "agg_count": {
+  "response": {
+   "success": true,
+   "corpus": "qs",
+   "total": 18,
+   "filters": {}
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_aggregate",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "op": "count"
+   },
+   "count": null,
+   "total_matched": 18,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "agg_count_prefix": {
+  "response": {
+   "success": true,
+   "corpus": "qs",
+   "attr": "status",
+   "total": 5,
+   "distinct": 2,
+   "groups": {
+    "draft": 1,
+    "operational": 4
+   },
+   "buckets": [
+    {
+     "value": "operational",
+     "count": 4
+    },
+    {
+     "value": "draft",
+     "count": 1
+    }
+   ],
+   "filters": {
+    "prefix": "PROC-"
+   },
+   "normalize": {
+    "canonical": true,
+    "date_granularity": null
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_aggregate",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "prefix": "PROC-",
+    "op": "count",
+    "group_by": "status"
+   },
+   "count": null,
+   "total_matched": 5,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "agg_group_by": {
+  "response": {
+   "success": true,
+   "corpus": "qs",
+   "attr": "tier",
+   "total": 18,
+   "distinct": 3,
+   "groups": {
+    "(none)": 15,
+    "silver": 1,
+    "gold": 2
+   },
+   "buckets": [
+    {
+     "value": "(none)",
+     "count": 15
+    },
+    {
+     "value": "gold",
+     "count": 2
+    },
+    {
+     "value": "silver",
+     "count": 1
+    }
+   ],
+   "filters": {},
+   "normalize": {
+    "canonical": true,
+    "date_granularity": null
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_aggregate",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "op": "group_by",
+    "attr": "tier"
+   },
+   "count": null,
+   "total_matched": 18,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "agg_distinct": {
+  "response": {
+   "success": true,
+   "corpus": "qs",
+   "attr": "kind",
+   "distinct": 3,
+   "counted": 4,
+   "total": 18,
+   "values": [
+    "Note",
+    "note",
+    "plan"
+   ],
+   "filters": {
+    "text": "n"
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_aggregate",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs",
+    "op": "distinct",
+    "attr": "kind",
+    "text_sha": "1b16b1df538b",
+    "text_len": 1
+   },
+   "count": null,
+   "total_matched": 18,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ },
+ "audit_basic": {
+  "response": {
+   "success": true,
+   "corpus": "qs",
+   "profile": {
+    "available": false,
+    "source": "no profile loaded",
+    "resolved_from": "none",
+    "domain_id": null,
+    "path": null
+   },
+   "registration": {
+    "success": true,
+    "corpus": "qs",
+    "scanned_partitions": true,
+    "registered_profiles": [],
+    "excluded_profile_documents": {},
+    "findings": [],
+    "finding_counts": {}
+   },
+   "node_total": 18,
+   "prefixes": {
+    "used": [
+     "PLAN-",
+     "PROC-",
+     "Q-",
+     "QS-",
+     "UNT-",
+     "XL-",
+     "Y-"
+    ],
+    "used_count": 7,
+    "declared": "no profile loaded",
+    "used_but_unregistered": "no profile loaded",
+    "declared_but_unused": "no profile loaded",
+    "counts": {
+     "Y": 6,
+     "PROC": 5,
+     "UNT": 2,
+     "XL": 2,
+     "PLAN": 1,
+     "Q": 1,
+     "QS": 1
+    }
+   },
+   "properties": {
+    "used": [
+     "alias",
+     "decided-in-session",
+     "description",
+     "function",
+     "input",
+     "kind",
+     "service",
+     "status",
+     "tier",
+     "ykey",
+     "ymap"
+    ],
+    "used_count": 11,
+    "declared": "no profile loaded",
+    "used_but_unregistered": "no profile loaded",
+    "declared_but_unused": "no profile loaded",
+    "frequency": {
+     "status": 18,
+     "kind": 4,
+     "ykey": 4,
+     "decided-in-session": 3,
+     "tier": 3,
+     "alias": 1,
+     "description": 1,
+     "function": 1,
+     "input": 1,
+     "service": 1,
+     "ymap": 1
+    },
+    "distribution": {
+     "tail_threshold": 5,
+     "core_count": 1,
+     "tail_count": 10,
+     "core": {
+      "status": 18
+     },
+     "tail": [
+      "alias",
+      "decided-in-session",
+      "description",
+      "function",
+      "input",
+      "kind",
+      "service",
+      "tier",
+      "ykey",
+      "ymap"
+     ]
+    }
+   },
+   "edge_types": {
+    "used": [
+     "CONTAINS"
+    ],
+    "used_count": 1,
+    "declared": "no profile loaded",
+    "used_but_unregistered": "no profile loaded",
+    "declared_but_unused": "no profile loaded",
+    "counts": {
+     "CONTAINS": 16
+    },
+    "total_edges": 16,
+    "resolved_edges": 16,
+    "registration": {
+     "core": [
+      "AFTER",
+      "BEFORE",
+      "CASCADES_TO",
+      "CAUSES",
+      "CONCURRENT",
+      "CONTAINS",
+      "CONTRAST_WITH",
+      "DEADLINE",
+      "DEPENDS_ON",
+      "DURATION",
+      "ENABLES",
+      "HAS_PROPERTY",
+      "HOLDS",
+      "IMPLEMENTS",
+      "ISSUES",
+      "IS_A",
+      "MANAGES",
+      "MENTIONED_IN",
+      "OWNED_BY",
+      "PART_OF",
+      "PRECONDITION_FOR",
+      "PREVENTS",
+      "REFERS_TO",
+      "RELATED_TO",
+      "RESOLVES",
+      "SEQUENCE",
+      "SIMILAR_TO",
+      "SPECIALIZES",
+      "SUPERSEDES",
+      "TESTED_BY",
+      "TIME_INDEXED_STATE",
+      "USED_BY",
+      "VALIDITY_WINDOW"
+     ],
+     "profile_registered": {},
+     "profile_registered_count": 0,
+     "relationship_verbs": [],
+     "registered_but_unused": [],
+     "verbs_declared_but_unused": [],
+     "used_but_neither_core_nor_declared": [],
+     "core_shadowed": []
+    }
+   },
+   "property_edges": {
+    "builtin": [
+     "applies-rule",
+     "attaches-to-hook",
+     "branches",
+     "canonical-node",
+     "contrast-with",
+     "converges-to",
+     "depends-on",
+     "follows",
+     "if-false",
+     "if-true",
+     "implements",
+     "issuer",
+     "next-step",
+     "part-of",
+     "related-to",
+     "relates-to",
+     "resolves",
+     "see-also",
+     "spawns",
+     "superseded-by",
+     "supersedes",
+     "tested-by",
+     "used-by",
+     "verified-by",
+     "verify"
+    ],
+    "profile_registered": {},
+    "profile_registered_count": 0,
+    "minting_keys_in_effect": [
+     "applies-rule",
+     "attaches-to-hook",
+     "branches",
+     "canonical-node",
+     "contrast-with",
+     "converges-to",
+     "depends-on",
+     "follows",
+     "if-false",
+     "if-true",
+     "implements",
+     "issuer",
+     "next-step",
+     "part-of",
+     "related-to",
+     "relates-to",
+     "resolves",
+     "see-also",
+     "spawns",
+     "superseded-by",
+     "supersedes",
+     "tested-by",
+     "used-by",
+     "verified-by",
+     "verify"
+    ],
+    "registered_but_unused": [],
+    "builtin_but_unused": [
+     "applies-rule",
+     "attaches-to-hook",
+     "branches",
+     "canonical-node",
+     "contrast-with",
+     "converges-to",
+     "depends-on",
+     "follows",
+     "if-false",
+     "if-true",
+     "implements",
+     "issuer",
+     "next-step",
+     "part-of",
+     "related-to",
+     "relates-to",
+     "resolves",
+     "see-also",
+     "spawns",
+     "superseded-by",
+     "supersedes",
+     "tested-by",
+     "used-by",
+     "verified-by",
+     "verify"
+    ],
+    "minting_keys_used": [],
+    "wiring": {
+     "checked": [
+      "factlattice.corpus.parse (dir mode -- lts_lint / lts_preview)",
+      "factlattice.corpus.parse (file-set mode)",
+      "factlattice.index_builder.build_index",
+      "factlattice_engine.incremental.RootIndex (live MCP query engine)"
+     ],
+     "reachable_from": [
+      "factlattice.corpus.parse (dir mode -- lts_lint / lts_preview)",
+      "factlattice.corpus.parse (file-set mode)",
+      "factlattice.index_builder.build_index",
+      "factlattice_engine.incremental.RootIndex (live MCP query engine)"
+     ],
+     "unreachable_from": [],
+     "reachable_from_any_production_path": true,
+     "reachable_from_every_production_path": true,
+     "method": "round-trip: a probe document carrying a registered minting key is parsed through each entry point and the resulting edge set is searched for the minted edge. Deliberately NOT a signature check — see this function's docstring."
+    },
+    "threaded_keys_in_effect": [
+     "applies-rule",
+     "attaches-to-hook",
+     "branches",
+     "canonical-node",
+     "contrast-with",
+     "converges-to",
+     "depends-on",
+     "follows",
+     "if-false",
+     "if-true",
+     "implements",
+     "issuer",
+     "next-step",
+     "part-of",
+     "related-to",
+     "relates-to",
+     "resolves",
+     "see-also",
+     "spawns",
+     "superseded-by",
+     "supersedes",
+     "tested-by",
+     "used-by",
+     "verified-by",
+     "verify"
+    ],
+    "declared_not_threaded": []
+   },
+   "filters": {},
+   "conformance": {
+    "required_property": "status",
+    "scope": {
+     "prefix": "PROC-"
+    },
+    "present": 5,
+    "total": 5,
+    "rate": 1.0
+   }
+  },
+  "log": {
+   "session": "S",
+   "tool": "lts_profile_audit",
+   "ok": true,
+   "elapsed_ms": 0,
+   "filters": {
+    "corpus": "qs"
+   },
+   "count": null,
+   "total_matched": null,
+   "truncated": null,
+   "result_ids": [],
+   "result_ids_capped": false
+  }
+ }
+}

@@ -1,0 +1,418 @@
+---
+title: "Domain Profile: Software Engineering"
+id: "DOMAIN:SWE"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding structured knowledge about a software system — its specifications, architecture, components, interfaces, data models, tests, and engineering decisions — as a queryable factbase from which documentation, onboarding paths, impact analyses, and audits can be projected on demand"
+created: 2026-04-01
+updated: 2026-04-01
+---
+# Domain Profile: Software Engineering [DOMAIN:SWE]
+
+> Encodes the knowledge that governs a software system: what it is specified to do, how it is built, how the parts depend on one another, and why each significant decision was made. The specification is the source of truth; implementation, tests, and operational runbooks are encoded against it so that drift between intent and reality is detectable rather than silent.
+
+> Two node populations coexist and must not be conflated: **normative** nodes (what the system is specified to do) and **descriptive** nodes (what an implementation actually does). An edge between them — conformance or divergence — is itself a first-class fact.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | SWE |
+| Sub-Namespaces | SWE.SPEC (normative specification), SWE.IMPL (implementation reality), SWE.TEST (verification), SWE.DEC (decision record) |
+| Location | Alongside the source tree it describes, or in a dedicated `docs/` corpus |
+| Conventions File | This profile |
+| Maturity | Reference profile — generic, adopt and extend per system |
+
+---
+
+## 2. Layer Architecture
+
+### 2.1 Layer 1: Specification (SWE.SPEC)
+
+The normative layer. Encodes **what the system is required to do** — requirements, interface contracts, invariants, data schemas, and architectural constraints. Specification nodes are authoritative: an implementation is correct to the extent it conforms to them. Every specification node carries a `status` and, where behavior is testable, is linked to the tests that verify it.
+
+Contents:
+- System and subsystem requirements
+- Component responsibilities and boundaries
+- Interface contracts (APIs, message schemas, CLI surfaces)
+- Data models and schemas
+- Invariants and constraints that must hold at all times
+- Non-functional requirements (performance, security, availability budgets)
+
+### 2.2 Layer 2: Implementation (SWE.IMPL)
+
+The descriptive layer. Encodes **what the code actually does** — modules, their public surfaces, their dependencies, and the specification nodes each one realizes. Implementation nodes are observations of a codebase at a point in time and carry a `verified-against` reference (commit, tag, or build) so staleness is detectable.
+
+Contents:
+- Modules, packages, and services
+- Public functions, classes, and endpoints as realized
+- Runtime dependency edges between components
+- Configuration surfaces and their effects
+- Known deviations from specification (encoded, not hidden)
+
+### 2.3 Layer 3: Verification (SWE.TEST)
+
+Encodes **what is proven** — the tests, checks, and audits that establish conformance between Layer 1 and Layer 2. Every verification node cites the specification node it exercises and records its last-run outcome.
+
+Contents:
+- Test suites and individual test cases
+- Property-based and invariant checks
+- Static-analysis and lint gates
+- Acceptance criteria and their pass/fail state
+
+### 2.4 Layer 4: Decision Record (SWE.DEC)
+
+Encodes **why** — the architectural and engineering decisions that shaped the other layers, each with its rationale, the alternatives rejected, and the assumption whose change would warrant reopening it. Decision nodes are append-only; superseded decisions are retained with a supersession edge.
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-SWE-1: Normative and Descriptive Nodes Are Distinct
+
+- decision: Specification (SWE.SPEC) and implementation (SWE.IMPL) nodes are separate populations. A requirement and the code that realizes it are two nodes joined by a `swe.REALIZES` or `swe.DIVERGES_FROM` edge — never a single merged node.
+- rationale: Merging intent and reality makes drift invisible. Keeping them separate makes "the code no longer matches the spec" a queryable edge, not tribal knowledge.
+- status: foundational
+- invalidating_assumption: That specification and implementation are authored by different processes at different cadences. For a throwaway prototype with no durable spec, the separation adds overhead without payoff.
+
+### 3.2 DD-SWE-2: Status Is Mandatory on Specification Nodes
+
+- decision: Every SWE.SPEC node carries a `status` from a fixed lifecycle (`proposed`, `accepted`, `implemented`, `deprecated`, `removed`). Nodes without a status fail linting.
+- rationale: A specification is a living contract. A reader must be able to tell an aspiration from a commitment from a retired requirement without reading commit history.
+- status: foundational
+
+### 3.3 DD-SWE-3: Implementation Nodes Are Timestamped Observations
+
+- decision: Every SWE.IMPL node carries `verified-against` (a commit ref, tag, or build id) and `as-of` (the date it was last confirmed). Implementation facts are observations, not standing truths.
+- rationale: Code changes continuously; documentation of code rots. Making each implementation node cite the exact revision it describes turns "is this doc still accurate?" into a mechanical comparison.
+- status: foundational
+
+### 3.4 DD-SWE-4: Conformance Is an Edge, Divergence Is a Node
+
+- decision: When implementation matches specification, a `swe.REALIZES` edge records it. When it diverges, a `DEV-` (deviation) node is created carrying the gap, its cause, and its disposition (`accepted`, `bug`, `spec-stale`).
+- rationale: Conformance is cheap to assert and needs no elaboration. Divergence is expensive knowledge — it needs a home, an owner, and a decision. Promoting divergence to a node forces that.
+- status: foundational
+
+### 3.5 DD-SWE-5: Interface Contracts Are Versioned Independently of Callers
+
+- decision: Interface nodes (`API-`, `IF-`) carry an explicit `contract-version` and a `compat` field (`stable`, `beta`, `deprecated`, `breaking`). Consumers reference a contract version, not an implementation.
+- rationale: The stable thing a component promises is its interface, not its internals. Versioning the contract separately lets internals churn without invalidating every caller edge.
+- status: foundational
+
+### 3.6 DD-SWE-6: Decisions Carry Their Own Invalidation Trigger
+
+- decision: Every SWE.DEC node records an `invalidating_assumption` — the premise that, if it changed, would warrant reopening the decision. A decision without one fails linting.
+- rationale: Most bad re-litigation happens because the original reasoning is lost. Recording the load-bearing assumption lets a future author tell "still valid, defend it" from "premise changed, reopen it."
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Specification Prefixes (Layer 1)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| REQ- | Requirement | [REQ-AUTH-EXPIRY], [REQ-IDEMPOTENT-WRITE] |
+| SYS- | System / subsystem definition | [SYS-INGEST], [SYS-SCHEDULER] |
+| CMP- | Component responsibility | [CMP-ROUTER], [CMP-STORE] |
+| API- | External interface contract | [API-CREATE-ORDER], [API-V2-SEARCH] |
+| IF- | Internal interface / contract | [IF-QUEUE-CONSUMER] |
+| SCHEMA- | Data model / schema node | [SCHEMA-ORDER], [SCHEMA-EVENT-ENVELOPE] |
+| INV- | Invariant / constraint | [INV-NO-ORPHAN-CHILD], [INV-MONOTONIC-CLOCK] |
+| NFR- | Non-functional requirement | [NFR-P99-LATENCY], [NFR-RPO] |
+| CFG- | Configuration surface | [CFG-RETRY-POLICY], [CFG-FEATURE-FLAGS] |
+
+### 4.2 Implementation Prefixes (Layer 2)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| MOD- | Module / package | [MOD-PARSER], [MOD-HTTP-CLIENT] |
+| SVC- | Deployable service | [SVC-API-GATEWAY], [SVC-WORKER] |
+| FN- | Public function / method surface | [FN-VALIDATE-TOKEN] |
+| EP- | Realized endpoint / handler | [EP-POST-ORDERS] |
+| DEP- | Runtime / build dependency | [DEP-DATASTORE], [DEP-MESSAGE-BUS] |
+| DEV- | Deviation from specification | [DEV-RETRY-UNBOUNDED], [DEV-SCHEMA-EXTRA-FIELD] |
+
+### 4.3 Verification Prefixes (Layer 3)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| TEST- | Test suite / case | [TEST-AUTH-EXPIRY], [TEST-IDEMPOTENCY] |
+| CHK- | Static / property / lint check | [CHK-NO-CYCLES], [CHK-SCHEMA-BACKCOMPAT] |
+| AC- | Acceptance criterion | [AC-CHECKOUT-HAPPY-PATH] |
+| GATE- | Release / merge gate | [GATE-COVERAGE], [GATE-DRC] |
+
+### 4.4 Decision Prefixes (Layer 4)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| DEC- | Engineering / architectural decision | [DEC-EVENT-SOURCING], [DEC-MONOREPO] |
+| TRD- | Recorded trade-off analysis | [TRD-SYNC-VS-ASYNC] |
+| RISK- | Engineering risk | [RISK-SINGLE-WRITER], [RISK-VENDOR-LOCKIN] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Lifecycle Properties (All Layers)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| status | enum | proposed, accepted, implemented, deprecated, removed |
+| owner | string | Team or role accountable for the node |
+| as-of | date | Date the assertion was last confirmed |
+| confidence | number (0.0–1.0) | Certainty in the assertion (see Section 8) |
+
+### 5.2 Specification Properties (Layer 1)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| priority | enum | must, should, may |
+| testable | boolean | Whether the requirement has an objective pass/fail check |
+| verified-by | list | TEST- / AC- node ids that establish conformance |
+| stability | enum | stable, evolving, experimental |
+| rationale-ref | reference | DEC- node explaining why this requirement exists |
+
+### 5.3 Interface Properties (Layer 1)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| contract-version | string | Semantic version of the interface contract |
+| compat | enum | stable, beta, deprecated, breaking |
+| protocol | string | Transport / protocol (HTTP, gRPC, message-queue, CLI, library) |
+| idempotent | boolean | Whether repeated invocation is safe |
+| error-model | string | How failures are surfaced (status codes, error types, retries) |
+
+### 5.4 Implementation Properties (Layer 2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| verified-against | string | Commit ref, tag, or build id the observation describes |
+| path | string | Source location (path, package, or module coordinate) |
+| realizes | list | SWE.SPEC node ids this implementation fulfills |
+| language | string | Implementation language / runtime |
+| public-surface | boolean | Whether the node is part of a stable external surface |
+
+### 5.5 Deviation Properties (Layer 2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| deviation-type | enum | missing, extra, behavioral, performance |
+| disposition | enum | accepted, bug, spec-stale, wont-fix |
+| detected-by | reference | The check, test, or review that surfaced the gap |
+| blast-radius | list | Nodes affected if the deviation is left unresolved |
+
+### 5.6 Verification Properties (Layer 3)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| exercises | list | SWE.SPEC node ids this verification covers |
+| last-run | date | When the check was last executed |
+| last-result | enum | pass, fail, error, skipped, flaky |
+| check-type | enum | unit, integration, property, static, acceptance |
+| coverage-note | string | What the verification does and does not establish |
+
+### 5.7 Decision Properties (Layer 4)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| decision-date | date | When the decision was ratified |
+| alternatives | list | Options considered and rejected |
+| invalidating_assumption | string | Premise whose change warrants reopening |
+| supersedes | reference | Prior DEC- node this replaces |
+| status | enum | proposed, accepted, superseded, reversed |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+### 6.1 Specification-to-Implementation Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| swe.REALIZES | entity | Implementation node fulfills a specification node |
+| swe.DIVERGES_FROM | semantic | Implementation contradicts or falls short of a specification node |
+| swe.CONSTRAINS | causal | Invariant or NFR constrains a component or interface |
+| swe.EXPOSES | entity | Component exposes an interface contract |
+| swe.CONSUMES | entity | Component depends on another's interface contract |
+
+### 6.2 Verification Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| swe.VERIFIES | semantic | Test / check establishes conformance to a specification node |
+| swe.COVERS | semantic | Verification exercises a component or interface |
+| swe.REGRESSES | temporal | A previously passing check now fails |
+
+### 6.3 Structural and Decision Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| swe.DEPENDS_ON | causal | Component / module requires another at build or run time |
+| swe.SUPERSEDES | temporal | Decision or contract version replaces an earlier one |
+| swe.MOTIVATES | causal | Decision motivates a requirement, component, or constraint |
+| swe.BREAKS | causal | Change to a contract breaks a dependent consumer |
+
+---
+
+## 7. Document Type Tags
+
+### 7.1 Specification Tags
+
+| Tag | Description |
+|-----|-------------|
+| SPEC | Normative specification document |
+| INTERFACE | Interface / API contract document |
+| SCHEMA | Data model / schema document |
+| CONSTRAINT | Invariant and non-functional requirement catalog |
+
+### 7.2 Implementation Tags
+
+| Tag | Description |
+|-----|-------------|
+| IMPL | Implementation description (as-built) |
+| RUNBOOK | Operational procedure for a running component |
+| DEVIATION | Catalog of known gaps between spec and implementation |
+
+### 7.3 Verification Tags
+
+| Tag | Description |
+|-----|-------------|
+| TESTPLAN | Test strategy and coverage map |
+| ACCEPTANCE | Acceptance criteria for a feature or release |
+
+### 7.4 Decision and Meta Tags
+
+| Tag | Description |
+|-----|-------------|
+| DECISION | Architecture / engineering decision record |
+| DELTA | Semantic change record (per the versioning appendix) |
+| BRIEF | Point-in-time engineering brief (may become stale) |
+
+---
+
+## 8. Confidence and Status Methodology
+
+### 8.1 Confidence on Implementation Nodes
+
+Implementation nodes describe a moving target and default their confidence from freshness:
+
+- Confirmed against current HEAD (`verified-against` = tip): 0.95
+- Confirmed against a prior tagged release: 0.80
+- `as-of` older than the last release, unverified since: decays 0.05 per release cycle
+- Inferred from documentation rather than read from code: cap 0.60
+
+### 8.2 Status Transitions on Specification Nodes
+
+A specification node moves `proposed → accepted → implemented → deprecated → removed`. The transition to `implemented` requires at least one `swe.VERIFIES` edge from a passing verification node; a linter warns when a node claims `implemented` with no passing check.
+
+### 8.3 Deviation Aging
+
+A `DEV-` node with `disposition: bug` that outlives N release cycles without resolution is escalated by the linter. `disposition: spec-stale` deviations are a signal to update Layer 1, not Layer 2.
+
+---
+
+## 9. Temporal Semantics
+
+### 9.1 Observation Currency
+
+Every SWE.IMPL and SWE.TEST node carries `as-of` and (for implementation) `verified-against`. A traversal engine encountering an implementation node whose `verified-against` predates the current HEAD SHOULD flag it as potentially stale.
+
+### 9.2 Contract Versioning
+
+Interface nodes are versioned with `contract-version`. A breaking change mints a new interface node with a `swe.SUPERSEDES` edge to the prior version; the prior node is retained with `compat: deprecated` until all consumer edges are migrated.
+
+### 9.3 Decision Supersession
+
+When a decision is reversed or replaced, a new DEC- node is created with a `swe.SUPERSEDES` edge and `supersedes` property. The old node's `status` becomes `superseded` and is retained for the audit trail — what was believed, and when.
+
+---
+
+## 10. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["SYS-INDEX"]
+  primary_layers: [causal, temporal]
+  focus_areas:
+    architecture:
+      entry: ["SYS-INDEX"]
+      layers: [entity, causal]
+      keywords: ["architecture", "system", "component", "structure", "overview"]
+    interfaces:
+      entry: ["API-INDEX"]
+      layers: [entity, semantic]
+      keywords: ["api", "interface", "contract", "endpoint", "schema"]
+    requirements:
+      entry: ["REQ-INDEX"]
+      layers: [semantic, causal]
+      keywords: ["requirement", "spec", "must", "invariant", "constraint"]
+    verification:
+      entry: ["TEST-INDEX"]
+      layers: [semantic]
+      keywords: ["test", "coverage", "verify", "check", "acceptance", "gate"]
+    deviations:
+      entry: ["DEV-INDEX"]
+      layers: [semantic, causal]
+      keywords: ["deviation", "gap", "drift", "bug", "mismatch", "todo"]
+    decisions:
+      entry: ["DEC-INDEX"]
+      layers: [causal, temporal]
+      keywords: ["decision", "why", "rationale", "trade-off", "alternative"]
+    dependencies:
+      entry: ["DEP-INDEX"]
+      layers: [causal]
+      keywords: ["depends", "dependency", "coupling", "blast radius", "impact"]
+```
+
+---
+
+## 11. Corpus Structure
+
+```
+<system>/docs/
+├── spec/                              # Layer 1
+│   ├── 01-system-overview.lts         # SYS-, CMP- nodes
+│   ├── 02-requirements.lts            # REQ-, NFR- nodes
+│   ├── 03-interfaces.lts              # API-, IF- nodes
+│   ├── 04-data-models.lts             # SCHEMA- nodes
+│   └── 05-invariants.lts              # INV- nodes
+├── impl/                              # Layer 2
+│   ├── 10-modules.lts                 # MOD-, SVC-, FN-, EP- nodes
+│   ├── 11-dependencies.lts            # DEP- nodes
+│   └── 12-deviations.lts              # DEV- nodes
+├── test/                              # Layer 3
+│   ├── 20-test-plan.lts               # TEST-, CHK- nodes
+│   └── 21-acceptance.lts              # AC-, GATE- nodes
+├── decisions/                         # Layer 4
+│   └── DEC-{short-slug}.lts           # One decision per file
+├── events/
+│   └── quality.jsonl                  # Quality event stream
+└── deltas/                            # Semantic change records
+    └── DELTA-{date}-{short-sha}.lts
+```
+
+---
+
+## 12. Section Template — Component Documents
+
+Implementation component documents (`IMPL` tag) follow a consistent template so any reader can locate the same information in the same place:
+
+1. Overview — one paragraph, what the component is for
+2. Information Scope — what this document does and does NOT cover
+3. Responsibilities — the specification nodes this component realizes (`swe.REALIZES`)
+4. Interfaces — contracts exposed (`swe.EXPOSES`) and consumed (`swe.CONSUMES`)
+5. Dependencies — runtime and build (`swe.DEPENDS_ON`)
+6. Invariants — constraints that must hold (`swe.CONSTRAINS`)
+7. Known Deviations — `DEV-` nodes with disposition
+8. Verification — tests and checks that cover the component (`swe.COVERS`)
+9. Related Decisions — DEC- nodes that shaped it (`swe.MOTIVATES`)
+
+---
+
+**Version**: 1.0
+**Created**: 2026-04-01
+**Updated**: 2026-04-01
+**Status**: Draft

@@ -1,0 +1,6 @@
+# Fixture: a term used and never defined [SPEC:FIXTURE-GEN2-PLANTED]
+
+## [FX2P-A] Rollout
+
+- claim: the rollout uses a quorum fence before every switchover
+- source: the runbook

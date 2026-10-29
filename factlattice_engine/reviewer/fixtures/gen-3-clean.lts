@@ -1,0 +1,11 @@
+# Fixture: every claim carries a source [SPEC:FIXTURE-GEN3-CLEAN]
+
+## [FX3C-A] Latency
+
+- claim: median latency fell by 40 percent after the change
+- source: the benchmark run of the same week
+
+## [FX3C-B] Throughput
+
+- claim: throughput is unchanged
+- source: the benchmark run of the same week

@@ -1,0 +1,10 @@
+# Fixture: a citation whose target does not say what the citing node claims [SPEC:FIXTURE-GEN5-PLANTED]
+
+## [FX5P-A] The retry limit
+
+- claim: retries are capped at three, per node FX5P-B
+
+## [FX5P-B] Retry policy
+
+- claim: retries use exponential backoff with jitter and no fixed cap
+- source: the retry policy document

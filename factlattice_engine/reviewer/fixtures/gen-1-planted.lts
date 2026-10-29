@@ -1,0 +1,11 @@
+# Fixture: a document that contradicts itself [SPEC:FIXTURE-GEN1-PLANTED]
+
+## [FX1P-A] Cache policy
+
+- claim: the response cache is always enabled for every request
+- source: the design note
+
+## [FX1P-B] Cache in production
+
+- claim: the response cache is disabled for every request in production
+- source: The deployment note

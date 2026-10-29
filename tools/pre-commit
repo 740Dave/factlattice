@@ -1,0 +1,45 @@
+#!/bin/sh
+# Pre-commit hook for the PUBLIC factlattice repo.
+#
+# Install:  ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+#
+# ⭐ THE SELFTEST RUNS FIRST, AND ITS FAILURE BLOCKS THE COMMIT. A guard that can only
+# report success is worse than no guard, because it is believed. Running the positive
+# control before the real check means a matcher broken by an edit fails the commit
+# rather than silently blessing every diff after it.
+#
+# TWO FAILURE MODES, TWO RESPONSES — they are not the same thing:
+#   exit 1  INTEGRITY   a rule is mute, malformed, or matches nothing.
+#                       -> BLOCK. The guard would run and prove nothing.
+#   exit 2  UNCONFIGURED  no private rules file on this machine.
+#                       -> WARN and continue with the structural rules. A stranger who
+#                          clones this public repo has no customer to disclose, and a
+#                          hook that blocks their every commit is a hook they delete.
+#                          On a machine that HAS deployments the file is present, so
+#                          this path does not apply where it would matter.
+set -e
+
+root=$(git rev-parse --show-toplevel)
+guard="$root/tools/disclosure_guard.py"
+
+[ -f "$guard" ] || { echo "pre-commit: $guard is missing"; exit 1; }
+
+set +e
+python3 "$guard" --selftest >/dev/null 2>&1
+rc=$?
+set -e
+
+if [ "$rc" -eq 1 ]; then
+    echo "⛔ pre-commit: the disclosure guard's OWN positive control failed."
+    echo "   A matcher is broken, so a pass would have proved nothing. Commit blocked."
+    python3 "$guard" --selftest
+    exit 1
+fi
+
+if [ "$rc" -eq 2 ]; then
+    echo "⚠️  pre-commit: disclosure guard is UNCONFIGURED (no private rules file)."
+    echo "   Structural rules still apply; no identity rule does. See"
+    echo "   tools/disclosure-denylist.example.tsv. Continuing."
+fi
+
+exec python3 "$guard"

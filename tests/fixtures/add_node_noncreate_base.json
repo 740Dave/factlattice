@@ -1,0 +1,433 @@
+{
+ "_final_file": "# Doc [SPEC:PIN-ROOT]\n\n- kind: root\n\n## Node one [PIN-ONE]\n\n- kind: x\n- status: draft\n\n### Three [PIN-NEW3]\n\n- kind: z\n\n## Node two [PIN-TWO]\n\n- kind: y\n\n## New [PIN-NEW]\n\n- kind: z\n- note: n\n\n## New two [PIN-NEW2]\n\n- kind: z\n\n### Four [PIN-NEW4]\n\n- kind: z\n\n## Five [PIN-NEW5]\n\n- kind: z\n\n## Six [PIN-NEW6]\n\n- see-also: [PIN-ONE]\n\n## t [PIN-X6]\n\n- kind: z\n",
+ "bad_key": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X1",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "bad_node_id": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "lower",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "node id 'lower' is not id-shaped (`^[A-Z][A-Z0-9_-]*$`) — the parser would read the heading as a plain divider and mint NO NODE, silently. Nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason node id 'lower' is not id-shaped (`^[A-Z][A-Z0-9_-]*$`) — the parser would read the heading as a plain divider and mint NO NODE, silently. Nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "bad_section": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X4",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "section [NOPE] not found in <ROOT>/c/p.lts — nothing written. Sections present: ['PIN-ROOT', 'PIN-ONE', 'PIN-NEW3', 'PIN-TWO', 'PIN-NEW', 'PIN-NEW2', 'PIN-NEW4', 'PIN-NEW5', 'PIN-NEW6']",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason section [NOPE] not found in <ROOT>/c/p.lts — nothing written. Sections present: ['PIN-ROOT', 'PIN-ONE', 'PIN-NEW3', 'PIN-TWO', 'PIN-NEW', 'PIN-NEW2', 'PIN-NEW4', 'PIN-NEW5', 'PIN-NEW6']\n",
+  "section": "NOPE",
+  "success": false,
+  "written": false
+ },
+ "bad_via": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X10",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "`via` must be 'direct' or 'clerk:<queue_item_id>' (<= 200 chars). Nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason `via` must be 'direct' or 'clerk:<queue_item_id>' (<= 200 chars). Nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "core_os_error": {
+  "evidence": {
+   "refusal": "os_error"
+  },
+  "file_unchanged": true,
+  "node_id": "PIN-Y1",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "OSError: [Errno 28] No space left",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason OSError: [Errno 28] No space left\n\n  evidence.refusal = 'os_error'",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "core_runtime": {
+  "error": "RuntimeError: boom",
+  "success": false
+ },
+ "create_false_explicit": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-X6": {
+    "added": [
+     "kind"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "heading_level": 2,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 7,
+   "status": "ok"
+  },
+  "line_number": 39,
+  "line_text": "## t [PIN-X6]",
+  "node_id": "PIN-X6",
+  "nodes_changed": 1,
+  "nodes_checked": 10,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": null,
+  "success": true,
+  "title": "t",
+  "warnings": [],
+  "written": true
+ },
+ "dup_id": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-ONE",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "[PIN-ONE] already exists in <ROOT>/c/p.lts (line 5). A duplicate id collides in the graph. Use `set_property` to amend it, or choose another id. Nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason [PIN-ONE] already exists in <ROOT>/c/p.lts (line 5). A duplicate id collides in the graph. Use `set_property` to amend it, or choose another id. Nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "empty_value": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X2",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "refused before writing anything:\n  - key 'kind' has an empty value; `- key:` is a nested-block head, not a property.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason refused before writing anything:\n  - key 'kind' has an empty value; `- key:` is a nested-block head, not a property.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "level_wrong_type": {
+  "error": "TypeError: can't multiply sequence by non-int of type 'str'",
+  "success": false
+ },
+ "long_reason": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X11",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "`reason` is 3000 chars; the ledger bound is 2000. Nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason `reason` is 3000 chars; the ledger bound is 2000. Nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "missing_file": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X5",
+  "path": "<ROOT>/c/absent.lts",
+  "reason": "<ROOT>/c/absent.lts is not a file — nothing written.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/absent.lts\n  reason <ROOT>/c/absent.lts is not a file — nothing written.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "missing_required": {
+  "error": "missing required argument: 'path'",
+  "success": false
+ },
+ "multiline_value": {
+  "evidence": {},
+  "file_unchanged": true,
+  "node_id": "PIN-X3",
+  "path": "<ROOT>/c/p.lts",
+  "reason": "refused before writing anything:\n  - key 'kind' has a multi-line value; use the document writer.",
+  "refused": true,
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason refused before writing anything:\n  - key 'kind' has a multi-line value; use the document writer.\n",
+  "section": null,
+  "success": false,
+  "written": false
+ },
+ "node_id_wrong_type": {
+  "error": "TypeError: expected string or bytes-like object, got 'int'",
+  "success": false
+ },
+ "ok_compact": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-NEW": {
+    "added": [
+     "kind",
+     "note"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "heading_level": 2,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 1,
+   "status": "ok"
+  },
+  "line_number": 14,
+  "line_text": "## New [PIN-NEW]",
+  "node_id": "PIN-NEW",
+  "nodes_changed": 1,
+  "nodes_checked": 4,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z",
+   "note": "n"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": null,
+  "success": true,
+  "title": "New",
+  "warnings": [],
+  "written": true
+ },
+ "ok_edge_key": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-NEW6": {
+    "added": [
+     "see-also"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [
+   {
+    "inference": "property",
+    "layer": "semantic",
+    "source": "PIN-NEW6",
+    "target": "PIN-ONE",
+    "target_domain": null,
+    "type": "RELATED_TO"
+   }
+  ],
+  "heading_level": 2,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 6,
+   "status": "ok"
+  },
+  "line_number": 35,
+  "line_text": "## Six [PIN-NEW6]",
+  "node_id": "PIN-NEW6",
+  "nodes_changed": 1,
+  "nodes_checked": 9,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "see-also": "[PIN-ONE]"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": null,
+  "success": true,
+  "title": "Six",
+  "warnings": [],
+  "written": true
+ },
+ "ok_full": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "binding": {
+   "binding_summary": "0 edge(s) minted across 1 propert(ies)",
+   "by_key": {
+    "kind": {
+     "binding_summary": "`kind` is a DESCRIPTIVE property: stored and queryable, minting no edge.",
+     "edges_minted": [],
+     "inverse_voice_of": null,
+     "key_mints": false,
+     "nearest_minting_alternatives": [],
+     "reason": null,
+     "references_seen_but_not_minted": []
+    }
+   },
+   "edges_minted": [],
+   "references_seen_but_not_minted": []
+  },
+  "coercions": {},
+  "context": [
+   "   14  ## New [PIN-NEW]",
+   "   15  ",
+   "   16  - kind: z",
+   "   17  - note: n",
+   "   18  ",
+   "   19> ## New two [PIN-NEW2]",
+   "   20  ",
+   "   21  - kind: z"
+  ],
+  "delta": {
+   "PIN-NEW2": {
+    "added": [
+     "kind"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "gate": "the file gained exactly this node and its properties, and NOTHING moved on any existing node — both sides read by factlattice.parser.parse_text",
+  "heading_level": 2,
+  "heading_line": 19,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 2,
+   "status": "ok"
+  },
+  "node_id": "PIN-NEW2",
+  "nodes_changed": 1,
+  "nodes_checked": 5,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z"
+  },
+  "receipt": "full",
+  "references_seen_but_not_minted": [],
+  "refused": false,
+  "report": "WROTE  <ROOT>/c/p.lts:19   h2\nnode   [PIN-NEW2]  'New two'   (document tail)\n\nPROPERTIES as parsed:\n       kind: 'z'\n\nGATE — the whole-file parsed delta, per node:\n       nodes checked: 5   nodes changed: 1\n       [PIN-NEW2] added ['kind']  removed []\n\nIN SITU:\n     14  ## New [PIN-NEW]\n     15  \n     16  - kind: z\n     17  - note: n\n     18  \n     19> ## New two [PIN-NEW2]\n     20  \n     21  - kind: z\n\nbackup <ROOT>/bak/p.lts.<STAMP>.bak\n\nBINDING — does the graph see the relationship?\n       0 edge(s) minted across 1 propert(ies)\n\nROOT MEMBERSHIP:\n  ⚠ THIS FILE IS ",
+  "section": null,
+  "success": true,
+  "title": "New two",
+  "warnings": [],
+  "written": true
+ },
+ "ok_in_section": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-NEW3": {
+    "added": [
+     "kind"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "heading_level": 3,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 3,
+   "status": "ok"
+  },
+  "line_number": 10,
+  "line_text": "### Three [PIN-NEW3]",
+  "node_id": "PIN-NEW3",
+  "nodes_changed": 1,
+  "nodes_checked": 6,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": "PIN-ONE",
+  "success": true,
+  "title": "Three",
+  "warnings": [],
+  "written": true
+ },
+ "ok_ledger_meta": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-NEW5": {
+    "added": [
+     "kind"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "heading_level": 2,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 5,
+   "status": "ok"
+  },
+  "line_number": 31,
+  "line_text": "## Five [PIN-NEW5]",
+  "node_id": "PIN-NEW5",
+  "nodes_changed": 1,
+  "nodes_checked": 8,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": null,
+  "success": true,
+  "title": "Five",
+  "warnings": [],
+  "written": true
+ },
+ "ok_level": {
+  "backup_path": "<ROOT>/bak/p.lts.<STAMP>.bak",
+  "coercions": {},
+  "delta": {
+   "PIN-NEW4": {
+    "added": [
+     "kind"
+    ],
+    "removed": []
+   }
+  },
+  "edges_minted": [],
+  "heading_level": 3,
+  "ledger": {
+   "file": "<ROOT>/state/ledger/<KEY>.jsonl",
+   "seq": 4,
+   "status": "ok"
+  },
+  "line_number": 27,
+  "line_text": "### Four [PIN-NEW4]",
+  "node_id": "PIN-NEW4",
+  "nodes_changed": 1,
+  "nodes_checked": 7,
+  "path": "<ROOT>/c/p.lts",
+  "properties_as_parsed": {
+   "kind": "z"
+  },
+  "receipt": "compact",
+  "refused": false,
+  "section": null,
+  "success": true,
+  "title": "Four",
+  "warnings": [],
+  "written": true
+ },
+ "path_wrong_type": {
+  "error": "TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'int'",
+  "success": false
+ },
+ "properties_wrong_type": {
+  "error": "ValueError: dictionary update sequence element #0 has length 4; 2 is required",
+  "success": false
+ }
+}

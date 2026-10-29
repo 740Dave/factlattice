@@ -1,0 +1,134 @@
+---
+title: "FactLattice — System Overview"
+id: "SYSTEM:FL-OVERVIEW"
+domain: MET.FACTLATTICE
+scope: "The root of the FactLattice specification corpus: the thesis (graph primacy), the three parts of the system (notation, engine, methodology), and the map of every other document in this corpus"
+boundary: "States the thesis and indexes the corpus. The normative detail lives in the documents this one contains: the abstract model, the engine layers, the freshness contract, the domain-profile system, and the decision record."
+not-this: "Not a tutorial, not an API reference, not a migration guide."
+status: draft
+created: 2026-07-23
+updated: 2026-07-23
+---
+# FactLattice — System Overview [SYSTEM:FL-OVERVIEW]
+
+> This corpus is FactLattice specified in FactLattice. Every claim below about
+> queryability is testable against this document set: parse it, lint it, traverse it,
+> render it. If the format could not carry its own specification, the claim that it
+> carries yours would be unsupported.
+
+---
+
+## [FL-THESIS] Graph primacy — the thesis
+
+- part-of: [FL-OVERVIEW]
+- status: draft
+- importance: foundational
+
+The knowledge graph is the primary artifact of the domain it describes. Source code,
+diagrams, test plans, runbooks, and business documents are derived instantiations of it,
+not the source of truth. The model is domain-general; software engineering is its
+best-measured application, not its boundary.
+
+The practical consequence is the whole point: when the graph is primary, divergence
+between what is specified and what exists becomes a **detectable, triageable condition**
+rather than inevitable decay. A diagram that was pasted into a document drifts silently.
+A diagram rendered from the graph on request cannot drift, because it is not stored. A
+requirement whose implementing module was deleted becomes a dangling edge that a linter
+reports, not a paragraph nobody re-read.
+
+FactLattice does not claim that a graph is a better way to write documents. It claims
+that once relationships are declared explicitly and typed, questions that were previously
+answered by reading become questions that are answered by traversal — and traversal is
+mechanical, complete, and repeatable in a way that reading is not.
+
+---
+
+## [FL-SCOPE] Scope — what FactLattice is and is not
+
+- part-of: [FL-OVERVIEW]
+- see-also: [FL-THESIS]
+- status: draft
+
+FactLattice **is** three things that ship together:
+
+- **A notation.** `.lts` documents that encode typed nodes, typed edges, properties, and
+  four graph layers. Specified in [FL-MODEL].
+- **An engine.** `lts-engine`: four composed API layers over one graph index and one
+  freshness gate. Specified in [FL-ENGINE].
+- **A methodology.** Machine authorship, declared relationships, recorded decisions with
+  their invalidating assumptions, and pluggable domain vocabulary. Specified in
+  [FL-PROFILES] and [FL-DECISIONS].
+
+FactLattice **is not** a database, a wiki, an embedding index, or a documentation
+generator. It has no query planner, no storage engine of its own, and no inference step.
+It reads a directory of text files, builds an in-memory index, and answers questions
+about it deterministically.
+
+---
+
+## [FL-STACK] The stack — notation, engine, methodology
+
+- part-of: [FL-OVERVIEW]
+- depends-on: [FL-MODEL]
+- depends-on: [FL-ENGINE]
+- status: draft
+
+The notation is inert without the engine, and the engine is arbitrary without the
+methodology. All three are in scope of this corpus:
+
+| Part | Artifact | Specified in |
+|------|----------|--------------|
+| Notation | `.lts` documents; nodes, edges, properties, layers | [FL-MODEL] |
+| Engine | QUERY, ANALYTICS, LINT, RENDER; the freshness kernel | [FL-ENGINE], [FL-FRESHNESS] |
+| Methodology | Domain profiles, namespace tiers, decision records | [FL-PROFILES], [FL-DECISIONS] |
+
+A reader evaluating FactLattice for adoption should read [FL-THESIS], then [FL-ENGINE]
+(to see what questions the corpus can answer), then [FL-FRESHNESS] (to see what happens
+when the corpus and the answer disagree). [FL-MODEL] is reference material; it is read
+when authoring, not when evaluating.
+
+---
+
+## [FL-AUTHORSHIP] Machine-authored, human-reviewed
+
+- part-of: [FL-OVERVIEW]
+- see-also: [FL-THESIS]
+- see-also: [DEC-MACHINE-AUTHORED]
+- status: draft
+
+Humans do not hand-edit `.lts` documents. An Intelligence composes them during an
+interactive session; humans read rendered output — a documentation site, a dashboard, a
+rendered diagram. The `.lts` extension is deliberately unmapped on developer machines.
+
+This is a design constraint, not a preference, and it buys two things. First, density: a
+document optimized for machine extraction can be far denser than one optimized for a
+human's first read, because the human never reads the source. Second, discipline: every
+relationship must be **declared** at authoring time. That declaration is what makes
+query-time traversal deterministic — see [INV-DETERMINISTIC].
+
+---
+
+## Relationships
+
+### Entity
+
+- [FL-OVERVIEW] CONTAINS [FL-MODEL]
+- [FL-OVERVIEW] CONTAINS [FL-ENGINE]
+- [FL-OVERVIEW] CONTAINS [FL-FRESHNESS]
+- [FL-OVERVIEW] CONTAINS [FL-PROFILES]
+- [FL-OVERVIEW] CONTAINS [FL-DECISIONS]
+- [FL-OVERVIEW] CONTAINS [FL-THESIS]
+- [FL-OVERVIEW] CONTAINS [FL-SCOPE]
+- [FL-OVERVIEW] CONTAINS [FL-STACK]
+- [FL-OVERVIEW] CONTAINS [FL-AUTHORSHIP]
+
+### Semantic
+
+- [FL-THESIS] RELATED_TO [INV-DERIVED]
+- [FL-THESIS] RELATED_TO [INV-DETERMINISTIC]
+- [FL-SCOPE] RELATED_TO [FL-STACK]
+- [FL-STACK] RELATED_TO [FL-AUTHORSHIP]
+
+---
+
+*FL-OVERVIEW — the root of the FactLattice specification corpus. Start here.*

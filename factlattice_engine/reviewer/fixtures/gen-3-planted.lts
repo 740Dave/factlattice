@@ -1,0 +1,10 @@
+# Fixture: a claim with no source [SPEC:FIXTURE-GEN3-PLANTED]
+
+## [FX3P-A] Latency
+
+- claim: median latency fell by 40 percent after the change
+
+## [FX3P-B] Throughput
+
+- claim: throughput is unchanged
+- source: the benchmark run of the same week

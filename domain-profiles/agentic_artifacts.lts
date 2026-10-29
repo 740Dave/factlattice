@@ -1,0 +1,284 @@
+---
+title: "Domain Profile: Agentic Artifacts"
+id: "DOMAIN:ART"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding the artifacts an agentic system produces — documents, specs, code modules, datasets, reports, deliverables — as a content-addressed, provenance-bearing ledger from which freshness, lineage, and 'what produced this' can be answered by query rather than by trust"
+created: 2026-07-23
+updated: 2026-07-23
+---
+# Domain Profile: Agentic Artifacts [DOMAIN:ART]
+
+> An agentic system's output is not just files on disk — it is a stream of artifacts, each derived from inputs, produced by some actor in some session, and valid only until its inputs change. This domain encodes each artifact as a node in a ledger with a content hash, a provenance chain, and freshness edges, so the questions "is this current?", "what produced this?", and "what breaks if this input changes?" are answered structurally.
+
+> An artifact you cannot trace is an artifact you cannot trust. The ledger records, for every deliverable, the content it hashes to, the inputs it derived from, the actor and session that produced it, and whether its inputs have moved since. Freshness is a property of the graph, not a guess.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | ART |
+| Sub-Namespaces | ART.LEDGER (artifact records), ART.PROV (provenance and actors), ART.ENRICH (post-hoc enrichment) |
+| Location | A per-project `artifacts/` or `deliverables/` corpus, often a single append-mostly ledger |
+| Conventions File | This profile |
+| Maturity | Reference profile — generic, adopt and extend per system |
+
+---
+
+## 2. Model
+
+### 2.1 An Artifact Is a Node Over Content, Not the Content Itself
+
+An artifact node is a lightweight record ABOUT a produced thing: its identity, its content hash, where the bytes live, what it derived from, and who produced it. The bytes themselves live in a store (a filesystem, an object store, a bus-addressed blob); the node is the traceable handle. This keeps the ledger small and queryable while the payloads stay wherever they belong.
+
+### 2.2 Content-Addressing Is the Freshness Oracle
+
+Every artifact carries a `content-hash` over its bytes. Freshness is decided by comparing the recorded hash against the live content's hash — mtime-immune, rename-immune, move-immune. A content-preserving touch does not make an artifact stale; a one-byte change does. This is the same correctness oracle the engine uses for corpus freshness, applied to deliverables.
+
+### 2.3 Provenance Is a Chain, Not a Field
+
+Every artifact records what it was `DERIVED_FROM` (inputs), `PRODUCED_BY` (an actor — a human, an agent, a tool), and `IN_SESSION`. These form a chain back to source inputs, so "what produced this, transitively" is a traversal. An artifact with no provenance chain is an orphan the lint layer flags.
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-ART-1: Content Hash Is Mandatory and Is the Identity of a Version
+
+- decision: Every artifact node MUST carry a `content-hash` over the exact bytes it describes. Two artifacts with the same logical id but different hashes are different VERSIONS; the hash, not the timestamp, is the version identity.
+- rationale: Timestamps lie — a file copied forward keeps content but changes mtime; a file restored from backup changes mtime but not content. Only the content hash answers "is this the same artifact?" honestly. Making it mandatory is what lets freshness and versioning be computed rather than trusted.
+- status: foundational
+
+### 3.2 DD-ART-2: Freshness Is Derived, Never Stored as a Boolean
+
+- decision: An artifact's freshness MUST be computed at query time by comparing recorded input hashes against live input hashes. A cached `is_fresh: true` flag is prohibited — freshness is a function of current inputs, and a stored boolean is stale the instant an input moves.
+- rationale: The whole value of content-addressing is defeated by caching its verdict. Deriving freshness on demand is cheap (a hash comparison) and always correct; storing it invites exactly the silent-staleness bug the domain exists to prevent.
+- status: foundational
+
+### 3.3 DD-ART-3: Provenance Is Append-Only
+
+- decision: Provenance edges (`DERIVED_FROM`, `PRODUCED_BY`, `IN_SESSION`) are written once at production time and never rewritten. A re-production creates a NEW artifact version with its own provenance, linked to the prior version by `SUPERSEDES`.
+- rationale: The point of provenance is auditability; auditability requires immutability. Rewriting an artifact's lineage in place destroys the record of how the earlier version came to be, which is precisely what a future investigation needs.
+- status: foundational
+
+### 3.4 DD-ART-4: Enrichment Is Separated From Production
+
+- decision: Post-hoc enrichment (tags, summaries, quality scores, human annotations) attaches via `ENRICHES` edges to enrichment nodes, and MUST NOT mutate the produced artifact node's core fields (hash, provenance, bytes-ref). Enrichment is additive metadata, not a rewrite.
+- rationale: Enrichment happens continuously and by many actors; production happens once. Keeping them separate means an artifact's content identity and lineage stay stable while annotations accrete, and it keeps a mistaken enrichment from corrupting the production record.
+- status: foundational
+
+### 3.5 DD-ART-5: The Ledger Is Append-Mostly and Self-Describing
+
+- decision: Artifacts are appended to the ledger as they are produced; existing entries are amended only to advance lifecycle or add `SUPERSEDES` links. Every generated ledger is stamped with the tool and version that maintains it (a `generated-by` property), so a consumer knows it is tool-owned.
+- rationale: An append-mostly ledger is reconstructable and diff-friendly, and a self-describing header tells both humans and tooling not to hand-edit generated rows. This is what lets many producers share one ledger without corrupting each other's entries.
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Artifact Prefixes (ART.LEDGER)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| ART- | A produced artifact of any kind | [ART-REPORT-Q3], [ART-SCHEMA-V2] |
+| DOC- | A produced document | [DOC-ONBOARDING], [DOC-API-REF] |
+| DATA- | A produced dataset or data file | [DATA-EMBEDDINGS-2026-07] |
+| BUILD- | A build output / compiled artifact | [BUILD-CLI-0.3.1] |
+
+### 4.2 Provenance Prefixes (ART.PROV)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| ACTOR- | A producing actor (human, agent, or tool) | [ACTOR-SWEEP-AGENT], [ACTOR-HUMAN-REVIEWER] |
+| SRC- | A source input that artifacts derive from | [SRC-RAW-TRANSCRIPT], [SRC-SPEC-CORPUS] |
+
+### 4.3 Enrichment Prefixes (ART.ENRICH)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| ENR- | An enrichment record (tag set, summary, quality score) | [ENR-QUALITY-ART-REPORT-Q3] |
+| ANNO- | A human annotation on an artifact | [ANNO-REVIEW-DOC-API-REF] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Core Artifact Properties (All ART.LEDGER Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| content-hash | string | Hash over the artifact's exact bytes — the version identity (DD-ART-1) |
+| bytes-ref | string | Where the bytes live (a path, URL, or bus/object-store address) |
+| kind | enum | document, dataset, build, report, schema, code, other |
+| produced-in-session | string | Opaque, sortable id of the session/run that produced it |
+| produced-by | reference | The ACTOR- node that produced it |
+| lifecycle-position | enum | draft, produced, published, superseded, retracted |
+| generated-by | string | The tool + version maintaining this ledger entry (self-describing; do not hand-edit) |
+| bytes-size | number | Size in bytes (convenience; not authoritative for identity) |
+
+### 5.2 Freshness Properties (Derived, Not Stored — DD-ART-2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| input-hashes | map | Recorded content-hash of each input at production time, keyed by input id |
+| stale-if | string | Human-readable statement of what change invalidates this artifact |
+
+> Freshness itself is NOT a property — it is computed by comparing `input-hashes` against the inputs' live hashes at query time. There is deliberately no `is-fresh` field.
+
+### 5.3 Enrichment Properties (ART.ENRICH Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| enrichment-type | enum | tag, summary, quality-score, annotation, classification |
+| enriched-by | reference | The ACTOR- node that produced the enrichment |
+| enriched-in-session | string | When the enrichment was added |
+| value | string | The enrichment payload (a score, a summary, a tag list) |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+### 6.1 Provenance Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| art.DERIVED_FROM | causal | This artifact was produced from a source input or a prior artifact |
+| art.PRODUCED_BY | entity | This artifact was produced by an actor |
+| art.IN_SESSION | temporal | This artifact was produced in a specific session/run |
+| art.SUPERSEDES | temporal | This artifact version replaces an earlier version |
+
+### 6.2 Ledger and Enrichment Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| art.ENRICHES | semantic | An enrichment node attaches metadata to an artifact (additive; DD-ART-4) |
+| art.PART_OF | semantic | This artifact is one component of a larger deliverable |
+| art.STALE_IF_CHANGES | causal | This artifact goes stale if the referenced input's content changes |
+| art.DELIVERED_FOR | semantic | This artifact was produced to satisfy a decision, task, or request |
+
+---
+
+## 7. Document Type Tags
+
+| Tag | Description |
+|-----|-------------|
+| ARTIFACT-LEDGER | The primary artifact-record document for a project |
+| PROVENANCE | Actor and source-input records |
+| ENRICHMENT | Post-hoc tags, summaries, quality scores, and annotations |
+| ARTIFACT-DELTA | A point-in-time change record over the artifact ledger |
+
+---
+
+## 8. Freshness and Content-Hash Methodology
+
+### 8.1 Content Hashing
+
+The `content-hash` is computed over the artifact's exact bytes with a fixed algorithm recorded once for the ledger. Hashing is over CONTENT only — never over path, mtime, or size — so the hash is stable across moves and copies and sensitive only to real content change. This mirrors the engine's own corpus-freshness oracle.
+
+### 8.2 Deriving Freshness
+
+An artifact is FRESH when, for every input in `input-hashes`, the input's live content-hash equals the recorded one. It is STALE the moment any input's live hash differs. A stale artifact is not deleted or hidden — it is reported as stale, and its `stale-if` explains what moved. Freshness is recomputed on demand (DD-ART-2), never cached.
+
+### 8.3 Re-Production
+
+When a stale artifact is regenerated, a new version node is written with a fresh `content-hash` and fresh `input-hashes`, linked by `SUPERSEDES` to the prior version. The prior version is retained at `lifecycle-position: superseded` for audit.
+
+---
+
+## 9. Temporal Semantics
+
+### 9.1 Session Ordering
+
+`produced-in-session` values MUST be lexicographically sortable so "artifacts produced since session N" and "artifacts per session" are pure comparisons.
+
+### 9.2 Version Chains
+
+`SUPERSEDES` edges chain artifact versions. The chain head (no incoming `SUPERSEDES`, not `superseded`) is the current version. "Give me the current version of artifact X" is a walk to the head.
+
+### 9.3 Retraction
+
+An artifact that should no longer be used — but whose production record must be kept — moves to `lifecycle-position: retracted` with a `stale-if`/annotation explaining why. Retraction is a lifecycle move, never a deletion.
+
+---
+
+## 10. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["ART-INDEX"]
+  primary_layers: [causal, temporal]
+  focus_areas:
+    lineage:
+      entry: ["ART-INDEX"]
+      layers: [causal]
+      keywords: ["provenance", "derived", "lineage", "source", "what produced"]
+    freshness:
+      entry: ["ART-INDEX"]
+      layers: [causal, temporal]
+      keywords: ["stale", "fresh", "current", "changed", "outdated"]
+    actors:
+      entry: ["ACTOR-INDEX"]
+      layers: [entity]
+      keywords: ["who", "actor", "producer", "agent", "author"]
+    enrichment:
+      entry: ["ART-INDEX"]
+      layers: [semantic]
+      keywords: ["tag", "summary", "quality", "annotation", "score"]
+    delivery:
+      entry: ["ART-INDEX"]
+      layers: [semantic]
+      keywords: ["delivered", "for", "satisfies", "deliverable"]
+```
+
+---
+
+## 11. Corpus Structure
+
+```
+artifacts/
+├── 00-index.lts                 # ART-INDEX entry node
+├── 01-artifact-ledger.lts       # ART-, DOC-, DATA-, BUILD- nodes (the primary ledger)
+├── 02-provenance.lts            # ACTOR-, SRC- nodes and provenance edges
+├── 03-enrichment.lts            # ENR-, ANNO- nodes attached via ENRICHES
+└── deltas/
+    └── DELTA-{session}.lts       # Point-in-time artifact-ledger change records
+```
+
+---
+
+## 12. Section Template — An Artifact Node
+
+```
+### [ART-EXAMPLE] One-line artifact title
+
+- kind: report
+- content-hash: <hash-over-the-bytes>
+- bytes-ref: <path-or-address-where-the-bytes-live>
+- produced-in-session: 2026-07-23
+- produced-by: [ACTOR-EXAMPLE]
+- lifecycle-position: published
+- input-hashes: { SRC-INPUT-A: <hash>, SRC-INPUT-B: <hash> }
+- stale-if: SRC-INPUT-A or SRC-INPUT-B content changes
+- generated-by: artifact-sweep 1.0
+```
+
+---
+
+## 13. Why This Domain Matters
+
+1. **It makes deliverables traceable.** Every produced thing carries its lineage, so "what produced this, and from what?" is a query, not an investigation. This is the foundation of an auditable agentic system.
+
+2. **Content-addressing makes freshness honest.** By deriving freshness from content hashes rather than timestamps or cached flags, the ledger answers "is this current?" correctly across moves, copies, and restores — the same discipline the engine applies to corpus freshness, applied to outputs.
+
+3. **Append-only provenance makes the record trustworthy.** Immutable lineage plus separated enrichment means the production record survives intact no matter how much annotation accretes on top of it.
+
+4. **It is a bootstrap substrate.** An agentic system that ledgers its artifacts this way can, on a cold start, enumerate what it has produced, check what is still fresh, and know exactly which deliverables must be regenerated because their inputs moved.
+
+---
+
+**Version**: 1.0
+**Created**: 2026-07-23
+**Updated**: 2026-07-23
+**Status**: Reference profile
