@@ -1,0 +1,128 @@
+---
+lts: "1.1"
+title: "Procedures example: domain profile"
+id: "PROFILE:PROCEDURES-EXAMPLE-PROFILE"
+domain: example.procedures
+scope: "The vocabulary of the procedures example: node-id prefixes, the required and recommended properties of a procedure, the status values, and every property key the example uses"
+boundary: "Registers vocabulary for this example corpus only. Registers no behaviour."
+audience: agent
+document_tag: PROFILE
+status: draft
+---
+# Procedures example: domain profile [PROFILE:PROCEDURES-EXAMPLE-PROFILE]
+
+> Found by directory auto-discovery: lint looks for a `*-profile.lts` file in the corpus root, so this file needs no registry entry. Its rules run only because it is in scope; a corpus with no profile in scope reports its profile-driven rules as inert.
+
+## [PROFILE-DOMAIN] Domain identity
+
+- domain-id: example.procedures
+- domain-name: Procedures example
+- domain-version: 1
+
+## Registered node-id prefixes
+
+### [PREFIX-PROC] PROC
+
+- registers-prefix: PROC-
+- definition: a procedure, the root of a set of steps
+
+### [PREFIX-STEP] STEP
+
+- registers-prefix: STEP-
+- definition: one step of a procedure
+
+### [PREFIX-DEC] DEC
+
+- registers-prefix: DEC-
+- definition: a decision a procedure implements
+
+### [PREFIX-INV] INV
+
+- registers-prefix: INV-
+- definition: an invariant a procedure keeps
+
+### [PREFIX-MATRIX] MATRIX
+
+- registers-prefix: MATRIX-
+- definition: a decision matrix that chooses between procedures
+
+### [PREFIX-DOC] DOC
+
+- registers-prefix: DOC-
+- definition: a document's root node
+
+## Status values
+
+### [ENUM-STATUS] Status
+
+- enum-key: status
+- values:
+  - draft
+  - active
+  - retired
+
+## Required and recommended properties
+
+### [NODEFAMILY-PROC] PROC nodes
+
+- section: procedures
+- families: PROC-
+- required:
+  - trigger
+  - owner
+  - status
+- recommended:
+  - must-not
+  - last-reviewed
+
+### [NODEFAMILY-STEP] STEP nodes
+
+- section: steps
+- families: STEP-
+- required:
+  - actor
+  - action
+
+## Declared property keys
+
+A document stamped `lts: "1.1"` treats an undeclared key as a lint ERROR. That includes this profile's own structural keys, so they are declared first.
+
+### [PROPKEY-PROFILE-STRUCTURE] Keys this profile is written in
+
+- property-keys:
+  - domain-id
+  - domain-name
+  - domain-version
+  - registers-prefix
+  - definition
+  - enum-key
+  - values
+  - section
+  - families
+  - required
+  - recommended
+  - property-keys
+
+### [PROPKEY-PROCEDURES] Keys the example uses
+
+- property-keys:
+  - trigger
+  - owner
+  - status
+  - must-not
+  - last-reviewed
+  - tools
+  - actor
+  - action
+  - condition
+  - statement
+  - rationale
+  - invalidating-assumption
+  - question
+  - rule
+  - row-1-need
+  - row-1-use
+  - row-2-need
+  - row-2-use
+  - row-3-need
+  - row-3-use

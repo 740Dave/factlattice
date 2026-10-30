@@ -1,0 +1,90 @@
+---
+lts: "1.1"
+title: "Release procedures of an invented project"
+id: "SPEC:DOC-RELEASE-PROCEDURES"
+domain: example.procedures
+scope: "How the invented project Kestrel cuts a release and ships a hotfix, recorded as procedure nodes, their steps, and the decisions and invariants they implement"
+boundary: "An example for the guide docs/PROCEDURES-AS-GRAPH-NODES.md. Kestrel is not a real project."
+audience: agent
+document_tag: SPEC
+status: draft
+---
+# Release procedures of an invented project [SPEC:DOC-RELEASE-PROCEDURES]
+
+## [DEC-SIGNED-RELEASE-TAGS] Release tags are signed
+
+- statement: every release tag is a signed tag made with the release maintainer's key
+- rationale: a downstream packager can verify that a release came from the project
+- invalidating-assumption: the project's users verify signatures; if none do, the step costs more than it protects
+
+## [INV-TESTS-PASS-BEFORE-TAG] No release tag on a failing suite
+
+- statement: a release tag is never made on a commit whose full test suite has failed
+
+## [PROC-RELEASE-FROM-MAIN] Release from the main branch
+
+- trigger: the maintainers agree that the main branch is ready to ship a new version
+- owner: release maintainer
+- status: active
+- tools: the test runner; version control with signed tags; the package index upload command
+- must-not: publish from a working copy with uncommitted changes
+- last-reviewed: 2026-10-29
+- implements: [DEC-SIGNED-RELEASE-TAGS]
+- depends-on: [INV-TESTS-PASS-BEFORE-TAG]
+
+### [STEP-RUN-TESTS] Full test run
+
+- part-of: [PROC-RELEASE-FROM-MAIN]
+- actor: release maintainer
+- action: run the full test suite on a clean checkout of the release commit
+- next-step: [STEP-TESTS-GREEN]
+
+### [STEP-TESTS-GREEN] Test result check
+
+- part-of: [PROC-RELEASE-FROM-MAIN]
+- actor: release maintainer
+- action: read the test summary
+- condition: the suite reports zero failures
+- if-true: [STEP-SIGN-TAG]
+- if-false: [STEP-FAILURE-REPORT]
+
+### [STEP-SIGN-TAG] Signed release tag
+
+- part-of: [PROC-RELEASE-FROM-MAIN]
+- actor: release maintainer
+- action: create a signed tag named after the new version on the tested commit
+- next-step: [STEP-PUBLISH]
+
+### [STEP-PUBLISH] Package upload
+
+- part-of: [PROC-RELEASE-FROM-MAIN]
+- actor: release maintainer
+- action: upload the built package for the tagged commit to the package index
+
+### [STEP-FAILURE-REPORT] Failure report, no tag
+
+- part-of: [PROC-RELEASE-FROM-MAIN]
+- actor: release maintainer
+- action: make no tag; file an issue naming the failing tests and the commit
+
+## [PROC-HOTFIX-RELEASE] Hotfix release
+
+- trigger: a defect in the released version needs a fix before the next planned release
+- owner: release maintainer
+- status: draft
+- must-not: include changes that are not part of the fix
+- last-reviewed: 2026-03-02
+- depends-on: [INV-TESTS-PASS-BEFORE-TAG]
+
+## [MATRIX-WHICH-RELEASE-PROCEDURE] Which release procedure to follow
+
+- question: which procedure does a given release need
+- rule: read the rows in order and follow the first whose need matches
+- row-1-need: a fix for a defect in the released version, with nothing else
+- row-1-use: PROC-HOTFIX-RELEASE
+- row-2-need: a new version from the main branch
+- row-2-use: PROC-RELEASE-FROM-MAIN
+- row-3-need: anything else
+- row-3-use: no release; raise it with the maintainers
+- see-also: [PROC-HOTFIX-RELEASE]
+- see-also: [PROC-RELEASE-FROM-MAIN]

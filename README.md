@@ -115,7 +115,7 @@ An LLM agent loses its working context when a session ends. A team of agents add
 **What gets recorded, and how.**
 
 - *Facts and relationships*: nodes with properties, and typed edges (`depends-on`, `implements`, `part-of`, ...) in four fixed layers: semantic, temporal, causal and entity.
-- *Procedures*: flows made of steps and decision points. `lts_flow` draws them as diagrams from the current graph and stores nothing.
+- *Procedures*: flows made of steps and decision points. `lts_flow` draws them as diagrams from the current graph and stores nothing. [docs/PROCEDURES-AS-GRAPH-NODES.md](docs/PROCEDURES-AS-GRAPH-NODES.md) walks through an example corpus: the node shape, finding procedures by name, a decision matrix, and a profile whose rules check them.
 - *Decisions*: one node per decision, holding the reasoning, the alternative that was rejected, and the `invalidating_assumption` whose change would reopen it. `decided-in-session` records the session in which the decision was made.
 - *Time*: temporal edges (`BEFORE`, `SEQUENCE`, `VALIDITY_WINDOW`), since/until filters on a date property, and the node-change ledger of each applied typed write (edits made outside the writers are not recorded). [APPENDIX-VERSIONING.md](APPENDIX-VERSIONING.md) specifies DELTA change records of what changed between commits; the command-line generator it describes is a design, not shipped, and agent definitions that produce DELTA documents are in `agents/`.
 
@@ -497,7 +497,7 @@ specs/                   FactLattice specified IN FactLattice (the dogfood corpu
 factlattice/             The parser, index builder and typed-writer core (pydantic in the authoring layer only)
 factlattice_engine/      factlattice-engine: query, analytics, lint, render, freshness, self-heal
 domain-profiles/         Reference domain profiles
-docs/                    Additional documentation (try-before-you-deploy guide)
+docs/                    Additional documentation (try-before-you-deploy guide; procedures as graph nodes, with an example corpus)
 case-studies/            Reproducible and reported experiments (specification ambiguity)
 agents/                  Agent definitions + the Quality Event Protocol
 tests/                   Test suite

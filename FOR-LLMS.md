@@ -464,3 +464,4 @@ This repository holds FactLattice, a plain-text notation for typed knowledge gra
 - file: `domain-profiles/agentic_decisions.lts`: the decision-graph profile for agent systems
 - file: `factlattice/parser.py`, `factlattice_engine/server.py`, `factlattice_engine/tools.py`: parser, MCP tool definitions, query implementation
 - file: `case-studies/specification-ambiguity/`: the experiments
+- file: `docs/PROCEDURES-AS-GRAPH-NODES.md` and `docs/procedures-example/`: procedures as nodes (shape, steps as a flow, finding them by prefix, a decision matrix, a domain profile whose required-property rules fire, with a control in `tests/test_procedures_example.py`)
