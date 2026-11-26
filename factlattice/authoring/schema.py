@@ -1,5 +1,5 @@
 """
-LTS authoring schema — DRAFT for review, 2026-08-12, analyst.
+LTS authoring schema — DRAFT for review, 2026-08-12.
 
 WHAT THIS IS
     A pydantic model of an .lts document, and a writer built on it. The point is NOT
@@ -167,7 +167,7 @@ class Property(BaseModel):
             if fixed and fixed[0].isdigit():
                 hint = (
                     " The key begins with a DIGIT. Legalising it means INVENTING a "
-                    "prefix (`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, "
+                    "prefix (`fl-003-…`, `corpus-003-…`) and choosing one is AUTHORING, "
                     "not normalisation. Name the field yourself — this is the one class "
                     "the boundary deliberately will not decide for you."
                 )
@@ -184,6 +184,10 @@ class Property(BaseModel):
             was = f"key {raw!r}" + (f" -> {fixed!r}" if applied else "")
             raise ValueError(f"{was} is not a legal key.{hint}")
 
+        from ..core_keys import ENGINE_MINTED_KEYS
+        if fixed in ENGINE_MINTED_KEYS:
+            raise ValueError(f"key {raw!r} -> {fixed!r} is reserved and engine-minted; it is never written.")
+
         return {
             **data,
             "key": fixed,
@@ -195,7 +199,7 @@ class Property(BaseModel):
     @classmethod
     def _value_is_never_normalised(cls, v: PropertyValue) -> PropertyValue:
         # ⛔ Deliberately a no-op. Recorded so nobody adds normalisation here later.
-        # Values legitimately hold ExampleStatusNotMet, FIXED_12, INT8_VECTOR,
+        # Values legitimately hold RegistrationQualityNotMet, FIXED_20, INT8_VECTOR,
         # sha256 digests and pictographs. A writer that mis-identifies the key boundary
         # corrupts content SILENTLY, which is strictly worse than the defect it fixes.
         return v
@@ -374,14 +378,33 @@ class Document(BaseModel):
 
 
 class WriteRefused(Exception):
-    """No file was created. The refusal IS the outcome, not an obstacle."""
+    """No file was created. The refusal IS the outcome, not an obstacle.
+
+    `evidence` is the same shape as `EditRefused.evidence`: a refusal raised by the input check carries
+    `{refusal: "line_break_in_input", field, codepoint, index}`; every other refusal of `write_document` carries `{}`,
+    including the re-raise of `write_whole_file`'s refusals: that re-raise DROPS their code (for example
+    `lock_unavailable`); the message keeps only the refusal's sentence, which does not name the code."""
+
+    def __init__(self, message: str, *, evidence: dict | None = None):
+        super().__init__(message)
+        self.evidence = evidence or {}
 
 
-def write_document(doc: Document, path: str, preview_fn, corpus: str | None = None, *,
-                   proposer: str | None = None, approver: str | None = None,
-                   reason: str | None = None, via: str | None = None,
-                   corpora: list | None = None, engine_head: str | None = None,
-                   ledger_roots: list | None = None, corpora_error: str | None = None) -> dict:
+def write_document(doc: Document, path: str, preview_fn, corpus: str | None = None, **kw) -> dict:
+    """Fail-open envelope (the unread-time guard): no detector fault outlives this write. The body is `_write_document`."""
+    from . import unread_time_guard as _utg
+    _utg.begin()
+    try:
+        return _utg.stamp(_write_document(doc, path, preview_fn, corpus, **kw))
+    finally:
+        _utg.end()
+
+
+def _write_document(doc: Document, path: str, preview_fn, corpus: str | None = None, *,
+                    proposer: str | None = None, approver: str | None = None,
+                    reason: str | None = None, via: str | None = None,
+                    corpora: list | None = None, engine_head: str | None = None,
+                    ledger_roots: list | None = None, corpora_error: str | None = None) -> dict:
     """Render, ROUND-TRIP THROUGH THE REAL PARSER, reconcile, and only then write.
 
     `preview_fn` is the live `lts_preview`. The parser is the authority on what the
@@ -392,6 +415,26 @@ def write_document(doc: Document, path: str, preview_fn, corpus: str | None = No
            every key in `doc.authored_keys()` appears in the parsed `properties`.
        Not "no known violation found". Not "lint is clean". Reconciliation.
     """
+    # THE INPUT CHECK (maintainers' ruling of 2026-10-28), before anything is rendered: every text this document will
+    # put on a line (frontmatter, section, node titles, property keys and values, list items, mapping entries) is
+    # refused if it holds a character at which the parser ends a line. `_render` writes values verbatim, so such a
+    # character would cut the value and leave a stray prose line while the key reconciliation below passes.
+    # Imported here because edit.py imports this module.
+    from . import linebreaks as _lb
+    from .edit import EditRefused as _EditRefused
+    from .edit import refuse_line_breaks as _refuse_line_breaks
+    from .edit import refuse_unread_times as _refuse_unread_times
+    try:
+        for _label, _text in _lb.iter_texts(doc.model_dump(), "document"):
+            _refuse_line_breaks(**{_label: _text})
+        # the unread-time guard (the shared unread-time guard spec): every text of the document except the KEYS,
+        # whose grammar has no colon (iter_texts labels a key's own text `<name> key`)
+        for _label, _text in _lb.iter_texts(doc.model_dump(), "document"):
+            if not _label.endswith(" key"):
+                _refuse_unread_times(**{_label: _text})
+    except _EditRefused as e:
+        raise WriteRefused(f"NOT WRITTEN. {e}", evidence=dict(e.evidence or {})) from None
+
     text = _render(doc)                      # pure function, no I/O
     result = preview_fn(content=text, corpus=corpus)
 
@@ -447,7 +490,7 @@ def write_document(doc: Document, path: str, preview_fn, corpus: str | None = No
             "so a clean result means nothing was checked."
         )
 
-    # LF, always. The SHARED locked + atomic write step ([ISSUE-WRITE-ATOMICITY]):
+    # LF, always. The SHARED locked + atomic write step ([DEC-LTS-WRITES-NOT-ATOMIC-NO-LOCK]):
     # imported here because edit.py imports this module.
     from .edit import EditRefused, write_whole_file
     try:

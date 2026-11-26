@@ -20,8 +20,8 @@ pytest.importorskip("onnx")
 from factlattice_engine.semantic import embedder as E  # noqa: E402
 from factlattice_engine.semantic import index as I  # noqa: E402
 from factlattice_engine.semantic import tokenizer as T  # noqa: E402
-from tests.test_semantic_index import CountingEmbedder  # noqa: E402
 from tests.semantic_helpers import _tiny_model  # noqa: E402
+from tests.test_semantic_index import CountingEmbedder  # noqa: E402
 
 
 def _emb(tmp_path):
@@ -51,6 +51,7 @@ def test_lowercase_is_per_character_like_rust_no_final_sigma_context():
 
 def test_index_version_material_names_unicode_tables_and_numpy(tmp_path):
     import unicodedata
+
     import numpy
     emb = _emb(tmp_path)
     raw = I._version_material(emb.model_id, emb.inner)
@@ -59,7 +60,7 @@ def test_index_version_material_names_unicode_tables_and_numpy(tmp_path):
 
 
 def test_tab_newline_cr_still_become_spaces_not_removed():
-    assert T.normalize("tile\tmap\nversion\rx") == "tile map version x"
+    assert T.normalize("zero\tmap\nversion\rx") == "zero map version x"
 
 
 def test_cjk_extension_range_matches_rust_not_original_bert():

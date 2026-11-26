@@ -12,7 +12,9 @@ test.
 from __future__ import annotations
 
 from factlattice_engine.analytics import (
-    LtsAggregator, profile_audit, NullProfileAdapter, YamlProfileAdapter,
+    LtsAggregator,
+    NullProfileAdapter,
+    YamlProfileAdapter,
     resolve_profile_adapter,
 )
 from factlattice_engine.analytics.profile_audit import (

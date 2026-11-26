@@ -9,8 +9,6 @@ import os
 import subprocess
 import sys
 
-import pytest
-
 from factlattice_engine import reviewer
 from tests.test_reviewer_review_document import KEY3, NOW_KEY, world  # noqa: F401  (the fixture builds real reviews)
 

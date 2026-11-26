@@ -44,9 +44,9 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
 
 ORIGIN = "corpus_files"
 
@@ -54,7 +54,7 @@ KIND_PREFIX_COLLISION = "prefix_collision"
 KIND_SHADOW_COPY = "shadow_copy"
 KIND_UNMIGRATED_PROSE = "unmigrated_prose"
 
-CORPUS_FILE_SEVERITY: Dict[str, str] = {
+CORPUS_FILE_SEVERITY: dict[str, str] = {
     KIND_PREFIX_COLLISION: "error",
     KIND_SHADOW_COPY: "warning",
     KIND_UNMIGRATED_PROSE: "info",
@@ -86,11 +86,11 @@ _PROSE_ALLOWLIST = frozenset({
 class FileFinding:
     kind: str
     message: str
-    source_file: Optional[str]
+    source_file: str | None
     detail: dict = field(default_factory=dict)
 
 
-def _corpus_roots(paths: Iterable[Path]) -> Dict[Path, List[Path]]:
+def _corpus_roots(paths: Iterable[Path]) -> dict[Path, list[Path]]:
     """Group `.lts` files by their IMMEDIATE DIRECTORY.
 
     ⛔ Per-directory, not per-corpus-tree. `acme-specs/` and `acme-specs/roadmap/`
@@ -99,17 +99,17 @@ def _corpus_roots(paths: Iterable[Path]) -> Dict[Path, List[Path]]:
     collisions the convention does not have. The convention is "the number orders THIS
     directory's listing", and that is what the check measures.
     """
-    groups: Dict[Path, List[Path]] = defaultdict(list)
+    groups: dict[Path, list[Path]] = defaultdict(list)
     for p in paths:
         groups[p.parent].append(p)
     return groups
 
 
-def find_corpus_file_issues(roots: Iterable[str | Path]) -> List[FileFinding]:
+def find_corpus_file_issues(roots: Iterable[str | Path]) -> list[FileFinding]:
     """Filename-level defects under `roots`. Deterministic; directory then name order."""
-    lts: List[Path] = []
-    shadows: List[Path] = []
-    prose: List[Path] = []
+    lts: list[Path] = []
+    shadows: list[Path] = []
+    prose: list[Path] = []
     for root in roots:
         rp = Path(root).expanduser()
         if rp.is_dir():
@@ -126,10 +126,10 @@ def find_corpus_file_issues(roots: Iterable[str | Path]) -> List[FileFinding]:
         elif rp.is_file() and rp.suffix == ".lts":
             lts.append(rp)
 
-    out: List[FileFinding] = []
+    out: list[FileFinding] = []
 
     for directory, files in sorted(_corpus_roots(lts).items()):
-        by_prefix: Dict[str, List[Path]] = defaultdict(list)
+        by_prefix: dict[str, list[Path]] = defaultdict(list)
         for f in sorted(files):
             m = _NUMERIC_PREFIX.match(f.name)
             if m:

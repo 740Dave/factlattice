@@ -28,7 +28,7 @@ pytest.importorskip("onnx")
 
 from factlattice_engine.semantic import embedd as D  # noqa: E402
 from factlattice_engine.semantic.suggest import SemanticService, _pin_from_env  # noqa: E402
-from tests.test_semantic_embedd import env, _client  # noqa: E402,F401  (reused fixtures)
+from tests.test_semantic_embedd import _client, env  # noqa: E402,F401  (reused fixtures)
 
 SEM_DIR = os.path.dirname(os.path.abspath(D.__file__))            # .../factlattice_engine/semantic
 ENGINE_PKG = os.path.dirname(SEM_DIR)                             # .../factlattice_engine
@@ -313,7 +313,7 @@ def _mcp(root, env_extra=None, command="fakepy", entry=True, raw=None):
 def la(env):
     root, models, pin = env
     mcp, binp, exe = _mcp(root)
-    plist = os.path.join(root, "LaunchAgents", "io.factlattice.lts-embedd.plist")
+    plist = os.path.join(root, "LaunchAgents", "local.factlattice.lts-embedd.plist")
     return dict(plist_path=plist, state_root=os.path.join(root, "st"), uid=501, pin=pin,
                 mcp_config=mcp, path=binp, probe=OK_PROBE), exe
 
@@ -324,7 +324,7 @@ def test_acc6_the_plist_matches_the_launchd_spec(la):
     p = plistlib.loads(open(la["plist_path"], "rb").read())
     log = os.path.join(la["state_root"], "run", "embedd-keep.log")
     assert p == {
-        "Label": "io.factlattice.lts-embedd",
+        "Label": "local.factlattice.lts-embedd",
         "ProgramArguments": [exe, "-m", "factlattice_engine.semantic.embedd", "keep"],
         "EnvironmentVariables": {"PYTHONPATH": "/live/checkout"},
         "RunAtLoad": True,
@@ -334,7 +334,7 @@ def test_acc6_the_plist_matches_the_launchd_spec(la):
         "StandardErrorPath": log,
     }
     assert (os.stat(la["plist_path"]).st_mode & 0o777) == 0o600
-    assert D.LAUNCHD_LABEL == "io.factlattice.lts-embedd"
+    assert D.LAUNCHD_LABEL == "local.factlattice.lts-embedd"
 
 
 def test_acc6_install_bootstraps_through_the_injected_runner(la):
@@ -358,7 +358,7 @@ def test_acc6_uninstall_boots_out_and_removes_the_plist(la):
     D.launchagent("install", runner=FakeRunner(), out=io.StringIO(), **la)
     r = FakeRunner()
     assert D.launchagent("uninstall", runner=r, out=io.StringIO(), **la) == 0
-    assert r.calls == [["launchctl", "bootout", "gui/501/io.factlattice.lts-embedd"]]
+    assert r.calls == [["launchctl", "bootout", "gui/501/local.factlattice.lts-embedd"]]
     assert not os.path.exists(la["plist_path"])
 
 
@@ -370,12 +370,105 @@ def test_acc6_uninstall_when_not_loaded_still_removes_the_plist_and_says_so(la):
     assert not os.path.exists(la["plist_path"]) and "not loaded" in out.getvalue()
 
 
+FAKE_LABEL = "example.fake.embedd-label"      # a made-up label: the tests never spell a real deployment's
+
+
+def test_acc6_override_by_environment_changes_plist_file_label_and_targets(la, monkeypatch):
+    la, _exe = la
+    plist = os.path.join(os.path.dirname(la["plist_path"]), FAKE_LABEL + ".plist")
+    la = dict(la, plist_path=None)
+    monkeypatch.setenv(D.LAUNCHD_LABEL_ENV, FAKE_LABEL)
+    r = FakeRunner()
+    home = os.path.dirname(plist)
+    monkeypatch.setenv("HOME", os.path.dirname(home))      # the default plist path is ~/Library/LaunchAgents/<label>.plist
+    out = io.StringIO()
+    assert D.launchagent("install", runner=r, out=out, **la) == 0
+    installed = os.path.join(os.path.dirname(home), "Library", "LaunchAgents", FAKE_LABEL + ".plist")
+    assert plistlib.loads(open(installed, "rb").read())["Label"] == FAKE_LABEL
+    assert r.calls == [["launchctl", "bootstrap", "gui/501", installed]] and f"installed {FAKE_LABEL}" in out.getvalue()
+    r = FakeRunner()
+    assert D.launchagent("uninstall", runner=r, out=io.StringIO(), **la) == 0
+    assert r.calls == [["launchctl", "bootout", f"gui/501/{FAKE_LABEL}"]] and not os.path.exists(installed)
+
+
+def test_acc6_the_label_argument_wins_over_the_environment(la, monkeypatch):
+    la, _exe = la
+    monkeypatch.setenv(D.LAUNCHD_LABEL_ENV, FAKE_LABEL)
+    r = FakeRunner()
+    D.launchagent("install", runner=r, out=io.StringIO(), label="example.other.label", **la)
+    p = plistlib.loads(open(la["plist_path"], "rb").read())
+    assert p["Label"] == "example.other.label"
+    assert D.resolve_label("example.other.label") == "example.other.label" and D.resolve_label() == FAKE_LABEL
+
+
+def test_acc6_no_override_gives_the_neutral_default(monkeypatch):
+    monkeypatch.delenv(D.LAUNCHD_LABEL_ENV, raising=False)
+    assert D.resolve_label() == D.LAUNCHD_LABEL == "local.factlattice.lts-embedd"
+
+
+@pytest.mark.parametrize("bad", ["", "a/b", "../x", "a..b", "x y", "a\nb", "/abs", "label.plist/", "é", "a" * 201])
+def test_acc6_a_bad_label_is_refused_before_anything_is_read_or_written(la, monkeypatch, bad):
+    la, _exe = la
+    r = FakeRunner()
+    for how in ("arg", "env"):
+        monkeypatch.delenv(D.LAUNCHD_LABEL_ENV, raising=False)
+        kw = {}
+        if how == "arg":
+            kw["label"] = bad
+        else:
+            monkeypatch.setenv(D.LAUNCHD_LABEL_ENV, bad)
+        with pytest.raises(D.InstallRefused):
+            D.launchagent("install", runner=r, out=io.StringIO(), **la, **kw)
+    assert r.calls == [] and not os.path.exists(la["plist_path"])
+
+
+def test_acc6_the_longest_allowed_label_is_accepted():
+    assert D.resolve_label("a" * D.LABEL_MAX) == "a" * D.LABEL_MAX
+
+
+@pytest.mark.parametrize("action", ["install", "uninstall", "status"])
+@pytest.mark.parametrize("bad", ["a/b", "a..b", "a" * 201])
+def test_acc6_a_bad_label_touches_nothing_on_any_action(la, monkeypatch, action, bad):
+    """Refused before anything is READ or written or run: the MCP config is never opened or statted, the plist
+    is never opened, statted or unlinked, `_mcp_install_env` is never reached and launchctl is never called."""
+    import builtins
+    la, _exe = la
+    la = dict(la)
+    watched = {os.path.abspath(la["mcp_config"]), os.path.abspath(la["plist_path"])}
+    seen = []
+    real_open, real_stat, real_lstat, real_unlink = builtins.open, os.stat, os.lstat, os.unlink
+
+    def _spy(name, real):
+        def inner(p, *a, **k):
+            if isinstance(p, (str, bytes, os.PathLike)) and os.path.abspath(os.fsdecode(p)) in watched:
+                seen.append((name, os.fsdecode(p)))
+            return real(p, *a, **k)
+        return inner
+    monkeypatch.setattr(builtins, "open", _spy("open", real_open))
+    monkeypatch.setattr(os, "stat", _spy("stat", real_stat))
+    monkeypatch.setattr(os, "lstat", _spy("lstat", real_lstat))
+    monkeypatch.setattr(os, "unlink", _spy("unlink", real_unlink))
+    reads = []
+    monkeypatch.setattr(D, "_mcp_install_env", lambda *a, **k: reads.append(a) or ("x", {}))
+    r = FakeRunner()
+    with pytest.raises(D.InstallRefused):
+        D.launchagent(action, runner=r, out=io.StringIO(), label=bad, **la)
+    assert r.calls == [] and seen == [] and reads == []
+
+
+def test_acc6_the_cli_refuses_a_bad_label_with_exit_1_and_a_message(la, capsys):
+    la, _exe = la
+    r = FakeRunner()
+    assert D._main(["launchagent", "status", "--label", "a/b"], runner=r) == 1
+    assert "REFUSED" in capsys.readouterr().out and r.calls == []
+
+
 def test_acc6_status_prints_loaded_pid_and_material(la):
     la, _exe = la
-    r = FakeRunner(stdout="io.factlattice.lts-embedd = {\n\tstate = running\n\tpid = 4242\n}\n")
+    r = FakeRunner(stdout="local.factlattice.lts-embedd = {\n\tstate = running\n\tpid = 4242\n}\n")
     out = io.StringIO()
     assert D.launchagent("status", runner=r, out=out, **la) == 0
-    assert r.calls == [["launchctl", "print", "gui/501/io.factlattice.lts-embedd"]]
+    assert r.calls == [["launchctl", "print", "gui/501/local.factlattice.lts-embedd"]]
     text = out.getvalue()
     assert "loaded: yes" in text and "pid: 4242" in text
     assert f"material: {D.material_hash(D.material(la['pin'], 512))}" in text
@@ -392,242 +485,6 @@ def test_acc6_the_cli_routes_through_the_injected_runner(la):
                   la["state_root"], "--mcp-config", la["mcp_config"], "--path", la["path"]], runner=r, probe=OK_PROBE)
     assert rc == 0 and r.calls[0][:3] == ["launchctl", "bootstrap", f"gui/{os.getuid()}"]
     assert os.path.exists(la["plist_path"])
-
-
-# --- label migration: an earlier release installed the agent under another reverse-DNS prefix --------
-OLD_LABEL = "com.example.lts-embedd"      # shape only: recognised by shape + exact content, never by name
-
-
-def _old_agent(la, exe, label=OLD_LABEL, env=None, fname=None, **override):
-    """The plist an earlier release would have written: identical to this install's apart from Label."""
-    d = os.path.dirname(la["plist_path"])
-    os.makedirs(d, exist_ok=True)
-    f = os.path.join(d, fname or (label + ".plist"))
-    pl = D.build_plist(python=exe, env=env or {"PYTHONPATH": "/live/checkout"},
-                       log_path=os.path.join(la["state_root"], "run", "embedd-keep.log"))
-    pl["Label"] = label
-    pl.update(override)
-    with open(f, "wb") as fh:
-        plistlib.dump(pl, fh)
-    return f
-
-
-def _alarm(seconds=10):
-    import signal
-
-    def boom(*_a):
-        raise AssertionError(f"hung for {seconds} s (a blocking read)")
-    signal.signal(signal.SIGALRM, boom)
-    signal.alarm(seconds)
-
-
-class ScriptRunner(FakeRunner):
-    """rc per (verb, label-or-path suffix): {('bootout', OLD_LABEL): 5}."""
-    def __init__(self, rcs=None):
-        super().__init__()
-        self.rcs = rcs or {}
-
-    def __call__(self, argv):
-        self.calls.append(list(argv))
-        rc = 0
-        for (verb, tail), v in self.rcs.items():
-            if argv[1] == verb and argv[-1].endswith(tail):
-                rc = v
-        return SimpleNamespace(returncode=rc, stdout="", stderr="boom" if rc else "")
-
-
-def test_mig1_keep_migrates_an_old_label_plist(la):
-    la, exe = la
-    old = _old_agent(la, exe)
-    r, out = FakeRunner(), io.StringIO()
-    assert D.launchagent("install", runner=r, out=out, **la) == 0
-    stop = ["launchctl", "bootout", f"gui/501/{OLD_LABEL}"]
-    assert stop in r.calls
-    assert r.calls.index(stop) < r.calls.index(["launchctl", "bootstrap", "gui/501", la["plist_path"]])
-    assert not os.path.exists(old) and os.path.exists(la["plist_path"])
-    assert os.listdir(os.path.dirname(la["plist_path"])) == ["io.factlattice.lts-embedd.plist"]
-    assert "migrated" in out.getvalue()
-
-
-def test_mig1b_a_failed_bootstrap_puts_the_old_agent_back_and_says_so(la):
-    la, exe = la
-    old = _old_agent(la, exe)
-    r, out = ScriptRunner({("bootstrap", "io.factlattice.lts-embedd.plist"): 5}), io.StringIO()
-    assert D.launchagent("install", runner=r, out=out, **la) == 1
-    assert os.path.exists(old) and not os.path.exists(la["plist_path"])
-    assert ["launchctl", "bootstrap", "gui/501", old] in r.calls
-    assert f"restored the earlier agent {OLD_LABEL}" in out.getvalue()
-
-
-def test_mig1c_a_failed_restore_of_the_old_agent_is_reported(la):
-    la, exe = la
-    old = _old_agent(la, exe)
-    r, out = ScriptRunner({("bootstrap", ".plist"): 5}), io.StringIO()      # both bootstraps fail
-    assert D.launchagent("install", runner=r, out=out, **la) == 1
-    assert f"COULD NOT restore the earlier agent {OLD_LABEL}" in out.getvalue()
-    assert os.path.exists(old)
-
-
-def test_mig1d_any_exception_in_the_window_restores_the_old_agent(la, monkeypatch):
-    la, exe = la
-    old = _old_agent(la, exe)
-    real = os.replace
-
-    def bad_replace(src, dst, *a, **k):
-        if dst == la["plist_path"]:
-            raise OSError("disk full")
-        return real(src, dst, *a, **k)
-    monkeypatch.setattr(os, "replace", bad_replace)
-    r = FakeRunner()
-    with pytest.raises(OSError):
-        D.launchagent("install", runner=r, out=io.StringIO(), **la)
-    assert ["launchctl", "bootstrap", "gui/501", old] in r.calls          # old agent back in service
-    assert os.path.exists(old)
-
-
-def test_mig2_nothing_present_installs_only_the_new_label(la):
-    la, _exe = la
-    r = FakeRunner()
-    assert D.launchagent("install", runner=r, out=io.StringIO(), **la) == 0
-    assert r.calls == [["launchctl", "bootstrap", "gui/501", la["plist_path"]]]
-    assert os.listdir(os.path.dirname(la["plist_path"])) == ["io.factlattice.lts-embedd.plist"]
-
-
-def test_mig3_reinstall_is_idempotent_and_leaves_unrelated_plists_alone(la):
-    la, _exe = la
-    D.launchagent("install", runner=FakeRunner(), out=io.StringIO(), **la)
-    d = os.path.dirname(la["plist_path"])
-    with open(os.path.join(d, "com.other.lts-embedd.plist"), "wb") as fh:   # same suffix, a different program
-        plistlib.dump({"Label": "com.other.lts-embedd", "ProgramArguments": ["/bin/other"]}, fh)
-    with open(os.path.join(d, "com.other.thing.plist"), "wb") as fh:
-        plistlib.dump({"Label": "com.other.thing"}, fh)
-    names = ("com.other.lts-embedd.plist", "com.other.thing.plist")
-    before = {f: open(os.path.join(d, f), "rb").read() for f in names}
-    r = FakeRunner()
-    assert D.launchagent("install", runner=r, out=io.StringIO(), **la) == 0
-    assert r.calls == [["launchctl", "bootstrap", "gui/501", la["plist_path"]]]
-    assert sorted(os.listdir(d)) == sorted(("io.factlattice.lts-embedd.plist",) + names)
-    assert {f: open(os.path.join(d, f), "rb").read() for f in names} == before
-
-
-def test_mig4_status_reports_an_old_label_leftover(la):
-    la, exe = la
-    _old_agent(la, exe)
-    r, out = FakeRunner(), io.StringIO()
-    assert D.launchagent("status", runner=r, out=out, **la) == 0
-    assert ["launchctl", "print", f"gui/501/{OLD_LABEL}"] in r.calls
-    assert f"legacy label {OLD_LABEL}: installed" in out.getvalue()
-    assert "loaded: yes" in out.getvalue().split("legacy label")[1]
-
-
-def test_mig5_a_separate_dev_agent_of_the_same_module_is_not_an_earlier_release(la):
-    """F1: same module, another label, its own state dir: a different install, never removed."""
-    la, exe = la
-    dev = _old_agent(la, exe, label="com.dev.lts-embedd",
-                     env={"PYTHONPATH": "/dev/checkout", "LTS_ENGINE_STATE_DIR": "/dev/state"})
-    before = open(dev, "rb").read()
-    r, out = FakeRunner(), io.StringIO()
-    assert D.launchagent("install", runner=r, out=out, **la) == 0
-    assert r.calls == [["launchctl", "bootstrap", "gui/501", la["plist_path"]]]      # no bootout of the dev agent
-    assert open(dev, "rb").read() == before
-    assert "com.dev.lts-embedd" in out.getvalue() and "left alone" in out.getvalue()
-    out = io.StringIO()
-    D.launchagent("status", runner=FakeRunner(), out=out, **la)
-    assert "com.dev.lts-embedd" in out.getvalue() and "differs" in out.getvalue()
-
-
-def test_mig5b_an_explicit_adopt_flag_migrates_a_differing_agent(la):
-    la, exe = la
-    dev = _old_agent(la, exe, label="com.dev.lts-embedd", env={"PYTHONPATH": "/dev/checkout"})
-    r = FakeRunner()
-    assert D.launchagent("install", runner=r, out=io.StringIO(), adopt_legacy=["com.dev.lts-embedd"], **la) == 0
-    assert ["launchctl", "bootout", "gui/501/com.dev.lts-embedd"] in r.calls and not os.path.exists(dev)
-
-
-def test_mig5c_the_cli_has_the_adopt_flag(la):
-    la, exe = la
-    dev = _old_agent(la, exe, label="com.dev.lts-embedd", env={"PYTHONPATH": "/dev/checkout"})
-    rc = D._main(["launchagent", "install", "--plist-path", la["plist_path"], "--state-root", la["state_root"],
-                  "--mcp-config", la["mcp_config"], "--path", la["path"], "--adopt-legacy", "com.dev.lts-embedd"],
-                 runner=FakeRunner(), probe=OK_PROBE)
-    assert rc == 0 and not os.path.exists(dev)
-
-
-def test_mig6_a_plist_not_named_after_its_label_is_not_migrated(la):
-    """F6: the `<label>.plist` file-name clause."""
-    la, exe = la
-    f = _old_agent(la, exe, fname="stray.lts-embedd.plist")        # identical content, wrong file name
-    r = FakeRunner()
-    assert D.launchagent("install", runner=r, out=io.StringIO(), **la) == 0
-    assert r.calls == [["launchctl", "bootstrap", "gui/501", la["plist_path"]]] and os.path.exists(f)
-
-
-def test_mig7_a_surviving_loaded_old_agent_stops_the_install(la):
-    """F2a: bootout failed and the agent is still loaded: do not bootstrap a second one."""
-    la, exe = la
-    old = _old_agent(la, exe)
-    r, out = ScriptRunner({("bootout", OLD_LABEL): 5}), io.StringIO()     # print rc 0 = still loaded
-    assert D.launchagent("install", runner=r, out=out, **la) == 1
-    assert not os.path.exists(la["plist_path"]) and os.path.exists(old)
-    assert not any(c[1] == "bootstrap" for c in r.calls)
-    assert "still loaded" in out.getvalue()
-
-
-def test_mig7b_a_bootout_of_a_not_loaded_old_agent_proceeds(la):
-    la, exe = la
-    old = _old_agent(la, exe)
-    r = ScriptRunner({("bootout", OLD_LABEL): 3, ("print", OLD_LABEL): 113})   # not loaded
-    assert D.launchagent("install", runner=r, out=io.StringIO(), **la) == 0
-    assert not os.path.exists(old) and os.path.exists(la["plist_path"])
-    assert ["launchctl", "bootstrap", "gui/501", old] not in r.calls
-
-
-def test_mig8_a_symlinked_legacy_plist_is_reported_and_refused(la):
-    """F2b: cannot be classified, so install refuses (no agent or plist written) and status says so."""
-    la, exe = la
-    real = _old_agent(la, exe, fname="real.txt")
-    link = os.path.join(os.path.dirname(real), OLD_LABEL + ".plist")
-    os.symlink(real, link)
-    r, out = FakeRunner(), io.StringIO()
-    assert D.launchagent("install", runner=r, out=out, **la) == 1
-    assert r.calls == [] and not os.path.exists(la["plist_path"]) and "symlink" in out.getvalue()
-    out = io.StringIO()
-    D.launchagent("status", runner=FakeRunner(), out=out, **la)
-    assert "cannot classify" in out.getvalue() and "symlink" in out.getvalue()
-
-
-def test_mig9_a_failed_unlink_of_the_old_plist_is_loud(la, monkeypatch):
-    """F2d: the new agent is up but the old plist stayed: both would load at login."""
-    la, exe = la
-    old = _old_agent(la, exe)
-    real = os.unlink
-
-    def bad_unlink(p, *a, **k):
-        if p == old:
-            raise PermissionError("denied")
-        return real(p, *a, **k)
-    monkeypatch.setattr(os, "unlink", bad_unlink)
-    out = io.StringIO()
-    assert D.launchagent("install", runner=FakeRunner(), out=out, **la) == 1
-    assert "COULD NOT remove" in out.getvalue() and old in out.getvalue()
-
-
-def test_mig10_a_fifo_named_like_a_legacy_plist_does_not_hang(la):
-    """F4: a blocking read of a FIFO. SIGALRM turns a hang into a failure."""
-    la, exe = la
-    d = os.path.dirname(la["plist_path"])
-    os.makedirs(d, exist_ok=True)
-    os.mkfifo(os.path.join(d, OLD_LABEL + ".plist"))
-    _alarm(10)
-    try:
-        r, out = FakeRunner(), io.StringIO()
-        assert D.launchagent("install", runner=r, out=out, **la) == 1
-        D.launchagent("status", runner=FakeRunner(), out=io.StringIO(), **la)
-    finally:
-        import signal
-        signal.alarm(0)
-    assert r.calls == [] and "not a regular file" in out.getvalue()
-    assert not os.path.exists(os.path.join(la["state_root"], "run", "embedd-keep.log"))   # no log created either
 
 
 def _install_ok(la):
@@ -885,7 +742,7 @@ def test_p33_the_model_dir_is_copied_from_the_mcp_entry(env):
 def test_p24_the_checklist_carries_the_always_on_rule():
     txt = open(os.path.join(os.path.dirname(ENGINE_PKG), "SDLC.md")).read()
     sec = txt[txt.index("### 7.6"):txt.index("## 8. Stage 5")]
-    for needle in ("KEEP_SOURCE_FILES", "watch_fingerprint", "io.factlattice.lts-embedd", "embedd-keep-starts.json",
+    for needle in ("KEEP_SOURCE_FILES", "watch_fingerprint", "local.factlattice.lts-embedd", "FACTLATTICE_EMBEDD_LAUNCHD_LABEL", "embedd-keep-starts.json",
                    "embedd-keep-tripped.json", "on_ready"):
         assert needle in sec, needle
 
@@ -1045,42 +902,3 @@ def test_d2p33_a_stale_tmp_from_pid_reuse_does_not_make_every_start_uncountable(
     assert D.keep(_cfg(env), stop=threading.Event(), log=log.append, clock=lambda: now) == 0
     assert any("crash-loop" in l for l in log) and not any("cannot record" in l for l in log)
     assert json.load(open(_marker(env)))["starts"] == 5
-
-
-def test_mig11_a_runner_failure_on_the_second_bootout_restores_the_first(la):
-    """The guarded region starts at the FIRST bootout, so it covers the rest of the loop."""
-    la, exe = la
-    old1 = _old_agent(la, exe, label="com.example.lts-embedd")
-    old2 = _old_agent(la, exe, label="com.example2.lts-embedd")
-
-    class R(FakeRunner):
-        def __call__(self, argv):
-            super().__call__(argv)
-            if argv[1] == "bootout" and argv[-1].endswith("com.example2.lts-embedd"):
-                raise TimeoutError("launchctl hung")
-            return SimpleNamespace(returncode=0, stdout="", stderr="")
-    r, out = R(), io.StringIO()
-    with pytest.raises(TimeoutError):
-        D.launchagent("install", runner=r, out=out, **la)
-    assert ["launchctl", "bootstrap", "gui/501", old1] in r.calls          # the first agent is back
-    assert os.path.exists(old1) and os.path.exists(old2) and not os.path.exists(la["plist_path"])
-    assert "restored the earlier agent com.example.lts-embedd" in out.getvalue()
-
-
-def test_mig12_a_stopped_agent_is_restored_at_most_once(la):
-    la, exe = la
-    old1 = _old_agent(la, exe, label="com.example.lts-embedd")
-    _old_agent(la, exe, label="com.example2.lts-embedd")
-
-    class R(FakeRunner):
-        def __call__(self, argv):
-            super().__call__(argv)
-            if argv[1] == "bootout" and argv[-1].endswith("com.example2.lts-embedd"):
-                return SimpleNamespace(returncode=5, stdout="", stderr="busy")      # and print says loaded
-            if argv[1] == "bootstrap" and argv[-1] == old1:
-                raise TimeoutError("launchctl hung")                                # the restore itself fails
-            return SimpleNamespace(returncode=0, stdout="", stderr="")
-    r = R()
-    with pytest.raises(TimeoutError):
-        D.launchagent("install", runner=r, out=io.StringIO(), **la)
-    assert r.calls.count(["launchctl", "bootstrap", "gui/501", old1]) == 1

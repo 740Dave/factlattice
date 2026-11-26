@@ -11,8 +11,12 @@ from __future__ import annotations
 import pytest
 
 from factlattice_engine import (
-    ContentHashFreshness, LtsStore, LtsEngine, Partition, Router,
-    AllowAllAcl, dispatch,
+    AllowAllAcl,
+    LtsEngine,
+    LtsStore,
+    Partition,
+    Router,
+    dispatch,
 )
 
 

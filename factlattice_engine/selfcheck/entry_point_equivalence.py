@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # --- the control document -----------------------------------------------------
 #   `dom.CUSTOM_TYPE` sits under a NON-canonical subhead ("Cross-Domain") on purpose:
@@ -72,16 +72,16 @@ CONTROL_DOC = """# Control [SPEC:EPC-ROOT]
 # The SAME vocabulary, expressed once, then handed to each surface in its own idiom.
 REGISTERED_NS = frozenset({"core", "dom"})
 DOMAIN_VERBS = frozenset({"UPHOLDS"})
-PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
+PROPERTY_EDGES: dict[str, tuple[str, str, bool]] = {
     "exemplifies": ("EXEMPLIFIES", "semantic", False),
 }
-PROFILE_LAYERS: Dict[str, str] = {"dom.CUSTOM_TYPE": "causal"}
+PROFILE_LAYERS: dict[str, str] = {"dom.CUSTOM_TYPE": "causal"}
 
 # The dict-shaped profile `factlattice.corpus.parse()` / `load_profile` reads. It
 # declares ALL THREE hooks — the verb, the minting key, and the namespaced type's
 # layer — because a profile that declared only some of them would make this test
 # measure the profile's incompleteness rather than the engine's threading.
-_DICT_PROFILE: Dict[str, Any] = {
+_DICT_PROFILE: dict[str, Any] = {
     "domain": {"id": "epc", "namespaces": ["dom"]},
     "prefixes": [{"prefix": "EPC-"}],
     "relationship_verbs": {"domain": ["UPHOLDS"]},
@@ -122,12 +122,12 @@ _PROBE_EDGES = {("EPC-A", "EXEMPLIFIES", "EPC-B"),
                 ("EPC-A", "dom.CUSTOM_TYPE", "EPC-B")}
 
 
-def _edge_sig(e: dict) -> Tuple[str, str, str, str, Tuple[str, ...]]:
+def _edge_sig(e: dict) -> tuple[str, str, str, str, tuple[str, ...]]:
     return (e["source"], e["type"], e["target"], e["layer"],
             tuple(sorted(e.get("flags") or [])))
 
 
-def _probe_edges(sigs: List[tuple]) -> Dict[Tuple[str, str, str], dict]:
+def _probe_edges(sigs: list[tuple]) -> dict[tuple[str, str, str], dict]:
     out = {}
     for s in sigs:
         key = (s[0], s[1], s[2])
@@ -144,14 +144,14 @@ def _reference_config():
         domain_verbs=DOMAIN_VERBS, property_edges=PROPERTY_EDGES)
 
 
-def _run_path_a(root: str, profile: Any) -> List[tuple]:
+def _run_path_a(root: str, profile: Any) -> list[tuple]:
     """`factlattice.corpus.parse()` — `lts_lint` / `lts_preview` / `lts_profile_audit`."""
     from factlattice.corpus import parse as corpus_parse
     pc = corpus_parse(source=root, profile=profile)
     return sorted(_edge_sig(e.to_dict()) for e in pc.edges)
 
 
-def _run_path_b(root: str, spec: Optional[dict]) -> List[tuple]:
+def _run_path_b(root: str, spec: dict | None) -> list[tuple]:
     """`config.build_partition` + `incremental` — the LIVE MCP query engine behind
     `lts_find` / `lts_traverse` / a registered corpus's `lts_lint`. Configured by a
     corpus-registry `spec`, which is the V5c surface."""
@@ -163,7 +163,7 @@ def _run_path_b(root: str, spec: Optional[dict]) -> List[tuple]:
                   for e in layer["edges"])
 
 
-def _run_path_c(root: str, config) -> List[tuple]:
+def _run_path_c(root: str, config) -> list[tuple]:
     """`factlattice.index_builder.build_index` with a `ParserConfig`. Before C3/C4 this
     function had NO `property_edges` parameter at all, so `exemplifies` could not mint
     here even in principle — the omission was invisible because a parameter that does
@@ -174,14 +174,14 @@ def _run_path_c(root: str, config) -> List[tuple]:
                   for e in layer["edges"])
 
 
-def _run_path_reference(doc_path: str) -> List[tuple]:
+def _run_path_reference(doc_path: str) -> list[tuple]:
     from factlattice.parser import parse_file
     pf = parse_file(doc_path, config=_reference_config())
     return sorted(_edge_sig(e.to_dict()) for e in pf.edges)
 
 
-def _compare(reference: dict, paths: Dict[str, dict]) -> List[Dict[str, Any]]:
-    divergences: List[Dict[str, Any]] = []
+def _compare(reference: dict, paths: dict[str, dict]) -> list[dict[str, Any]]:
+    divergences: list[dict[str, Any]] = []
     for path_name, produced in paths.items():
         for probe in sorted(_PROBE_EDGES):
             want = reference.get(probe)
@@ -209,7 +209,7 @@ def _compare(reference: dict, paths: Dict[str, dict]) -> List[Dict[str, Any]]:
     return divergences
 
 
-def _run(starve: Optional[str] = None) -> Dict[str, Any]:
+def _run(starve: str | None = None) -> dict[str, Any]:
     """Run the comparison. `starve` names a path to deliberately deny the profile —
     that is the negative control, and it MUST come back divergent."""
     tmp = tempfile.mkdtemp(prefix="factlattice-epc-")
@@ -258,7 +258,7 @@ def _run(starve: Optional[str] = None) -> Dict[str, Any]:
             pass
 
 
-def run() -> Dict[str, Any]:
+def run() -> dict[str, Any]:
     """Parse the control pair through every production path and report agreement.
 
     `equivalent` is the headline. It is True as of Era 1 (C3/C4/V5c); it was False on
@@ -274,7 +274,7 @@ def run() -> Dict[str, Any]:
     return result
 
 
-def run_negative_control() -> Dict[str, Any]:
+def run_negative_control() -> dict[str, Any]:
     """⛔ THE PROOF THAT `run()`'s GREEN MEANS ANYTHING.
 
     Re-runs the identical comparison with the LIVE ENGINE path deliberately denied its
@@ -299,7 +299,7 @@ def run_negative_control() -> Dict[str, Any]:
     return result
 
 
-def render_text(result: Dict[str, Any]) -> str:
+def render_text(result: dict[str, Any]) -> str:
     lines = [f"entry-point equivalence: "
              f"{'EQUIVALENT' if result['equivalent'] else 'DIVERGENT'}"]
     if result.get("detection_status"):

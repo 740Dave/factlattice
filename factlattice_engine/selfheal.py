@@ -70,8 +70,8 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional
 
+from . import rootstate as _rs
 from .incremental import CorpusIndex, CorpusMoved
 from .kernel import combine_leaf_map, combine_roots
 
@@ -112,6 +112,8 @@ HEAL_REASONS = (
     "post-rebuild verdict is STILL stale; refusing",
     "rebuild already attempted for this content; suppressed to avoid a rebuild storm",
     "re-indexed; fresh",
+    "a registered root vanished after the index was built; refusing (fail-closed) until it returns",
+    "a registered root of this corpus is not answering; nothing was read from it and nothing was rebuilt [INV-LTS-FRESH]",
 )
 
 HEAL_REASON_CODES = dict(zip(HEAL_REASONS, (
@@ -129,6 +131,8 @@ HEAL_REASON_CODES = dict(zip(HEAL_REASONS, (
     "still-stale-after-rebuild",
     "rebuild-already-attempted",
     "reindexed-fresh",
+    "root-vanished",
+    _rs.CODE_ROOT_UNRESPONSIVE,
 )))
 
 
@@ -139,10 +143,10 @@ class HealOutcome:
     corpus_id: str
     attempted: bool                 # did we actually run a rebuild?
     healed: bool                    # is the partition fresh as a result?
-    mode: Optional[str] = None      # "incremental" | "full" | None
+    mode: str | None = None      # "incremental" | "full" | None
     reparsed: int = 0               # files re-parsed by this rebuild
-    reason: Optional[str] = None    # why we did / did not act
-    error: Optional[str] = None     # the fail-closed error, if any
+    reason: str | None = None    # why we did / did not act
+    error: str | None = None     # the fail-closed error, if any
 
     def to_dict(self) -> dict:
         # `reason` is a CODE (a failed heal is a FAULT block); the fixed sentence is `explanation`. Both are closed sets.
@@ -163,8 +167,8 @@ class SelfHealer:
     """
 
     def __init__(self, store, *, kernel=None, freshness_provider=None,
-                 min_interval: Optional[float] = None, clock=time.monotonic,
-                 force_full: Optional[bool] = None) -> None:
+                 min_interval: float | None = None, clock=time.monotonic,
+                 force_full: bool | None = None) -> None:
         self.store = store
         self._explicit_kernel = kernel
         if freshness_provider is None:
@@ -180,10 +184,10 @@ class SelfHealer:
         self.force_full = _env_flag(_ENV_FORCE_FULL, False) if force_full is None \
             else bool(force_full)
         self._clock = clock
-        self._locks: Dict[str, threading.RLock] = {}
+        self._locks: dict[str, threading.RLock] = {}
         self._locks_guard = threading.Lock()
-        self._last_attempt: Dict[str, str] = {}     # corpus_id -> live root attempted
-        self._last_attempt_at: Dict[str, float] = {}
+        self._last_attempt: dict[str, object] = {}  # corpus_id -> live root hash attempted, or ("root-set", signature)
+        self._last_attempt_at: dict[str, float] = {}
         self.rebuilds = 0
         self.suppressed = 0
         self.failures = 0
@@ -240,11 +244,23 @@ class SelfHealer:
         return leaves, combine_roots({rp: combine_leaf_map(m) for rp, m in leaves.items()})
 
     # --- the public entry point --------------------------------------------
+    def _marked(self, part) -> bool:
+        k = getattr(part, "_kernel", None) or self.kernel
+        fn = getattr(k, "root_mark", None)
+        return fn is not None and fn(part) is not None
+
     def heal(self, part) -> HealOutcome:
         """Make a stale partition fresh, or fail closed. NEVER raises."""
         cid = getattr(part, "corpus_id", None) or "<unknown>"
+        # [MECH-BR-CALLS] THE heal choke point: a corpus with a pending or unresponsive root is never rebuilt. A rebuild re-lists and
+        # re-parses the roots, so it would stop on the hung disk; this is reached from the gate AND from a routed hop (router), and a
+        # new caller cannot forget the check. The caller re-reads freshness, which is not-fresh for a marked corpus, and declares it.
+        if self._marked(part):
+            return HealOutcome(cid, attempted=False, healed=False, reason="a registered root of this corpus is not answering; nothing was read from it and nothing was rebuilt [INV-LTS-FRESH]")
         try:
             with self._lock_for(cid):
+                if self._marked(part):                # marked while this caller waited for the per-corpus lock
+                    return HealOutcome(cid, attempted=False, healed=False, reason="a registered root of this corpus is not answering; nothing was read from it and nothing was rebuilt [INV-LTS-FRESH]")
                 return self._heal_locked(part, cid)
         except Exception as exc:  # noqa: BLE001 — a heal fault must never kill the server
             logger.exception("[lts-engine] self-heal fault for corpus %s", cid)
@@ -261,18 +277,44 @@ class SelfHealer:
             return HealOutcome(cid, attempted=False, healed=True,
                                reason="already fresh (coalesced onto a prior rebuild)")
 
-        ci: Optional[CorpusIndex] = getattr(part, "corpus_index", None)
+        ci: CorpusIndex | None = getattr(part, "corpus_index", None)
         if ci is None:
             return HealOutcome(cid, attempted=False, healed=False,
                                reason="no rebuild recipe on this partition "
                                       "(cannot self-heal; refusing) [INV-LTS-FRESH]")
 
+        sig = getattr(part, "_root_set_signature", lambda: None)()
+        if sig is not None and sig[0]:
+            # A seated root VANISHED: the corpus is unverifiable. Refuse (fail-closed), never serve around it, and say
+            # why instead of raising on every query. It clears when the root returns or the registry changes.
+            return HealOutcome(cid, attempted=False, healed=False,
+                               reason="a registered root vanished after the index was built; refusing "
+                                      "(fail-closed) until it returns")
+        if sig is not None:
+            # [ROOT-SET-CHANGE] the registered root set changed. The authoritative pass hashes only the seated
+            # roots (blind to a new root, and it raises on a vanished one), so go straight to a full re-seat from the
+            # live roots. The storm guard keys on a fingerprint of the live roots (store._root_set_signature), so a
+            # failure whose cause is in a fingerprinted file state is retried once that state changes.
+            key = ("root-set", sig)
+            if self._last_attempt.get(cid) == key:
+                self.suppressed += 1
+                return HealOutcome(cid, attempted=False, healed=False,
+                                   reason="rebuild already attempted for this content; "
+                                          "suppressed to avoid a rebuild storm")
+            self._last_attempt[cid] = key
+            self._last_attempt_at[cid] = self._clock()
+            self.rebuilds += 1
+            return self._run_rebuild(part, ci, None, part.files_hash, cid)
+
         leaves, live_root = self._authoritative_leaves(part)
         if live_root is None:
             return HealOutcome(cid, attempted=False, healed=False,
                                reason="partition has no readable roots to re-index")
-        if live_root == part.files_hash:
-            # The hint-based verdict was pessimistic; the authoritative pass says fresh.
+        root_set_changed = getattr(part, "_root_set_change", lambda: None)() is not None
+        if live_root == part.files_hash and not root_set_changed:
+            # The hint-based verdict was pessimistic; the authoritative pass says fresh. NOT when the registered root
+            # set changed ([ROOT-SET-CHANGE]): the authoritative pass hashes only the seated roots, so it
+            # cannot see a root that appeared or vanished; `_rebuild` re-seats that structural change.
             return HealOutcome(cid, attempted=False, healed=True,
                                reason="authoritative re-verify says fresh; no rebuild needed")
 
@@ -292,10 +334,14 @@ class SelfHealer:
         self._last_attempt[cid] = live_root
         self._last_attempt_at[cid] = self._clock()
         self.rebuilds += 1
+        return self._run_rebuild(part, ci, leaves, live_root, cid)
+
+    def _run_rebuild(self, part, ci, leaves, live_root, cid: str) -> HealOutcome:
         try:
             outcome = self._rebuild(part, ci, leaves, live_root, cid)
         except CorpusMoved as moved:
             self.failures += 1
+            self._last_attempt.pop(cid, None)   # transient by definition: the next call may retry
             return HealOutcome(cid, attempted=True, healed=False,
                                error=str(moved),
                                reason="corpus changed during the re-index; refusing "
@@ -321,7 +367,7 @@ class SelfHealer:
         seated_roots = set(part.root_paths or [])
 
         # --- re-index: surgical when we have a seeded cache, full otherwise ---
-        if self.force_full or not ci.seeded:
+        if self.force_full or not ci.seeded or leaves is None:   # None: a root-set change, re-seat from the live roots
             nodes, layers, root_paths, index_hash = ci.cold_build()
             mode = "full"
             reparsed = ci.cached_file_count
@@ -368,7 +414,8 @@ class SelfHealer:
                                reason="corpus changed while the re-index ran; refusing "
                                       "(fail-closed) — retry after it settles")
 
-        self._publish(part, nodes, layers, root_paths, index_hash)
+        self._publish(part, nodes, layers, root_paths, index_hash,
+                      profile_documents=list(ci.profile_documents))
         if kernel is not None:
             # The kernel's leaves ARE authoritative for the content we just indexed, so
             # rebind rather than re-seat: no re-hash, and the very next query is O(0).
@@ -384,7 +431,8 @@ class SelfHealer:
                            reason="re-indexed; fresh")
 
     @staticmethod
-    def _publish(part, nodes, layers, root_paths, index_hash: str) -> None:
+    def _publish(part, nodes, layers, root_paths, index_hash: str, *,
+                 profile_documents: list) -> None:
         """Swap the rebuilt content onto the live Partition, `files_hash` LAST.
 
         ORDERING IS THE INVARIANT (see invariant 1 in the module docstring). A concurrent
@@ -397,6 +445,7 @@ class SelfHealer:
         stats = dict(part.stats or {})
         stats["total_nodes"] = len(nodes)
         stats["total_edges"] = sum(len(ld.get("edges", ())) for ld in layers.values())
+        stats["profile_documents"] = len(profile_documents)
         for derived in ("dangling_edges", "unresolved_target_edges", "edges_by_layer",
                         "id_collisions", "parse_errors", "unregistered_ns_edges"):
             stats.pop(derived, None)
@@ -405,17 +454,20 @@ class SelfHealer:
         part.layers = layers
         part.stats = stats
         part.root_paths = list(root_paths)
-        # Freshness-keyed caches ([LEC-FRESHNESS] #2) — drop them explicitly rather than
-        # relying on the key compare, so no walk can ever see new nodes over old adjacency.
-        part._adj_cache = None
-        part._adj_key = None
-        part._deg_cache = None
-        part._deg_key = None
+        # the rebuilt set of excluded domain profiles (absolute, from the corpus index), so the registration
+        # audit sees a profile added or removed since the build, not only after a restart. Required, not
+        # optional: a publish that omitted it would silently keep the old list.
+        part.profile_documents = list(profile_documents)
+        # Derived caches (adjacency, degree, body index) — dropped here to free the old content at once. Correctness does
+        # not rest on this line: each cache is served only while the nodes/layers object it was BUILT FROM is still the
+        # partition's current one (`Partition._derived`), so a build that straddles this publish is unreachable.
+        part._drop_derived_caches()
         idx = part.index if isinstance(part.index, dict) else None
         if idx is not None:
             idx["nodes"] = nodes
             idx["layers"] = layers
             idx["stats"] = stats
+            idx["profile_documents"] = list(profile_documents)
             sc = idx.get("source_corpus")
             if isinstance(sc, dict):
                 sc["root_paths"] = list(root_paths)

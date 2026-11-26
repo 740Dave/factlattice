@@ -26,6 +26,8 @@ answering content queries, 88 permanent `dangle.orphan` warnings).
 So their DISAGREEMENT is reported as a finding rather than silently resolved:
 
   `registered_profile_not_tagged_profile`
+      (a `.lts` profile only: a `.yaml`/`.yml`/`.json` profile has no document tag and is never
+      parsed as content, so it is not checked)
       Config names P as a corpus's profile, but P's own `document_tag` is not
       `PROFILE`. P is therefore STILL CONTENT — its declaration nodes are in the graph
       answering content queries. Either P is not really a profile, or it is missing its
@@ -49,18 +51,19 @@ and only the ones a human explicitly named.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 KIND_REGISTERED_NOT_TAGGED = "registered_profile_not_tagged_profile"
 KIND_UNREGISTERED_PROFILE_DOC = "unregistered_profile_document"
 KIND_REGISTERED_PROFILE_MISSING = "registered_profile_missing"
+DATA_PROFILE_EXTENSIONS = (".yaml", ".yml", ".json")   # the profile shapes `load_profile` reads that carry no document tag
 
 
-def _real(path: Optional[str]) -> Optional[str]:
+def _real(path: str | None) -> str | None:
     return os.path.realpath(path) if path else None
 
 
-def document_tag_of(path: str) -> Optional[str]:
+def document_tag_of(path: str) -> str | None:
     """The file's own `document_tag`, read THROUGH THE PARSER (never a regex).
 
     The doctag is the load-bearing signal for content exclusion; deriving it here with
@@ -75,8 +78,8 @@ def document_tag_of(path: str) -> Optional[str]:
         return None
 
 
-def audit_profile_registration(store: Any = None, *, corpus: Optional[str] = None,
-                               config: Optional[Dict[str, Any]] = None) -> dict:
+def audit_profile_registration(store: Any = None, *, corpus: str | None = None,
+                               config: dict[str, Any] | None = None) -> dict:
     """Cross-check the intrinsic doctag against `corpus-config.json`'s registrations.
 
     `store` — a loaded `LtsStore` (optional). When given, the PROFILE-tagged files
@@ -96,16 +99,18 @@ def audit_profile_registration(store: Any = None, *, corpus: Optional[str] = Non
         from factlattice.profile import load_corpus_config
         config = load_corpus_config() or {}
 
-    findings: List[dict] = []
+    findings: list[dict] = []
 
     # --- registered side: every path a corpus names as its profile -----------------
-    registered: Dict[str, List[str]] = {}      # realpath -> [corpus_id, ...]
-    registered_report: List[dict] = []
+    registered: dict[str, list[str]] = {}      # realpath -> [corpus_id, ...]
+    registered_report: list[dict] = []
+    named: dict = {}        # realpath -> every name the registry gives it (a symlink has two names)
     for cid, spec in sorted((config or {}).items()):
         path = spec.get("profile") if isinstance(spec, dict) else None
         if not path:
             continue
         registered.setdefault(_real(path), []).append(cid)
+        named.setdefault(_real(path), []).append(str(path))
 
     for rpath, cids in sorted(registered.items(), key=lambda kv: str(kv[0])):
         exists = bool(rpath) and os.path.isfile(rpath)
@@ -120,6 +125,13 @@ def audit_profile_registration(store: Any = None, *, corpus: Optional[str] = Non
                             "does not exist — those corpora are judged against nothing"),
             })
             continue
+        if all(n.lower().endswith(DATA_PROFILE_EXTENSIONS) for n in (rpath, *named.get(rpath, ()))):
+            # A `.yaml` / `.yml` / `.json` profile has no document tag. The corpus walkers take only names ending
+            # `.lts`, so a profile whose registered name AND real path both carry one of these extensions is not
+            # parsed as content, and "STILL PARSED AS CONTENT" cannot be true of it. Any other name (no extension,
+            # `.lts.bak`, or an `.lts` symlink to a data file, which IS walked as content) keeps the finding.
+            # The missing check above applies to every extension.
+            continue
         if tag != "PROFILE":
             findings.append({
                 "kind": KIND_REGISTERED_NOT_TAGGED,
@@ -133,7 +145,7 @@ def audit_profile_registration(store: Any = None, *, corpus: Optional[str] = Non
             })
 
     # --- intrinsic side: what the content fold actually excluded -------------------
-    excluded: Dict[str, List[str]] = {}        # realpath -> [corpus_id, ...]
+    excluded: dict[str, list[str]] = {}        # realpath -> [corpus_id, ...]
     scanned = False
     if store is not None:
         scanned = True
@@ -170,8 +182,8 @@ def audit_profile_registration(store: Any = None, *, corpus: Optional[str] = Non
     }
 
 
-def _counts(findings: List[dict]) -> Dict[str, int]:
-    out: Dict[str, int] = {}
+def _counts(findings: list[dict]) -> dict[str, int]:
+    out: dict[str, int] = {}
     for f in findings:
         out[f["kind"]] = out.get(f["kind"], 0) + 1
     return out

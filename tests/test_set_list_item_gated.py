@@ -9,7 +9,6 @@ Addressing by expect_old; `index` only breaks a tie between equal elements. Dry 
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

@@ -79,8 +79,8 @@ domain:
     - "acme.ds"
 
 prefixes:
-  - { prefix: "DEC-",   document: "decision-graph-analyst",  note: "Load-bearing DS decisions, session-keyed to when DECIDED" }
-  - { prefix: "DELIV-", document: "deliverable-ledger-analyst", note: "Artifact ledger; `pull-when` is the retrieval trigger" }
+  - { prefix: "DEC-",   document: "decision-graph-evaluation",  note: "Load-bearing evaluation decisions, session-keyed to when DECIDED" }
+  - { prefix: "DELIV-", document: "deliverable-ledger-evaluation", note: "Artifact ledger; `pull-when` is the retrieval trigger" }
   - { prefix: "CAT-",   document: "catalogue",                      note: "Catalogue registry records, one per corpus under the dataset catalogue" }
   - { prefix: "MUT-",   document: "catalogue",                      note: "Corpus MUTATION records — the only change history for corpora that have no version control" }
   - { prefix: "FP-",    document: "ds-state-fingerprint",           note: "Dataset state-fingerprint spec nodes" }
@@ -198,13 +198,13 @@ status: draft
 ### [PREFIX-DEC] Decision nodes
 
 - registers-prefix: DEC-
-- document: decision-graph-analyst
-- definition: Load-bearing DS decisions, session-keyed to when DECIDED
+- document: decision-graph-evaluation
+- definition: Load-bearing evaluation decisions, session-keyed to when DECIDED
 
 ### [PREFIX-DELIV] Deliverable ledger nodes
 
 - registers-prefix: DELIV-
-- document: deliverable-ledger-analyst
+- document: deliverable-ledger-evaluation
 - definition: Artifact ledger; `pull-when` is the retrieval trigger
 
 ### [PREFIX-CAT] Catalogue registry records
@@ -493,8 +493,8 @@ def test_prefixes_exact_count_and_records(yaml_profile):
     assert len(prefixes) == 7
     assert prefixes[0] == PrefixSpec(
         prefix="DEC-",
-        document="decision-graph-analyst",
-        note="Load-bearing DS decisions, session-keyed to when DECIDED",
+        document="decision-graph-evaluation",
+        note="Load-bearing evaluation decisions, session-keyed to when DECIDED",
     )
     # Order is DECLARATION order, not sorted: a profile's prefix list is authored
     # most-load-bearing-first and a report that reorders it is harder to read.

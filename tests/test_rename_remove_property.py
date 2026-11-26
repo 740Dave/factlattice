@@ -398,14 +398,14 @@ def test_a_file_without_a_trailing_newline_keeps_none(env):
 # ============================================================================== ledger, backup, receipt
 def test_one_ledger_record_per_rename_with_before_and_after_lines(env):
     r = rename(env, "RR-TWO", "confidence", "confidence-qualitative",
-               proposer="P", approver="A", reason="DS convention", via="direct")
+               proposer="P", approver="A", reason="style convention", via="direct")
     (rec,) = recs(env)
     assert rec["verb"] == "rename_property" and rec["node_id"] == "RR-TWO" and rec["key"] == "confidence"
     assert [d["line"] for d in rec["discarded"]] == ["- confidence: high"]
     assert rec["discarded"][0]["line_number"] == r.line_number
     assert rec["inserted"] == {"line_number": r.line_number, "lines": ["- confidence-qualitative: high"]}
     assert rec["delta"] == r.delta
-    assert (rec["proposer"], rec["approver"], rec["reason"], rec["via"]) == ("P", "A", "DS convention", "direct")
+    assert (rec["proposer"], rec["approver"], rec["reason"], rec["via"]) == ("P", "A", "style convention", "direct")
     assert rec["backup_path"] == r.backup_path
     assert rec["file_sha256_before"] != rec["file_sha256_after"]
     assert r.ledger["status"] == "ok"
@@ -729,7 +729,7 @@ def _confidence_corpus(n=35):
     out = ["# Roadmap [SPEC:RM-ROOT]\n", "\n- kind: roadmap\n"]
     for i in range(n):
         conf = ("high", "medium", "low")[i % 3]
-        out.append(f"\n## Claim {i} [RM-C{i}]\n\n- statement: Claim {i}: score >= 0.6170 on set 12 (n={i * 7})\n"
+        out.append(f"\n## Claim {i} [RM-C{i}]\n\n- statement: Claim {i}: ZI >= 0.5555 on 029 (n={i * 7})\n"
                    f"- confidence: {conf}\n- evidence: [RM-C{(i + 1) % n}]\n- tag: x{i}\n- tag: y{i}\n")
     return "".join(out)
 
@@ -746,7 +746,7 @@ def test_the_35_line_confidence_rename_changes_exactly_what_the_spec_says(tmp_pa
     n = 0
     for nid in list(before):
         if "confidence" in before[nid]:
-            r = rename(f, nid, "confidence", "confidence-qualitative", proposer="DS-convention")
+            r = rename(f, nid, "confidence", "confidence-qualitative", proposer="style-convention")
             assert r.delta == {nid: {"added": ["confidence-qualitative"], "removed": ["confidence"]}}
             n += 1
     assert n == 35

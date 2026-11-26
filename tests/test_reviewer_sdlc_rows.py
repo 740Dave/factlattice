@@ -16,7 +16,7 @@ ROWS = {
     "VERSIONED-CONTRACTS": ("X1/X4", "hook-contract-version", "review-format-version", "bumps", "test_reviewer_contracts"),
     "RESERVED-PREFIXES": ("X3", "prior-use", "every registered", "REVEXTREG-", "REVIEWER-"),
     "PROFILE-KEY-PROJECTION": ("X5", "both loaders", "validator", "SPEC", "unprojected_review_extension"),
-    "SHIPPED-ISSUE-PACKAGE-DATA": ("X8", "package data", "wheel", "negative control"),
+    "SHIPPED-LTS-IS-PACKAGE-DATA": ("X8", "package data", "wheel", "negative control"),
     "REVIEWS-PROFILE-IN-SCOPE": ("X9", "registered", "reviewer profile", "profile:"),
     "HELD-RULES-HAVE-OWNERS": ("X11", "words", "owner", "release event"),
     "REVIEWER-CONFIG-KEYS": ("REVIEWER-SITE-CONFIG", "declared in the reviewer profile", "pinned by a test"),

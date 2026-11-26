@@ -7,22 +7,21 @@ name = "factlattice"
 version = "0.1.0"
 description = "FactLattice (.lts) parser and factlattice-engine (service name lts-engine) with a deterministic core (no model inference) — the LTS-tooling library with four composed API layers (query, analytics, lint, render) over the graph index, plus preview and typed writers."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "740Dave" }]
 keywords = ["factlattice", "lts", "lts-engine", "knowledge-graph", "parser", "graph-analytics", "linter"]
 
 # The COPIED CORE (parser/index_builder/hashing/constants/build) is stdlib-only.
-# YAML is needed ONLY by the net-new §5 profile loader, and only for .yaml profiles
-# — hence an optional extra, not a hard dependency. The parser core is stdlib-only, but the
-# authoring gate (factlattice/authoring/schema.py) uses pydantic, and lint and the `call`
-# command import it, so pydantic is a declared dependency.
-dependencies = ["pydantic>=2"]
+# The MCP server and the typed writers need pydantic (factlattice/authoring/schema.py), so it is
+# required (tested on 2.12.5; it uses the v2 API). YAML is needed ONLY by the net-new §5 profile
+# loader, and only for .yaml profiles, hence an optional extra.
+dependencies = ["pydantic>=2.12"]
 
 [project.optional-dependencies]
 profile = ["PyYAML>=5.1"]
-# The OPTIONAL model stack. The core engine's only required dependency is pydantic (above); without
-# these extras it reports semantic suggestions as "unavailable".
+# [DEC-SEMANTIC-ASSIST] the OPTIONAL model stack. Without it the engine reports semantic
+# suggestions as "unavailable"; the parser needs no dependency at all.
 semantic = ["numpy>=1.24", "onnxruntime>=1.17"]
 test = ["pytest>=7", "PyYAML>=5.1"]
 
@@ -49,10 +48,55 @@ packages = [
 # checkout cannot answer the question the tool exists to ask.
 [tool.setuptools.package-data]
 "factlattice.selfcheck" = ["control.lts", "control.expected.json"]
-# [X8 SHIPPED-ISSUE-PACKAGE-DATA] The factlattice-reviewer corpus (core procedure, hooks, generic rules, config,
+# [X8 SHIPPED-LTS-IS-PACKAGE-DATA] The factlattice-reviewer corpus (core procedure, hooks, generic rules, config,
 # profile) and each rule's planted-violation / clean-twin fixtures. A deployment without a checkout reads the core
 # procedure from the installed package when the engine does not serve the corpus (Spec A, A-E6).
 "factlattice_engine.reviewer" = ["shipped/*.lts", "fixtures/*.lts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Dev tools. uv syncs the `dev` group by default, so the locked CI environment carries ruff (the lint gate, tools/ci_lint.py). The version is
+# pinned exactly here, in uv.lock, and again in tools/ci_lint.py (RUFF_VERSION), which refuses to run any other.
+[dependency-groups]
+dev = ["ruff==0.17.5"]
+
+# The lint gate (tools/ci_lint.py; rule in SDLC.md 7.6). The gate reads THIS file from the default branch's copy of the repository, never from the
+# change under test: a change that edits the ignore list or max-complexity does not loosen the run that judges it. Ignored codes still have
+# findings: the count after the safe fixes is beside each. The list can only shrink (tests/test_ci_lint.py fails if a listed code has no
+# findings left: delete the code from the list then). C901 is not listed: it is held by the complexity ratchet (tools/ci_complexity_baseline.json).
+[tool.ruff]
+line-length = 140
+# published experiment artifacts and one test file that the mechanical safe fixes left as they were (tools/ruff_safe_fixes.sh)
+extend-exclude = ["case-studies", "tests/test_rename_remove_round4.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C90", "PGH004"]
+ignore = [
+    # IGNORE-LIST-BEGIN (findings on the tree re-measured on main 55ff6cc, 2026-11-20; one code per line)
+    "E501",  # 2608: line too long (>140)
+    "E702",  # 240: semicolon-separated statements
+    "F811",  # 138: redefinition of unused name
+    "E741",  # 81: ambiguous variable name
+    "UP031",  # 77: printf-style formatting
+    "B023",  # 61: closure over a loop variable
+    "E731",  # 33: lambda assignment
+    "F841",  # 31: unused local variable
+    "B905",  # 23: zip without strict=
+    "E402",  # 17: import not at top of file
+    "B007",  # 13: unused loop variable
+    "F401",  # 8: unused import
+    "UP035",  # 6: deprecated import
+    "B904",  # 6: raise without from in except
+    "E701",  # 3: colon-separated statements
+    "B008",  # 2: call in default argument
+    "B028",  # 2: warn without stacklevel
+    "B018",  # 2: useless expression
+    "B017",  # 1: assertRaises(Exception)
+    "B035",  # 1: static key in dict comprehension
+    "UP028",  # 1: yield in for loop
+    # IGNORE-LIST-END
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15

@@ -5,9 +5,9 @@
   "file_unchanged": true,
   "node_id": "PIN-X1",
   "path": "<ROOT>/c/p.lts",
-  "reason": "refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.",
+  "reason": "refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`fl-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.",
   "refused": true,
-  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.\n",
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason refused before writing anything:\n  - key '1bad key' -> '1bad-key' is not a legal key. The key begins with a DIGIT. Legalising it means INVENTING a prefix (`fl-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not normalisation. Name the field yourself — this is the one class the boundary deliberately will not decide for you. Nothing written.\n",
   "section": null,
   "success": false,
   "written": false
@@ -102,13 +102,13 @@
   "written": true
  },
  "dup_id": {
-  "evidence": {},
+  "evidence": {"refusal": "duplicate_node_id"},
   "file_unchanged": true,
   "node_id": "PIN-ONE",
   "path": "<ROOT>/c/p.lts",
   "reason": "[PIN-ONE] already exists in <ROOT>/c/p.lts (line 5). A duplicate id collides in the graph. Use `set_property` to amend it, or choose another id. Nothing written.",
   "refused": true,
-  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason [PIN-ONE] already exists in <ROOT>/c/p.lts (line 5). A duplicate id collides in the graph. Use `set_property` to amend it, or choose another id. Nothing written.\n",
+  "report": "REFUSED — nothing written.\n  path   <ROOT>/c/p.lts\n  reason [PIN-ONE] already exists in <ROOT>/c/p.lts (line 5). A duplicate id collides in the graph. Use `set_property` to amend it, or choose another id. Nothing written.\n\n  evidence.refusal = 'duplicate_node_id'",
   "section": null,
   "success": false,
   "written": false

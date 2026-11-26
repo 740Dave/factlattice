@@ -9,7 +9,6 @@ Proves the engine change:
   * with NO profile the parser resolves exactly as before (semantic default, {core}).
 """
 
-import os
 
 from factlattice import build_index
 from factlattice.domain_profiles import (
@@ -18,7 +17,6 @@ from factlattice.domain_profiles import (
 )
 from factlattice.parser import DEFAULT_REGISTERED_NS, parse_text
 from factlattice_engine.config import build_merged_partition, engine_profile_config
-
 
 # A minimal profile carrying exactly the §6 edge-type table shape the real profiles use.
 _PROFILE = """\

@@ -26,7 +26,6 @@ import shutil
 import threading
 import time
 import unicodedata
-from typing import Dict, List, Optional, Tuple
 
 from factlattice.hashing import file_content_hash, safe_read_text
 
@@ -81,14 +80,17 @@ def index_version(model_id: str, embedder=None) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def partition_cards(part) -> Dict[str, List[Tuple[str, str]]]:
-    """{node_id: [(kind, text), ...]} for every node, reading each source file once."""
-    files: Dict[str, List[str]] = {}
-    out: Dict[str, List[Tuple[str, str]]] = {}
-    for nid in sorted(part.nodes):
-        nd = part.nodes[nid]
+def partition_cards(part, nodes=None) -> dict[str, list[tuple[str, str]]]:
+    """{node_id: [(kind, text), ...]} for every node, reading each source file once. `nodes` is the
+    mapping to build from (a caller that caches the result passes the object it recorded as the
+    source); omitted, `part.nodes` is read once."""
+    nodes = part.nodes if nodes is None else nodes
+    files: dict[str, list[str]] = {}
+    out: dict[str, list[tuple[str, str]]] = {}
+    for nid in sorted(nodes):
+        nd = nodes[nid]
         sf, lr = nd.get("source_file"), nd.get("line_range") or []
-        lines: List[str] = []
+        lines: list[str] = []
         if sf and len(lr) == 2:
             if sf not in files:
                 src = part._resolve_source(sf)
@@ -214,7 +216,7 @@ class SemanticIndex:
                "card_schema": C.CARD_SCHEMA_VERSION, "corpus": self.corpus_id,
                "n_nodes": n_nodes, "n_vectors": int(V.shape[0]),
                "vectors_sha256": _sha256_file(os.path.join(self.dir, "vectors.npy")),
-               "built_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+               "built_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")}
         put("manifest.json", lambda p: json.dump(man, open(p, "w"), indent=1))   # LAST
         self._loaded = (man, V.astype(STORAGE_DTYPE).astype(np.float32), ids, kinds, fps)
         self._loaded_stamp = self._manifest_stamp()
@@ -235,7 +237,7 @@ class SemanticIndex:
         return out
 
     # --- [SIDECAR-PER-VERSION] legacy adoption + garbage collection ----------------------
-    def _other_version_dirs(self) -> List[str]:
+    def _other_version_dirs(self) -> list[str]:
         """This corpus's sidecars for OTHER versions: v-<16 hex>/<corpus> siblings and the legacy dir."""
         out = []
         try:
@@ -288,7 +290,7 @@ class SemanticIndex:
             fcntl.flock(fd, fcntl.LOCK_UN)
             os.close(fd)
 
-    def _gc_other_versions(self, now: Optional[float] = None) -> List[str]:
+    def _gc_other_versions(self, now: float | None = None) -> list[str]:
         """Remove other versions' sidecars for this corpus that nothing has written for GC_AGE_S,
         only when their lock is free (non-blocking). Never the running version. Best effort."""
         now = time.time() if now is None else now
@@ -334,7 +336,7 @@ class SemanticIndex:
         import numpy as np
         cards = partition_cards(part)
         fps_now = {nid: C.card_fingerprint(c) for nid, c in cards.items()}
-        rebuilt_reason: Optional[str] = None
+        rebuilt_reason: str | None = None
         try:
             _man, V_old, ids_old, kinds_old, fps_old = self._load(reuse=False)   # re-read under the lock
         except IndexIncompatible as ex:
@@ -342,9 +344,9 @@ class SemanticIndex:
         changed = sorted(n for n, fp in fps_now.items() if fps_old.get(n) != fp)
         dropped = sorted(n for n in fps_old if n not in fps_now)
         keep = [i for i, n in enumerate(ids_old) if n in fps_now and n not in changed]
-        new_ids: List[str] = []
-        new_kinds: List[str] = []
-        texts: List[str] = []
+        new_ids: list[str] = []
+        new_kinds: list[str] = []
+        texts: list[str] = []
         for nid in changed:
             for kind, text in cards[nid]:
                 new_ids.append(nid); new_kinds.append(kind); texts.append(text)
@@ -366,7 +368,7 @@ class SemanticIndex:
                 "rebuilt_reason": rebuilt_reason}
 
     # --- search ------------------------------------------------------------------------
-    def search(self, qv, k: int = 10) -> List[Tuple[str, float, str]]:
+    def search(self, qv, k: int = 10) -> list[tuple[str, float, str]]:
         """[(node_id, score, "head"|"chunk")], one row per node, best first. Raises
         IndexIncompatible rather than answering from a missing/incompatible/corrupt sidecar."""
         import numpy as np
@@ -376,7 +378,7 @@ class SemanticIndex:
         s = V @ np.asarray(qv, dtype=np.float32)
         is_chunk = np.fromiter((x == "chunk" for x in kinds), dtype=bool, count=len(kinds))
         s = np.where(is_chunk, s - CHUNK_PENALTY, s)
-        best: Dict[str, Tuple[float, str]] = {}
+        best: dict[str, tuple[float, str]] = {}
         for i in np.argsort(-s, kind="stable"):
             nid = ids[i]
             if nid not in best:

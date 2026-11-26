@@ -27,7 +27,6 @@ import json
 import os
 import re
 import subprocess
-from typing import List, Optional
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _VALIDATOR = os.path.join(_REPO_ROOT, "tools", "mermaid_validate.mjs")
@@ -86,7 +85,7 @@ def check_structure(text: str) -> None:
     i += 1
 
     declared: set = set()
-    referenced: List[str] = []
+    referenced: list[str] = []
     depth = 0
     for lineno, raw in enumerate(lines[i:], start=i + 1):
         line = raw.strip()
@@ -140,7 +139,7 @@ def real_parse_available() -> bool:
                 and os.path.isfile(_VALIDATOR))
 
 
-def real_parse(diagrams: List[str]) -> Optional[List[dict]]:
+def real_parse(diagrams: list[str]) -> list[dict] | None:
     """Drive `mermaid.parse()` on each diagram. None when the validator is unavailable.
 
     The script is fed to `node --input-type=module -e` with cwd set to the npm project,
@@ -151,7 +150,7 @@ def real_parse(diagrams: List[str]) -> Optional[List[dict]]:
     if not real_parse_available():
         return None
     proj = os.environ[_ENV_NODE_MODULES]
-    with open(_VALIDATOR, "r", encoding="utf-8") as fh:
+    with open(_VALIDATOR, encoding="utf-8") as fh:
         script = fh.read()
     proc = subprocess.run(
         ["node", "--input-type=module", "-e", script],

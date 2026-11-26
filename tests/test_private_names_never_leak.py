@@ -1,6 +1,6 @@
 """[INV-PRIVATE-FANOUT] NAMES — no error, suggestion or extent field may NAME a private corpus.
 
-THE DEFECT (acme-team ISSUE-PRIVATE-NAMES-IN-ERRORS, 2026-10-03): the
+THE DEFECT (acme-team DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA, 2026-10-03): the
 fan-out rule kept private corpus CONTENT out of corpus-omitted reads, but `_not_found`
 answered a mistyped corpus id with `corpora available: [...]`, `did_you_mean` suggestions
 and a loaded-corpora list that included `*-personality` ids; `extent.corpora_available`
@@ -313,7 +313,7 @@ def test_reverse_digest_with_a_stale_private_corpus_is_anonymous(eng_stale):
 
 def test_stale_name_safe_mutation_would_be_caught(eng_stale):
     """Negative control: if the filter is bypassed the scan DOES see the name."""
-    eng_stale._name_safe_stale = lambda stale: list(stale)
+    eng_stale._name_safe_stale = lambda stale, look=None: list(stale)
     res = eng_stale.reverse(corpus=PUBLIC, node_id="PUB-1")
     assert _leaks(res, EDGE_TOKENS) == [PRIV_A]
 

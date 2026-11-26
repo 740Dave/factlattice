@@ -1,0 +1,3596 @@
+{
+ "area blank": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "area int": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "area int, root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "blank root + unknown": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": 1,
+   "registry_error": false,
+   "skipped": [
+    "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+   ],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "control: root": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "control: roots": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "domain_suffix int": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "domain_suffix int + root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "domain_suffix list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "domain_suffix null": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry empty dict": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry int": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry null": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry string": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "entry true": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "int path + privat": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": 1,
+   "registry_error": false,
+   "skipped": [
+    "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+   ],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "named table malformed": {
+  "find_badc": "named-roots-malformed:NamedRootError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"named-roots-malformed\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "named-roots-malformed"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "named unknown (root)": {
+  "find_badc": "named-root-unknown:NamedRootError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "named-root-unknown"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "named unknown (roots path)": {
+  "find_badc": "named-root-unknown:NamedRootError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "named-root-unknown"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "named unknown beside a table": {
+  "find_badc": "named-root-unknown:NamedRootError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "named-root-unknown"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "named unknown, typo key": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "note key": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "only_file empty str": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "only_file int": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "only_file int, root missing": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "only_file list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "only_file str ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path + stray key, path is the healthy folder": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path blank": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path empty": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path int": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path int + root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path null": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "path true": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "prefixes int": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "prefixes int, root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "prefixes list int": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "prefixes ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private 0": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private 1": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private false": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private int + root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private list": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private null": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private str, root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private true": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private yes": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "private yes + pth blank": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile int": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile int, root ok": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile missing file": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile null": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth + blank other": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth + only_file int": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth abs ok": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth bare word": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth covers the healthy folder": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth dot": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "pth, root int": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "r000 (seed 12)": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "r022 (seed 12)": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "r026 (seed 12)": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "rooot covers the healthy folder": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root blank": {
+  "find_badc": "no-roots:NoRootsError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root dict": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem blank str": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem empty str": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem int": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem null": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root elem str ok": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root empty": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root int": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root list, root ok": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root null": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root obj area only": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root obj empty": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root obj note only": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root true": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "root zero": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots 5 + unknown": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots [] + root": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots dict": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots dict-of-path": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots empty list": {
+  "find_badc": "refused",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots int": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots null": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots null + root": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots str + int": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots string": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots true": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [],
+   "flagged": true,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "roots two shapes": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "string roots + privat": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": 1,
+   "registry_error": false,
+   "skipped": [
+    "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+   ],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "unknown entry key + path ok": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "unknown entry key rooots": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-entry-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "unknown key": {
+  "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": 1,
+   "registry_error": false,
+   "skipped": [
+    "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+   ],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "unknown root key pth": {
+  "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [
+    "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+   ],
+   "tables": {
+    "failed_corpora": [
+     [
+      "badc",
+      "registry-root-unknown-key"
+     ]
+    ]
+   }
+  },
+  "write_badc": {
+   "corpora": [],
+   "flagged": false,
+   "outside": true,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile clean (control)": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile collision: edge type": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile collision: property key": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile invalid: layer": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile invalid: property_keys": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "engine profile directory: layer disagreement": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile collision: property key, roots list": {
+  "find_badc": "registry-not-found",
+  "find_okc": "registry-not-found",
+  "list": {
+   "ids": [],
+   "private_failed": null,
+   "registry_error": true,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ },
+ "profile invalid: layer, roots list": {
+  "find_badc": "ok",
+  "find_okc": "ok",
+  "list": {
+   "ids": [
+    "badc",
+    "okc"
+   ],
+   "private_failed": null,
+   "registry_error": false,
+   "skipped": [],
+   "tables": {}
+  },
+  "write_badc": {
+   "corpora": [
+    "badc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  },
+  "write_okc": {
+   "corpora": [
+    "okc"
+   ],
+   "flagged": false,
+   "outside": false,
+   "partial": false,
+   "refused": null,
+   "written": true
+  }
+ }
+}

@@ -16,86 +16,135 @@ that lints clean is a corpus that ingests clean -- one code path, no drift.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple
 
 import factlattice
 
 from ..budget import budget_slice, declare, token_estimate
-from .corpus_files import (
-    CORPUS_FILE_SEVERITY,
-    ORIGIN as CORPUS_FILES_ORIGIN,
-    find_corpus_file_issues,
+from .canonical import (
+    CANONICAL_SEVERITY,
+    find_canonical_findings,
 )
-from .coverage import COVERAGE_SEVERITY, ORIGIN as COVERAGE_ORIGIN, find_unaccounted
+from .canonical import (
+    ORIGIN as CANONICAL_ORIGIN,
+)
 from .claim_id import (
-    CLAIM_GENRE_PREFIXES, CLAIM_ID_SEVERITY, ORIGIN as CLAIM_ID_ORIGIN, census as claim_id_census,
-    census_line as claim_id_census_line, find_claim_ids,
+    CLAIM_GENRE_PREFIXES,
+    CLAIM_ID_SEVERITY,
+    find_claim_ids,
     find_read_suppressing_names,
 )
+from .claim_id import (
+    ORIGIN as CLAIM_ID_ORIGIN,
+)
+from .claim_id import (
+    census as claim_id_census,
+)
+from .claim_id import (
+    census_line as claim_id_census_line,
+)
+from .corpus_files import (
+    CORPUS_FILE_SEVERITY,
+    find_corpus_file_issues,
+)
+from .corpus_files import (
+    ORIGIN as CORPUS_FILES_ORIGIN,
+)
+from .coverage import COVERAGE_SEVERITY, find_unaccounted
+from .coverage import ORIGIN as COVERAGE_ORIGIN
 from .dangle import (
     DIR_AMBIGUOUS_REF,
     DIR_UNQUALIFIED_REF,
-    ambiguous_reference_warn_line,
     classify_unqualified_references,
     find_dangles,
     unqualified_reference_targets,
-    unqualified_warn_line,
 )
 from .id_hijack import (
-    ID_HIJACK_SEVERITY, ORIGIN as ID_HIJACK_ORIGIN, find_id_hijacks,
+    ID_HIJACK_SEVERITY,
+    find_id_hijacks,
+)
+from .id_hijack import (
+    ORIGIN as ID_HIJACK_ORIGIN,
 )
 from .key_loss import (
-    KEY_LOSS_SEVERITY,
-    KIND_SUMMARY as KEY_LOSS_SUMMARY,
-    ORIGIN as KEY_LOSS_ORIGIN,
     _KIND_FOR,
-    _message as _key_loss_message,
+    KEY_LOSS_SEVERITY,
     find_key_losses,
     key_loss_stats,
+)
+from .key_loss import (
+    ORIGIN as KEY_LOSS_ORIGIN,
+)
+from .key_loss import (
+    _message as _key_loss_message,
+)
+from .key_loss import (
     summary_line as key_loss_summary_line,
-)
-from .vocabulary import (
-    ORIGIN as VOCABULARY_ORIGIN,
-    find_vocabulary_findings,
-    severity_for as vocabulary_severity_for,
-    summary_line as vocabulary_summary_line,
-    vocabulary_stats,
-)
-from .canonical import (
-    CANONICAL_SEVERITY,
-    ORIGIN as CANONICAL_ORIGIN,
-    find_canonical_findings,
-)
-from .review_edges import (
-    ORIGIN as REVIEW_EDGES_ORIGIN,
-    REVIEW_EDGE_SEVERITY,
-    find_review_edge_findings,
 )
 from .malformed_ref import (
     MALFORMED_REF_SEVERITY,
-    ORIGIN as MALFORMED_REF_ORIGIN,
     find_malformed_refs,
     malformed_ref_stats,
+)
+from .malformed_ref import (
+    ORIGIN as MALFORMED_REF_ORIGIN,
+)
+from .malformed_ref import (
     summary_line as malformed_ref_summary_line,
+)
+from .normative import (
+    NORMATIVE_SEVERITY,
+    find_normative_findings,
+)
+from .normative import (
+    ORIGIN as NORMATIVE_ORIGIN,
+)
+from .profile_rules import (
+    ORIGIN as PROFILE_ORIGIN,
 )
 from .profile_rules import (
     PROFILE_SEVERITY,
-    ORIGIN as PROFILE_ORIGIN,
     find_profile_violations,
     lifecycle_report,
     profile_is_loaded,
 )
+from .review_edges import (
+    ORIGIN as REVIEW_EDGES_ORIGIN,
+)
+from .review_edges import (
+    REVIEW_EDGE_SEVERITY,
+    find_review_edge_findings,
+)
 from .unminted import (
     KIND as KIND_UNMINTED,
+)
+from .unminted import (
     KIND_CASE_MISMATCH,
     UNMINTED_SEVERITY,
-    ORIGIN as UNMINTED_ORIGIN,
     edge_verb_channels,
     edge_verb_warn_line,
     find_unminted_reference_lists,
-    summary_line as unminted_summary_line,
     unminted_stats,
+)
+from .unminted import (
+    ORIGIN as UNMINTED_ORIGIN,
+)
+from .unminted import (
+    summary_line as unminted_summary_line,
+)
+from .vocabulary import (
+    ORIGIN as VOCABULARY_ORIGIN,
+)
+from .vocabulary import (
+    find_vocabulary_findings,
+    vocabulary_stats,
+)
+from .vocabulary import (
+    severity_for as vocabulary_severity_for,
+)
+from .vocabulary import (
+    summary_line as vocabulary_summary_line,
 )
 
 # --- severity policy (linter's call, not the parser's; override via the lint()
@@ -105,7 +154,7 @@ from .unminted import (
 # dangling / unregistered_ns / unresolved_target (generic structure lint):
 # "preserve and flag" signals that are common mid-authoring and not automatically
 # corpus-breaking -> warning by default.
-STRUCTURE_SEVERITY: Dict[str, str] = {
+STRUCTURE_SEVERITY: dict[str, str] = {
     "parse_error": "error",
     "collisions": "error",
     "dangling": "warning",
@@ -120,7 +169,7 @@ STRUCTURE_SEVERITY: Dict[str, str] = {
 # a fresh node, a document root, an entry point -- so it should not fail CI by
 # default). Flagged for the maintainer: promote/demote either default via
 # `dangle_severity=` if this call is wrong for how the graph is actually used.
-DANGLE_SEVERITY: Dict[str, str] = {
+DANGLE_SEVERITY: dict[str, str] = {
     "forward": "error",
     "orphan": "warning",
 }
@@ -145,7 +194,7 @@ _UNBOUNDED = 1 << 62
 #   shows up as a NEW UNDECLARED ORIGIN — a one-line, obviously-correct amendment — instead
 #   of a red suite. This is [INV-DECLARED-EXTENT] applied to the engine's own tests: a
 #   `clean` with no denominator is indistinguishable from a check that inspected nothing.
-ORIGINS: Tuple[str, ...] = (
+ORIGINS: tuple[str, ...] = (
     "structure", "dangle", COVERAGE_ORIGIN, KEY_LOSS_ORIGIN, CORPUS_FILES_ORIGIN,
     PROFILE_ORIGIN, ID_HIJACK_ORIGIN, CLAIM_ID_ORIGIN,
     # Era 0 (PARSER-ENGINEERING-SPEC.md rev 2, C1/C2) — additive, per the module's
@@ -158,6 +207,8 @@ ORIGINS: Tuple[str, ...] = (
     CANONICAL_ORIGIN,
     # review-extension edges (2026-10-07, Spec A A-E3) -- `attaches-to-hook` / `applies-rule` lint.
     REVIEW_EDGES_ORIGIN,
+    # spec 39 -- the corpus-wide normative-content findings (quote tripwire, restates/confirmation-of targets, correction).
+    NORMATIVE_ORIGIN,
 )
 
 
@@ -170,9 +221,9 @@ class Finding:
     kind: str               # Diagnostic.kind, or DangleFinding.direction
     severity: str            # "error" | "warning"
     message: str
-    source_file: Optional[str]
-    source_line: Optional[int]
-    node_id: Optional[str] = None
+    source_file: str | None
+    source_line: int | None
+    node_id: str | None = None
     detail: dict = field(default_factory=dict)
 
     def location(self) -> str:
@@ -207,11 +258,11 @@ class Finding:
 
 @dataclass
 class LintResult:
-    findings: List[Finding] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
     node_count: int = 0
     edge_count: int = 0
-    profile_domain: Optional[str] = None
-    profile_path: Optional[str] = None
+    profile_domain: str | None = None
+    profile_path: str | None = None
     # ⛔ THE VERDICT NAMES ITS OWN VOCABULARY. `{resolved_from, path, domain_id,
     # available, corpus_root[, detail, conflict, warning]}` — how the profile got into
     # scope, not just which one. A lint result that reports only findings cannot
@@ -219,39 +270,39 @@ class LintResult:
     # off", and that ambiguity is what let a landed, parsing, 32-prefix profile sit
     # wired to nothing while lint reported confidently for weeks. `available: False`
     # carries an explicit `warning` string saying V1-V6 were inert.
-    profile_resolution: Optional[dict] = None
+    profile_resolution: dict | None = None
     # V6's DELIVERABLE, not a side effect: the decision-lifecycle view the profile's
     # `decision_lifecycle` block declared and nothing ever served -- including
     # `made_but_not_implemented`, the "decisions made but never implemented" query.
     # None when the corpus loads no profile. It rides out on `to_dict()`, so the
     # `lts_lint` MCP tool serves it without any change to the tool.
-    lifecycle: Optional[dict] = None
+    lifecycle: dict | None = None
     # `.lts` domain profiles found in the linted set and excluded from the content
     # graph (`document_tag: PROFILE`). See `factlattice.parser.is_profile_document`.
-    profile_documents: List[str] = field(default_factory=list)
+    profile_documents: list[str] = field(default_factory=list)
     # ⛔ EMITTED ON EVERY RUN, INCLUDING A CLEAN ONE. authored-vs-minted for the whole
     # linted set. A findings list alone cannot distinguish "this corpus keeps what it
     # authors" from "the key-loss rule was switched off", and the second reading is the
     # exact condition that let `overview.lts` sit 19 fields short for a month
     # while lint reported clean. Same reasoning as `profile_line()`.
-    key_loss: Optional[dict] = None
+    key_loss: dict | None = None
     # ⛔ EMITTED ON EVERY RUN, INCLUDING A CLEAN ONE — same doctrine as `key_loss`,
     # Era 0's C2 (PARSER-ENGINEERING-SPEC.md rev 2). A findings list alone cannot
     # distinguish "this corpus authors no pure reference lists under a non-minting
     # key" from "the rule was switched off".
-    unminted: Optional[dict] = None
-    unqualified_references: Optional[dict] = None
+    unminted: dict | None = None
+    unqualified_references: dict | None = None
     # ⛔ EMITTED ON EVERY RUN. Era 0's C1 counterpart to `unminted` — same reasoning.
-    malformed_ref: Optional[dict] = None
+    malformed_ref: dict | None = None
     # ⛔ EMITTED ON EVERY RUN. The claim-shaped-identifier CENSUS — a trend with a
     # DENOMINATOR, per prefix. The findings are a warning stream; this is the number that
     # can be watched and that can FALL, and it is deliberately not a rename worklist.
-    claim_ids: Optional[dict] = None
+    claim_ids: dict | None = None
     # ⛔ EMITTED ON EVERY RUN. Era 1's A1/A2/A3 census. `legacy_documents` is the
     # MIGRATION DENOMINATOR — the count of documents with no `lts:` marker, i.e. the
     # un-migrated tail Era 2 burns down. Reported at zero for the same reason every
     # other census here is: so "nothing to migrate" is distinguishable from "off".
-    vocabulary: Optional[dict] = None
+    vocabulary: dict | None = None
     # ⛔ THE SCOPE THE RUN WAS POINTED AT, AS A FIRST-CLASS FIELD — [FL-RECALL-SCOPE-VERDICT].
     # Measured 2026-08-13: one spec file linted ALONE returned 12 errors and
     # `profile.resolved_from: none`; the SAME file inside its two-root corpus returned 0.
@@ -262,11 +313,11 @@ class LintResult:
     # And the inverse is worse: a caller who lints at file scope and sees 0 errors on a
     # file whose profile-driven rules were ALL inert has a clean report that checked
     # almost nothing. Same shape as `lost: 0` at 100% coverage not being a gate.
-    scope: Optional[dict] = None
+    scope: dict | None = None
     # Checks that did NOT run, by name. When this is non-empty the machine report emits
     # `errors: null` rather than a number — see `to_dict`.
-    rules_inert: List[str] = field(default_factory=list)
-    corpus: Optional["factlattice.ParsedCorpus"] = field(default=None, repr=False)
+    rules_inert: list[str] = field(default_factory=list)
+    corpus: factlattice.ParsedCorpus | None = field(default=None, repr=False)
 
     @property
     def has_errors(self) -> bool:
@@ -276,11 +327,11 @@ class LintResult:
         """0 if clean or warnings-only; 1 if any error-severity finding."""
         return 1 if self.has_errors else 0
 
-    def by_origin(self, origin: str) -> List[Finding]:
+    def by_origin(self, origin: str) -> list[Finding]:
         return [f for f in self.findings if f.origin == origin]
 
-    def summary(self) -> Dict[str, int]:
-        s: Dict[str, int] = {}
+    def summary(self) -> dict[str, int]:
+        s: dict[str, int] = {}
         for f in self.findings:
             key = f"{f.origin}.{f.kind}"
             s[key] = s.get(key, 0) + 1
@@ -289,17 +340,17 @@ class LintResult:
         s["total"] = len(self.findings)
         return s
 
-    def by_validator(self) -> Dict[str, int]:
+    def by_validator(self) -> dict[str, int]:
         """`{'V1': 1, 'V3': 12, …}` over the profile-validation findings only --
         the triage worklist the severity policy exists to make survivable."""
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for f in self.findings:
             v = f.detail.get("validator") if f.origin == PROFILE_ORIGIN else None
             if v:
                 counts[str(v)] = counts.get(str(v), 0) + 1
         return counts
 
-    def to_dict(self, token_budget: Optional[int] = None, offset: int = 0) -> dict:
+    def to_dict(self, token_budget: int | None = None, offset: int = 0) -> dict:
         """The machine report. [INV-DECLARED-REACH]: whatever slice of `findings` this
         carries, the response DECLARES it.
 
@@ -409,7 +460,7 @@ class LintResult:
             line += f" ⚠ CONFLICTING REGISTRATIONS: {r['conflict']}"
         return line
 
-    def excluded_line(self) -> Optional[str]:
+    def excluded_line(self) -> str | None:
         """Names the `.lts` domain profiles in the linted set that were parsed but kept
         OUT of the content graph. Printed whenever there is one, so a reader can never
         wonder why the node count is lower than the file count suggests."""
@@ -418,31 +469,31 @@ class LintResult:
         return ("-- excluded from content (domain profiles, document_tag=PROFILE): "
                 + ", ".join(sorted(self.profile_documents)))
 
-    def vocabulary_line(self) -> Optional[str]:
+    def vocabulary_line(self) -> str | None:
         """The Era-1 vocabulary census, on every run — see `vocabulary`."""
         if self.vocabulary is None:
             return None
         return vocabulary_summary_line(self.vocabulary)
 
-    def claim_id_line(self) -> Optional[str]:
+    def claim_id_line(self) -> str | None:
         """The census, on every run — see `claim_ids`."""
         if self.claim_ids is None:
             return None
         return claim_id_census_line(self.claim_ids)
 
-    def key_loss_line(self) -> Optional[str]:
+    def key_loss_line(self) -> str | None:
         """The counter that must be able to FALL. Printed on every run — see `key_loss`."""
         if self.key_loss is None:
             return None
         return key_loss_summary_line(self.key_loss)
 
-    def unminted_line(self) -> Optional[str]:
+    def unminted_line(self) -> str | None:
         """Printed on every run — see `unminted`."""
         if self.unminted is None:
             return None
         return unminted_summary_line(self.unminted)
 
-    def malformed_ref_line(self) -> Optional[str]:
+    def malformed_ref_line(self) -> str | None:
         """Printed on every run — see `malformed_ref`."""
         if self.malformed_ref is None:
             return None
@@ -484,20 +535,21 @@ def lint(source=None, *, paths=None, profile=None,
           profile_rules: bool = True, key_loss: bool = True, corpus_files: bool = True,
           id_hijack: bool = True, claim_id: bool = True,
           unminted: bool = True, malformed_ref: bool = True,
-          vocabulary: bool = True, canonical: bool = True, review_edges: bool = True,
-          structure_severity: Optional[Dict[str, str]] = None,
-          dangle_severity: Optional[Dict[str, str]] = None,
-          coverage_severity: Optional[Dict[str, str]] = None,
-          profile_severity: Optional[Dict[str, str]] = None,
-          key_loss_severity: Optional[Dict[str, str]] = None,
-          corpus_file_severity: Optional[Dict[str, str]] = None,
-          id_hijack_severity: Optional[Dict[str, str]] = None,
-          claim_id_severity: Optional[Dict[str, str]] = None,
-          unminted_severity: Optional[Dict[str, str]] = None,
-          malformed_ref_severity: Optional[Dict[str, str]] = None,
-          canonical_severity: Optional[Dict[str, str]] = None,
-          review_edges_severity: Optional[Dict[str, str]] = None,
-          claim_genre_prefixes: Optional[Iterable[str]] = None) -> LintResult:
+          vocabulary: bool = True, canonical: bool = True, review_edges: bool = True, normative: bool = True,
+          structure_severity: dict[str, str] | None = None,
+          dangle_severity: dict[str, str] | None = None,
+          coverage_severity: dict[str, str] | None = None,
+          profile_severity: dict[str, str] | None = None,
+          key_loss_severity: dict[str, str] | None = None,
+          corpus_file_severity: dict[str, str] | None = None,
+          id_hijack_severity: dict[str, str] | None = None,
+          claim_id_severity: dict[str, str] | None = None,
+          unminted_severity: dict[str, str] | None = None,
+          malformed_ref_severity: dict[str, str] | None = None,
+          canonical_severity: dict[str, str] | None = None,
+          review_edges_severity: dict[str, str] | None = None,
+          normative_severity: dict[str, str] | None = None,
+          claim_genre_prefixes: Iterable[str] | None = None) -> LintResult:
     """Lint a FactLattice corpus. Mirrors `factlattice.parse()`'s own calling
     convention 1:1 (`source` XOR `paths`, `profile` pass-through) so a caller who
     already knows how to call `factlattice.parse()` already knows how to call this.
@@ -584,16 +636,17 @@ def lint(source=None, *, paths=None, profile=None,
     mrsev = {**MALFORMED_REF_SEVERITY, **(malformed_ref_severity or {})}
     casev = {**CANONICAL_SEVERITY, **(canonical_severity or {})}
     resev = {**REVIEW_EDGE_SEVERITY, **(review_edges_severity or {})}
+    nsev = {**NORMATIVE_SEVERITY, **(normative_severity or {})}
 
     corpus = factlattice.parse(source, paths=paths, profile=profile)
-    findings: List[Finding] = []
+    findings: list[Finding] = []
 
     # RULING C (2026-08-17): a BARE dangling ref with a NAMESPACE-QUALIFIED twin is its
     # OWN channel (Unqualified-reference / Ambiguous), never a plain dangle. Computed off
     # the SAME resolution the dangle stream uses (corpus.diagnostics_of('dangling')), so
     # lint and preview cannot disagree. Inert on the current id model (namespaces are
     # stripped from ids) — measured 0; see `classify_unqualified_references`.
-    unqualified_report: Optional[dict] = None
+    unqualified_report: dict | None = None
     _unq_targets = frozenset()
     if structure:
         unqualified_report = classify_unqualified_references(corpus)
@@ -651,7 +704,7 @@ def lint(source=None, *, paths=None, profile=None,
                 detail={**v.detail, "text": v.text, "near_branch": v.near_branch},
             ))
 
-    key_loss_report: Optional[dict] = None
+    key_loss_report: dict | None = None
     if key_loss:
         for d in find_key_losses(corpus):
             findings.append(Finding(
@@ -668,7 +721,7 @@ def lint(source=None, *, paths=None, profile=None,
             ))
         key_loss_report = key_loss_stats(corpus)
 
-    unminted_report: Optional[dict] = None
+    unminted_report: dict | None = None
     if unminted:
         um_findings = find_unminted_reference_lists(corpus)
         for u in um_findings:
@@ -717,7 +770,16 @@ def lint(source=None, *, paths=None, profile=None,
                 node_id=rf["node_id"], detail=rf["detail"],
             ))
 
-    malformed_ref_report: Optional[dict] = None
+    if normative:
+        for nf in find_normative_findings(corpus):
+            findings.append(Finding(
+                origin=NORMATIVE_ORIGIN, kind=nf["kind"],
+                severity=nsev.get(nf["kind"], "warning"), message=nf["message"],
+                source_file=nf["source_file"], source_line=nf["source_line"],
+                node_id=nf["node_id"], detail=nf["detail"],
+            ))
+
+    malformed_ref_report: dict | None = None
     if malformed_ref:
         mr_findings = find_malformed_refs(corpus)
         for f in mr_findings:
@@ -738,7 +800,7 @@ def lint(source=None, *, paths=None, profile=None,
                 node_id=hf.node_id, detail=hf.detail,
             ))
 
-    vocabulary_report: Optional[dict] = None
+    vocabulary_report: dict | None = None
     if vocabulary:
         vfs = find_vocabulary_findings(corpus)
         for vf in vfs:
@@ -753,7 +815,7 @@ def lint(source=None, *, paths=None, profile=None,
             ))
         vocabulary_report = vocabulary_stats(vfs)
 
-    claim_id_report: Optional[dict] = None
+    claim_id_report: dict | None = None
     if claim_id:
         genre = (set(claim_genre_prefixes) if claim_genre_prefixes is not None
                  else CLAIM_GENRE_PREFIXES)
@@ -783,7 +845,7 @@ def lint(source=None, *, paths=None, profile=None,
                 source_file=ff.source_file, source_line=None, detail=ff.detail,
             ))
 
-    lifecycle: Optional[dict] = None
+    lifecycle: dict | None = None
     if profile_rules:
         for pf in find_profile_violations(corpus):
             findings.append(Finding(
@@ -821,7 +883,7 @@ def lint(source=None, *, paths=None, profile=None,
             "partial glob is the wrong tool for a whole-corpus question."
             if kind == "file_set" else None),
     }
-    rules_inert: List[str] = []
+    rules_inert: list[str] = []
     if profile_rules and not resolution.get("available"):
         rules_inert.append(
             "profile-driven validation V1-V11 (no profile in scope: "
@@ -844,6 +906,8 @@ def lint(source=None, *, paths=None, profile=None,
         rules_inert.append("canonical-edge lint (canonical=False)")
     if not review_edges:
         rules_inert.append("review-edge lint (review_edges=False)")
+    if not normative:
+        rules_inert.append("normative-content lint (normative=False)")
     if not malformed_ref:
         rules_inert.append("malformed-ref detection (malformed_ref=False)")
     # ⛔ `dangle=False` IS DELIBERATELY NOT IN `rules_inert`, and this is the load-bearing

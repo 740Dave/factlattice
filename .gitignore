@@ -56,3 +56,6 @@ corpus/
 # --- PRIVATE DEPLOYMENT OVERLAY — never commit/push to the public repo ---
 # The real proprietary domain profiles + corpus config the running engine points at.
 /private/
+# The design-session overlay (the deployment's auditor agent and its own steps). Inside /private/ already; named so a
+# move of the directory rule cannot expose it. The shipped example is tools/design-session/design-session.local.example.md.
+/private/design-session.local.md

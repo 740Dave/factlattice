@@ -54,7 +54,7 @@ def test_on_miss_block_is_recorded_and_exact_hits_are_unchanged(w, monkeypatch):
     dispatch("lts_find", {"corpus": "c", "text": MISS, "semantic": "on_miss"}, tools=e)
     rec = _recs(log)[-1]
     assert rec["count"] == 0 and rec["suggestions"]["candidates"] and rec["suggestions"]["status"] == "ok"
-    dispatch("lts_find", {"corpus": "c", "text": "tile map", "semantic": "on_miss"}, tools=e)
+    dispatch("lts_find", {"corpus": "c", "text": "zero map", "semantic": "on_miss"}, tools=e)
     assert "suggestions" not in _recs(log)[-1]
 
 

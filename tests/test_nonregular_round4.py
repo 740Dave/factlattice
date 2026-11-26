@@ -1,4 +1,4 @@
-"""Round 4 of ISSUE-NONREGULAR-MEMBER (Opus Diamond at ef4c67c: F1, F2, P2-1, P2-2, P3s).
+"""Round 4 of DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS (Opus Diamond at ef4c67c: F1, F2, P2-1, P2-2, P3s).
 
 F1  a kernel fault that is cleared WITHOUT any stat-hint change (an ACL deny-read added then removed) must not stay sticky: a later
     edit of ANOTHER file in the root is served new or STALE, never old-and-fresh; the root stays STALE while the fault stands.
@@ -9,9 +9,7 @@ Every case runs in a child with a hard timeout. Special files only under tmp_pat
 """
 from __future__ import annotations
 
-import errno
 import json
-import os
 
 import pytest
 

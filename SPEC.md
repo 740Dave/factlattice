@@ -100,7 +100,7 @@ Node:
 ```
 
 **Identifier formation rules:**
-- Prefix-first: type prefix appears before the first hyphen (`TERM-TOKEN` → prefix `TERM`)
+- Prefix-first: type prefix appears before the first hyphen (`TERM-ADC` → prefix `TERM`)
 - Uppercase with hyphens: `[A-Z][A-Z0-9_\-]+`
 - Unique within corpus: no two nodes share the same ID across all documents
 - Stable: once assigned, an ID is permanent. Deprecation over deletion. Rename requires updating all references.
@@ -158,6 +158,33 @@ Properties are key-value pairs on nodes. They come in two fundamental categories
 | `part-of` | PART_OF | semantic | node → referenced ID |
 | `attaches-to-hook` | ATTACHES_TO_HOOK | semantic | node → each referenced ID |
 | `applies-rule` | APPLIES_RULE | semantic | node → each referenced ID |
+| `restates` | RESTATES | semantic | node → each referenced ID |
+| `confirmation-of` | CONFIRMS | semantic | node → the one referenced ID |
+| `checked-against` | CHECKED_AGAINST | semantic | node → each referenced ID |
+
+`restates`, `confirmation-of` and `checked-against` (spec 39, §1.3.4) connect a normative node to the source
+statements it restates, and a confirmation to the one source statement it confirms and the normative
+nodes the quote was checked against. They are minted by their keys; whether RESTATES, CONFIRMS and
+CHECKED_AGAINST join the core edge types of §1.4 is open. A domain profile may not declare any of the
+three BARE (§1.3.2): the reserved set is derived from this table, and a namespaced type that shares a
+bare name, such as `ns.RESTATES`, is a distinct type and still loads. A profile that declares a reserved or
+core name, or is malformed, fails ONLY the corpora whose registry entry names it, and is never served on core
+vocabulary as if nothing were wrong. Each such corpus is recorded in `failed_corpora` with the code
+`corpus-load-error` and one of two reasons: `reason: profile-collision` with `names` (the reserved or core
+name or names that collided), or `reason: profile-invalid` with `detail` (a short fixed phrase, no `names`) for
+a malformed profile (a `property_keys` that is not a list, a name that cannot parse, a layer that is not
+canonical, a key or type declared twice with conflicting definitions). Neither record carries a path or the
+exception's message. A tool that names the corpus is refused with `corpus-load-error`, `profile_failure`
+(`profile-collision` or `profile-invalid`) and `names` or `detail`; the runtime `lts_register_corpus` gives the
+same answer and registers nothing; every other corpus keeps serving and the registry loads. A write by path
+into such a corpus behaves as a write into any other failed corpus does: it lands, and its receipt does not
+flag the failure. This covers a profile that a registry entry names. The engine's own profile directory
+(`FACTLATTICE_PROFILE_DIR`) is engine configuration: a layer disagreement between two profiles in it still stops
+the registry from loading. The `detail` phrases are fixed, and each is listed here: `property-keys-not-a-list`,
+`property-key-cannot-parse`, `property-key-without-edge-type`, `property-key-declared-twice`,
+`edge-type-name-cannot-parse`, `layer-not-canonical`, `edge-type-declared-twice`,
+`edge-type-profiles-disagree`, `property-key-profiles-disagree`, and `profile-rejected` (the fallback for a raise
+site that passes none). A new phrase is added to this list in the same change.
 
 `attaches-to-hook` / `applies-rule` (added 2026-10-07 for the review-extension PROC graph; 0 prior uses
 over every registered corpus root) mean: a `REVPROC-` node attaches to a `REVHOOK-` node, and a
@@ -176,6 +203,72 @@ relationship-bearing property's value is a REFERENCE LIST (bracketed ids, separa
 optional trailing gloss). `rationale`, `definition` and `requirement` all quote node ids —
 inside SENTENCES — and are descriptive; harvesting those citations would turn every
 inline reference into a graph edge. §8.1 quotes ids in prose on purpose.
+
+#### 1.3.4 Normative content, source statements and confirmations
+
+A document can separate what it requires from what a stakeholder said. The rule is in the base format
+so that every project that writes in it gets it from the format and not from an extension of its own.
+
+- **`normative`.** The value `false` marks a node, and every node below it along its parent-section chain,
+  non-normative. Absence means normative, and `true` is legal and changes nothing. There is no override: a
+  descendant of a non-normative node that carries `normative: true` stays non-normative, and that line is a
+  lint ERROR in a strict document and a warning in a legacy one (§1.5.1: the marker changes severity only, except the named exceptions a spec states (spec 39: the quote tripwire).
+  The values `true`, `false`, `yes` and `no` are all accepted in any case (`True`, `FALSE`, `Yes`, `NO`). The
+  values `yes` and `no` are aliases of `true` and `false`: a node or
+  section marked `no` is non-normative exactly like `false`, and `yes` behaves exactly like `true`, including
+  the override error inside a non-normative section. An alias raises no value finding and no per-node spelling finding; the override finding applies to yes exactly as to true; lint says it at
+  most once per file, in one info-level line (`normative_alias_spelling`, info in both modes) that suggests the canonical spelling.
+  Any other value marks nothing and is a finding that names it.
+- **`normative_effective`.** The effective state, minted per node as `true` or `false`, computed from the
+  node's own keys and its parent-section chain and from nothing else. A node is effectively non-normative if it
+  or an ancestor carries `normative: false` (or its alias `no`), or if it carries `source-text`, or if it carries `confirmation-of`.
+  It is visible in `lts_node` and filterable in `lts_find` with a `where` condition on `normative_effective`; a
+  text search (`text`, `all_of`, `any_of`) does not read it, since the words true and false would match every node.
+  The authored line stays as authored; the typed writers refuse to write this key. Strict and legacy
+  documents mint the same value.
+- **Engine-minted keys, and `minted_keys`.** The engine mints keys into a node's `properties` that no author wrote.
+  The engine-minted keys are exactly: `normative_effective`. They are reserved (an authored line of one is a lint
+  finding and the minted value is kept) and are defined once, in the engine, as `ENGINE_MINTED_KEYS` in
+  `factlattice/core_keys.py`; a new one is added there and to this sentence in the same commit. A minted key stays
+  inside `properties`, so a `where` condition can filter on it, and `property_count` counts it like any other key.
+  Every node object in a reply that a served tool returns also carries `minted_keys` beside its `properties`; a node
+  object is an object with a string `id` and a `properties` mapping. `minted_keys` is the sorted list of the keys of
+  that `properties` that the engine minted, empty when there are none. A library caller that reads parsed nodes
+  directly uses the one definition (`core_keys.ENGINE_MINTED_KEYS`, `core_keys.minted_keys_in`). The
+  consumer rule: a consumer that compares a node's authored lines with its read-back `properties` removes the keys
+  `minted_keys` names first, and does not carry its own list of them. A renderer that shows a node's properties to a
+  reader skips the keys `minted_keys` names by default and shows them only when asked.
+- **Source statements.** A node that carries `source-text` is a source statement (the usual form is a section
+  marked `normative: false` that holds them; one placed singly beside normative nodes is also allowed): it keeps
+  the stakeholder's words verbatim with `source-locator`, `source-kind` and `source-role`, and `source-option-author` when the
+  kind is `selected`. It is always non-normative. A missing locator, kind or role is a strict ERROR; a
+  `source-kind` other than `typed` or `selected` is a strict ERROR; a `selected` statement without
+  `source-option-author` is a WARNING. Nothing checks that the words were said or that a locator is true.
+- **Confirmations.** A node that carries `confirmation-of` is a confirmation: a small node appended over time that
+  records that the stakeholder was asked about a quote and what was checked. It names exactly one source
+  statement in `confirmation-of` and one or more normative nodes in `checked-against`, and carries
+  `confirmation-verdict`, `confirmation-by`, `confirmation-date` and `confirmation-locator`. It is
+  non-normative, holds none of the stakeholder's words, and never promotes the quote. When one quote has
+  several confirmations, the one with the latest `confirmation-date`, compared by the full value, decides its
+  state; `corrected` wins only on exactly equal values. A node the deciding confirmation was checked against,
+  when that confirmation is `corrected`, carries a lint WARNING until it carries `revised-per` naming the
+  correction. No cryptographic proof of authorship is defined.
+- **Quote tripwire.** In a strict-mode document (§1.5.1; this is the one exception to "mode changes severity only": a legacy document gets no tripwire finding, and gets the tripwire when it upgrades) whose doctype is SPEC (the header tag, else the frontmatter `doctype:` line), lint warns when a node in normative scope has a
+  property value holding a run of eight or more words between straight double quotes. It is a lexical
+  tripwire: it cannot see a quotation without quotation marks, it flags quoted specimens as readily as
+  speech, and it does not see curly quotation marks. Source statements, confirmations, non-normative scope and
+  `x-` keys are exempt, and the check does not run in any other doctype.
+
+##### [NORMATIVE-PRECEDENCE] Where normative content and a source statement differ
+
+When normative content and a source statement differ or are in doubt, the normative content is the default, and
+a reader follows it. A reader may ask the source to confirm that the normative text reflects the intent. A confirmation records agreement: it never
+makes a source statement, or any other node, normative. A non-normative node is never read as a requirement,
+an acceptance criterion or a test target. Leaving non-normative content out is for counting and building
+only, never for auditing: a tool that counts requirements, acceptance criteria or test targets, or builds from
+the normative text, excludes nodes whose `normative_effective` is `false`, and a spec audit reads every
+source statement and confirmation and compares each with the normative text that restates it (following
+RESTATES both ways).
 
 #### 1.3.1 Profile-registered relationship properties
 
@@ -263,7 +356,7 @@ A profile declares an edge type in `edge_types[]` (YAML/JSON) or on an `EDGETYPE
 #### 1.3.3 Property-key vocabulary: DECLARED-OR-MARKED — amendment A2
 
 ⛔ **NEW 2026-08-16 (Era 1, RATIFY), amending P3 and P5 AS APPLIED TO PROPERTY KEYS.**
-Implements amendment A2 of the parser's engineering notes (rev 2, not published).
+Implements amendment A2 of `PARSER-ENGINEERING-SPEC.md` rev 2.
 
 ⛔ **THIS IS AN AMENDMENT TO THE FOUNDATIONAL PRINCIPLES, NOT A BUG FIX, AND IT IS
 RECORDED AS ONE BECAUSE THE DIFFERENCE IS THE WHOLE ARGUMENT.** P3 grants a **Private
@@ -346,6 +439,16 @@ implied — promotion is *from the marked tier*.
 | `then` | Expected outcome that follows from `when` (Scenario nodes; Section 5.5) |
 | `and-when` | Additional condition conjoined with `when` (Scenario nodes; Section 5.5) |
 | `and-then` | Additional expectation conjoined with `then` (Scenario nodes; Section 5.5) |
+| `source-text` | A source statement's words, verbatim (§1.3.4); its presence makes the node a source statement |
+| `source-locator` | Where and when the words were said (§1.3.4) |
+| `source-kind` | `typed` (the stakeholder's own words) or `selected` (an option someone else wrote); no other value |
+| `source-role` | A generic role word for the speaker; never a person's or a deployment's name |
+| `source-option-author` | For `selected`: the role of whoever wrote the option |
+| `confirmation-verdict` | `confirmed`, or `corrected` when the stakeholder changed what the quote was taken to mean (§1.3.4) |
+| `confirmation-by` | Who asked the stakeholder; not checked beyond being present |
+| `confirmation-date` | `YYYY-MM-DD` (read as 00:00:00 UTC), or a full ISO 8601 UTC timestamp ending in `Z` |
+| `confirmation-locator` | Where the stakeholder's confirming words are recorded |
+| `revised-per` | `[id of the confirmation]`: the node was revised per that correction; a plain property that mints no edge |
 
 **Classification properties** — document-level metadata:
 
@@ -355,6 +458,14 @@ implied — promotion is *from the marked tier*.
 | `announcement-status` | `announced`, `unannounced` | — |
 | `product-type` | `internal-tooling`, `poc`, `mvp`, `commercial-sdk`, `commercial-server`, `commercial-browser` | — |
 | `confidentiality` | `public`, `nda-shareable`, `internal-only` | `internal-only` |
+| `normative` | `false`, `true`, and the aliases `no`, `yes` (§1.3.4); only `false` (or `no`) marks content non-normative | absent = normative |
+
+`normative` is section-scoped and is NOT a frontmatter key: the inheritance sentence of §1.5 does not apply to
+it, and a `normative` line in frontmatter is a finding and has no effect.
+
+The engine mints one more property on every node, `normative_effective` (`true` or `false`), described in
+§1.3.4. It is reserved and engine-minted: an authored `normative_effective` line is a finding, the minted
+value is the one kept, and the typed writers refuse to write it.
 
 **Structural properties:**
 
@@ -408,7 +519,7 @@ Classification properties in frontmatter are inherited by all nodes in the docum
 #### 1.5.1 The format-version marker — amendment A1
 
 ⛔ **NEW 2026-08-16 (Era 1, RATIFY).** Implements amendment A1 of
-the parser's engineering notes (rev 2, not published). Nothing above is superseded; this is a new
+`PARSER-ENGINEERING-SPEC.md` rev 2. Nothing above is superseded; this is a new
 OPTIONAL field.
 
 ```
@@ -435,7 +546,7 @@ lts: "1.1"
 
 ⛔ **THE INVARIANT THAT MAKES THE MARKER SAFE — and a conforming parser MUST hold it:**
 
-> **The marker changes DIAGNOSTIC SEVERITY ONLY. The same bytes parsed with and without
+> **The marker changes DIAGNOSTIC SEVERITY ONLY, except the named exceptions a spec states (spec 39: the quote tripwire, which runs only in strict-mode SPEC documents). The same bytes parsed with and without
 > it MUST produce the same nodes, the same properties and the same edges.**
 
 If the marker ever changed the graph, strictness would stop being stageable and a corpus
@@ -490,6 +601,9 @@ Core tags (cross-domain, used by 3+ domains):
 | DELTA | Change records (see Section 8) |
 
 Domain-specific tags (e.g., `PRODUCT`, `AMEND`, `CPAT`) are registered in domain profiles.
+
+The document type tag is file-wide. Non-normative scope (§1.3.4) is separate and section-wide: a normative
+SPEC file can hold a non-normative section of source statements.
 
 ### 1.8 Content Hashing
 
@@ -633,7 +747,7 @@ The parser is generous:
 #### 2.4.1 Edge-verb regime — amendment A3
 
 ⛔ **NEW 2026-08-16 (Era 1, RATIFY).** Implements amendment A3 of
-the parser's engineering notes (rev 2, not published). The generosity above is retained for LEGACY
+`PARSER-ENGINEERING-SPEC.md` rev 2. The generosity above is retained for LEGACY
 documents and is not superseded there.
 
 1. **Legacy documents (§1.5.1): unchanged.** An unregistered verb is preserved and
@@ -710,7 +824,7 @@ The graph index is the convergence artifact — the single data structure that M
 {
   "version": "1.0",
   "generated_at": "ISO-8601",
-  "generator": "factlattice-parser v1.0",
+  "generator": "factlattice v1.0",
   "source_corpus": {
     "root_path": "/path/to/corpus",
     "files_hash": "sha256:...",
@@ -855,6 +969,7 @@ Domain profiles may define:
   partition, returning a loud stale marker, never old data); results are whole-node
   (§4.2) and token-budgeted with a cursor for continuation. Returns nodes/edges/subgraphs
   — never a scalar or an aggregate row (that is the ANALYTICS layer).
+- arguments: every tool call goes through `tools.dispatch`, which refuses a call that carries an argument name the tool's advertised input schema (`server.TOOLS`) does not declare: `success: false`, `refused: true`, `code: unknown_argument`, `unknown` (every undeclared name, sorted), `nearest` (a map from each to its closest declared name, or null). Nothing is evaluated and no value is echoed. A misspelt filter is therefore never dropped silently into a wider answer. A tool name that is not served, or arguments that are not an object, are left to the existing paths.
 - registry: every route (the MCP server, `python -m factlattice_engine call`, the reviewer helpers, the
   library's profile resolution) takes its corpus registry from ONE lookup, `factlattice.registry.resolve_registry()`.
   Order, a closed set of sources: `env` (the registry variable; the file must exist and parse; it NEVER falls back),
@@ -863,8 +978,128 @@ Domain profiles may define:
   registry, for the first-run trial only). A broken configured registry is `registry-not-found` (`call` and the helpers
   exit 2), and so is a request that NAMES a corpus the example registry lacks while it is in use ("no corpus registry
   is configured ..."); it is never the generic unknown-corpus error.
+  Root health ([INV-DECLARED-ROOT-HEALTH], [ROOT-SET-CHANGE]): a registered root that is not a directory
+  (or whose `only_file` pin is absent) is skipped and DECLARED, never silent: `lts_list_corpora` carries `root_health`
+  on an entry that is not healthy (`missing_roots`, `empty_roots`, `unindexed_roots`, `own_content`, `status`), and every
+  answer from such a corpus names each such root in `extent.notes`. When the roots that resolve on disk differ from the
+  roots the index was built from, the corpus is not fresh (reason `root-set-changed`) and the self-heal re-seats it; the
+  heal's storm guard keys on a fingerprint of the live roots (their `.lts` members and, for a symlinked member,
+  its target: mode, size, mtime and ctime), so fixing a cause in that file state allows a retry; a fix made outside
+  the file system (a permission granted to the engine's process) does not.
+  A registered profile that does not exist is reported in `missing_roots` with reason `profile-missing`. A corpus whose every
+  root is missing (and which declares at least one) is listed with `status: no-roots`, zero nodes and `fresh: false`; it is not
+  served and stays out of `stale_corpora` and the extent's consulted corpora. A private one is counted in `private_failed`, never
+  named. A tool that names it answers `{success: false, reason: no-roots, error_class: NoRootsError, corpus, missing_roots}` (no
+  `missing_roots` for a private one). Its `status` reads `degraded` with the root in `unindexed_roots` once a root returns, until a restart or `lts_register_corpus`.
+  Bounded root reads, slice 2 ([FL-BOUNDED-ROOTS], `specs/38-bounded-root-reads.lts`; [ROOT-STATE-ONE-REGISTRY], [ROOT-READS-BOUNDED]):
+  each registered root is in one of three states, kept in one place (`factlattice_engine/rootstate.py`): `ok`, `pending` (never yet
+  read) or `unresponsive` (a call under it overran its deadline). All freshness disk work for a root (the listing, the stat hints, the
+  content hashes, and whether the root and its pinned file are present) is a job, at most one per root at a time, run on a small shared
+  pool of threads (the watcher's background work shares one worker, growing to 4 when it waits, plus one for each stuck job up to one per marked root; a job a call is waiting on starts at once on a thread of its own, never behind other roots' background work (on its own root the queue is in order: behind that root's running job and any job already queued ahead of it, background ones included), and promotes a queued background job it needs) with no kernel lock held; the lock guards only the
+  in-memory results. The deadline `LTS_ROOT_DEADLINE_S` (default 10 seconds, read once at process start; a value that is not a positive
+  number is the default) measures time WITH NO PROGRESS, not elapsed time: a job reports progress as each disk call returns (each stat,
+  each listed directory, each 64 KiB chunk of a hashed file), and a root is marked `unresponsive` when a running job has reported none
+  for the deadline. A large corpus that keeps moving is never marked, however long its pass takes; a waiter that gives up waiting marks
+  nothing; one stalled call (a single 64 KiB read, one stat) is the grain. Resolving a root's path reports progress per component on the engine's CPython copy of `realpath`; on an interpreter whose own `realpath` differs (`lts_list_corpora` then carries `realpath_impl: os.path.realpath`) it cannot, so the probe's resolve and the write's confirm get an elapsed budget of the root deadline times the path's component count plus 1 second, for that resolve only: a slow root of bounded depth is not marked or refused, and a hung one still is within that budget. Two limits of the fallback, never of the CPython copy (3.13.2): (a) with as many roots hung as the pool size, background polls can wait up to one fallback budget (root deadline times components plus 1 s) before the pool's cap grows; (b) the budget counts the declared spelling's components, so a root reached through a symlink to a deeper target may be refused membership-unconfirmed and its probe marked late though every call answers: fail closed, retryable, never a wrong attach. An operator sees which rules apply from the active resolver (lts_list_corpora carries realpath_impl: os.path.realpath only on the fallback; rootstate.REALPATH_IMPL always). The engine cannot cancel the
+  stuck call, so its thread is abandoned, counted as `stuck_workers`, and costs one thread however long it lasts. When the call
+  returns, its result is discarded and the root is re-evaluated in full; when that completes inside the deadline the root is `ok`
+  again with no restart. A named read of an `ok` root still verifies synchronously (a probe begun after the call, on that root's
+  worker, up to the deadline), so a write followed by a read returns the write. The self-heal is never run on a marked corpus (the
+  check is in `SelfHealer.heal`, so the gate and a routed hop alike meet it), and a hop from a healthy corpus into a marked one is declared
+  in `routed_stale` (`lts_node`, `lts_traverse`, `lts_capabilities`) with the root reason, not read and not dropped. A call that names a
+  corpus with a marked root
+  (a corpus with several roots is marked if ANY root is) is refused `{success: false, reason: root-unresponsive, error_class:
+  RootUnresponsive, corpus, root_health: {status, roots, since}, error}` from memory, before anything is read, and never serves the
+  corpus's last result as current. The refusal names no path and no root. A corpus-omitted read leaves such a corpus out, lists it in
+  `extent.corpora_skipped` as `{corpus, reason: root-unresponsive}` (`root-pending` while pending), says `complete: false`,
+  makes `extent.index.fresh` false, and counts it in `extent.search_scope.stale_count` under a default scope; a private corpus is
+  never reached by a corpus-omitted read, so it is the usual anonymous private count. `lts_list_corpora` never waits on a marked root:
+  its entry has `fresh: false`, `total_nodes`, `total_nodes_live`, `total_edges`, `resolved_edge_count` and `counts_agree` null (not
+  0: not read is never empty), `root_health: {status: pending | unresponsive, roots: <count>, since: <ISO UTC>}`, and for a private
+  corpus empty `root_paths`; the reply adds `stuck_workers` when above zero. The codes `root-unresponsive`, `call-overran`,
+  `engine-saturated` and `corpus-root-unresponsive` are stable; only the first is emitted so far. This is a model-tested bound,
+  not a proof against a real hung drive. WRITES AND MEMBERSHIP ([MECH-BR-WRITES]): each root's real path is resolved by its probe and
+  kept with its last answer; membership, the ledger's root check (`check_outside_roots`) and `ledger.locate` read that instead of resolving a root, and the
+  file written is resolved as before. A link swapped under a root while serving is seen by the next poll; until then kept paths only decide the refusal and
+  which roots are CANDIDATES (a kept real path that holds the file, or a declared spelling that holds the path as typed). Membership is evaluated ONCE per
+  write: the ledger record, the edge context and the receipt read that one result. Each ok candidate is confirmed with one fresh realpath, resolved
+  component by component with progress after each call (with the CPython copy active, a slow root whose every call answers is never late; on the fallback see the limits above), on an auxiliary slot of its own, foreground,
+  never queued behind the root's poll; at most one confirm per root is in flight (they serialise). A write uses a confirm's answer only if that job STARTED after
+  the write's own file resolve returned: one that began earlier, or finished before the write began, is waited out and a newer one used; one that began after is
+  joined. The wait is bounded by no-progress time per disk call, so the total wait for one confirm is at most the number of its calls times the root deadline, and a write can wait for two confirms (a stale one, then its own): at most twice that. The confirm resolves with CPython's own realpath algorithm plus a progress report after each disk call when the running interpreter's `posixpath.realpath` equals the copy (checked at import); on any other interpreter it is `os.path.realpath` under the elapsed budget of the deadline paragraph above (root deadline times the path's components plus 1 s), so a slow root of bounded depth is neither marked nor refused, and `lts_list_corpora` carries `realpath_impl: os.path.realpath`. When the registry itself cannot be read (a `RegistryError`, or a failure inside the roots lookup) the pinned rule applies: the write lands under today's key and the record is flagged (`corpora_error`); any other failure to evaluate membership refuses `membership-unconfirmed`. The first evaluation's outcome, a registry-stage failure included, is THE result for the write and nothing evaluates membership again in it, so on that path no `membership_partial` is written and `corpora_error` is the signal. A write attaches to a corpus only if its real path lies under the fresh path, so neither a stale
+  kept path nor a link inside a root attaches it to the wrong corpus. A confirm NEVER marks a root. If the confirm for ANY candidate root that could hold
+  THIS file (by its kept real path or its declared spelling, however the file was typed) does not answer, the write is refused `membership-unconfirmed`
+  (retryable, nothing written, the root not marked); a library caller's writer is refused the same way, and a failure of the confirm stage of the evaluation refuses
+  closed, while a failure of the registry stage (a registry that will not resolve) keeps its documented loud rule: the write goes under today's key. A write may be refused or partial, never attached wrongly or silently
+  partial. A write resolves a root only in this confirm, and never a marked or pending one. The refusal of a file under a marked root matches
+  case-insensitively on every volume and folds Unicode composition. The bounded reads run on the kernel's registry where there is a kernel, and a stat that
+  does not answer while a ledger's owner is judged is unknown (`old-location-unknown`), never another file. A file under a root that is pending or
+  unresponsive is refused `{success: false, refused: true, written:
+  false, reason: root-unresponsive, error_class: RootUnresponsive, evidence: {refusal, fix}}` BEFORE the writer starts (no per-file
+  lock is waited for or taken, nothing is read under the root), naming no path and no corpus; a create is refused the same way and
+  makes no file. A write to a file under no such root proceeds with its gate, lock and ledger whole; when the membership is partial (a root is pending or
+  unresponsive) its receipt carries `membership_partial: {marked_count, unconfirmed_count}` (`marked_count` counts roots
+  pending or unresponsive only; `unconfirmed_count` counts candidates whose confirm did not answer, which is 0 on every write that lands, since such a
+  candidate refuses the write `membership-unconfirmed`), `root_membership.inside_corpus` is null with no
+  "outside every root" warning, the edge context is incomplete (a change that could be an edge key refuses `edge-context-incomplete` unless
+  `allow_edge_change`), and so does its ledger record carry the field, absent otherwise. If a root
+  that is not answering is one that decides whether a ledger under an old spelling in the `named_roots` table belongs to the file,
+  the write is refused `state-unavailable` (`old-location-unknown`): history must be provable. A process with no probe (an in-process
+  writer, the call CLI) resolves the declared roots with a bound of its own, a failed or never-built corpus's root still counts as a
+  root, and a state location's marker and ledger stat and an old spelling's stat are bounded too.
+  BOOT AND `build_store` ([MECH-BR-BOOT], slice 4). There is ONE root registry per PROCESS (`rootstate.process_registry`): every kernel,
+  every `build_store` and `boundedfs` use it, `LTS_ROOT_DEADLINE_S` is read once when it is first made, and at most one worker of a root is ever
+  stuck and at most 16 in all (`rootstate.MAX_STUCK_WORKERS`). The SERVER answers `initialize` without reading any root. Every corpus starts
+  PENDING (`store.pending_corpora`: in no list of served corpora, never empty) and joins the store, in the registry's order, when its read ends.
+  A call naming a pending corpus waits for it up to the root deadline, then is served, or refused `root-unresponsive` with
+  `root_health.status` `pending` (or `unresponsive` once a root of it has gone a deadline with no progress). `lts_list_corpora` never waits: a
+  pending corpus is listed with null totals and `root_health: {status: pending | unresponsive, roots, since}`, plus `reason: verdict-pending` (additive; the status stays `pending`) for a corpus held for the registry-error verdict (below); a private one is counted in
+  `private_failed`, never named. A corpus-omitted read waits once, up to the root deadline for all of them together, then leaves out what is
+  still unread and declares it in `extent.corpora_skipped` (`root-pending`, or `root-unresponsive`, or `corpus-verdict-pending` for a corpus held pending for the registry-error verdict), `complete: false`. A corpus held pending for the registry-error verdict (an entry shape only a root read can show, which the release refuses) is answered EXACTLY as any pending corpus (except that `lts_register_corpus` on its id refuses at once with `corpus-verdict-pending`, and does not wait): a call naming it waits up to one root deadline; if the server enters registry-error mode within the wait the call meets that mode's rules, and if not it is refused `corpus-verdict-pending` (`{success: false, reason: corpus-verdict-pending, error_class: CorpusVerdictPending, corpus, root_health, error}`, retryable, never saying a root did not answer). A write to a file under a
+  root that is still pending, or under a corpus still being read, WAITS for that root's first read and for its corpus to be published (slice 3
+  refused it at once; a write in the gap between the two would otherwise be recorded as outside every corpus), then proceeds or is refused
+  `root-unresponsive`; tools that name no corpus do not wait, and a tool that reads the corpus set waits once for the boot verdict while no
+  corpus has been served yet. A corpus whose root did not answer stays pending and is read again, with no restart, when the stuck call
+  returns and the root is `ok`. After a land every corpus is pending again. When nothing at all can be loaded (every root missing or empty) the
+  server is in registry-error mode as before, but it reaches it when the first read pass ends instead of before the handshake. The ledger's
+  table is pinned after that pass, bounded, and retried each watcher cycle until it is (until then the ledger reads the table at each call, as a
+  short-lived process does). `config.build_store`, which any process may call without a server, is BOUNDED the same way: every root is read at once
+  on its own worker, a corpus whose root does not answer inside the deadline goes into `store.failed_corpora` with code `corpus-root-unresponsive`
+  and NO path (`{code, path: null, private}`; the code is stable, a caller that handles `corpus-file-*` codes must also handle it), is not served, and
+  `find` on it is refused without a disk call, also through the self-heal; a root that already has a stuck worker, or a process already holding 16,
+  fails its corpus at once with no new thread or queued job, so a caller that builds per request cannot pile threads up; stuck workers are daemon
+  threads, and a library caller keeps no idle pool thread behind it. A consumer that renders agent definitions builds its own store per corpus, so
+  this is the only bound it has: the refusal is `success: false`, which it shows as its failure banner (also under `empty=ok`), never as an empty
+  digest. A corpus's PROFILE file is read like a root read, so a profile on a hung root fails its own corpus and holds no loader thread, and a blocking
+  caller's wait for the loader ends one deadline after its last sign of life. A hop into ANY corpus that is not served (pending; failed, with its own stable code, a failure because a root or a profile did not answer reading
+  `root-unresponsive`; or with no roots, `no-roots`), also one that shares a domain suffix with a served corpus, is declared in `routed_stale` with that
+  reason and `unserved: true` (private: the withheld stub). A corpus that failed because its profile did not answer has `reason: profile` on its
+  `failed_corpora` entry and `cause: profile` on its refusal, and is read again when the profile answers. Every table read before the final ledger pin
+  goes by the booted registry bytes (a provisional pin). NOT BOUNDED (named): `lts_register_corpus` on a library
+  engine with no kernel builds on the request thread. NOT YET BOUNDED (later slices, and the reason a
+  hung root can still stop a server): calls are not yet run on workers, so a call that reaches a root before any probe marked it can still wait on
+  that root's disk outside the verify (slice 5); the ledger's own file open and append under a state location are not bounded; the reviewer's, the
+  call CLI's and the profile reader's own resolves of documents and roots are not yet routed through the bound.
+  Named roots ([FL-NAMED-ROOTS], `specs/36-named-roots.lts`; [NAMED-ROOTS-EXPAND-ONCE]): a registry file may hold a top-level key
+  `named_roots`: `{"<name>": {"path": "<location>", "was": [...], "local": [...], "state": "<location>", "private": true}}` (`path`
+  required; a key ending `_note` is free text). A corpus entry's root path and profile may be `${name}` or `${name}/relative`,
+  recognised only at the start of the value. A `path` is absolute, `~`, `~/...` or relative (to the registry's directory, or the root
+  variable). `factlattice.registry.read_registry_file` expands entries once and strips the table, so every consumer sees
+  absolute paths; a `~` root is expanded and a relative root resolves against the registry's directory (or the root variable) there too.
+  `factlattice.registry.resolved_entries(path)` and `python -m factlattice_engine registry resolved --file <path>` are the public read:
+  exit 0, or 1 when an entry could not be expanded or the table is malformed, or 2 when the file cannot be read. An entry that could
+  not be expanded keeps the value as written and carries `named_root_failure` (`{code, name}` or `{code, detail[, root]}`). Stable codes:
+  `named-root-unknown` (an entry names what the table does not hold, or a value starts `${` and is not the form, including a relative
+  part that is absolute or holds `..`; that corpus fails, the others serve; `failed_corpora` item `{corpus_id, code, name}`, or
+  `{corpus_id, code, detail: bad-reference}` when it is not the form), `named-roots-malformed` (the table is not of this shape, a name is bad, a
+  spelling is duplicated across roots, a `was` spelling equals a root's current path, or a `local` spelling is not in `was`, compared as
+  written with `~/` and `$HOME/` as one; every corpus that uses a name fails and corpora that use none serve; item
+  `{corpus_id, code, detail}`). A corpus-scoped tool answers `{success: false, reason: <code>, error_class: NamedRootError, corpus, name | detail}`. An entry that failed
+  this way has no location, and an entry that fails on an unknown key has none that can be trusted, so while ANY such entry stands the
+  reviewer's `resolve-output` refuses EVERY document with its code (see the registry-key paragraph below). `lts_report_miss` answers
+  `corpus-roots-unknown` while any corpus has failed to build. A reference's relative part may not hold a control character.
   `lts_list_corpora` carries a corpus-free `registry_choice`: `{source, path, sha256_at_boot, sha256_now,
-  resolved_at}` (`sha256` is over the registry bytes, plus the working directory and resolved root only when a corpus-root or profile path is non-absolute, plus $HOME only when one starts with `~`, plus $FACTLATTICE_PROFILE_DIR when it is set; `sha256_at_boot` is the registry the
+  resolved_at}` (`sha256` is over the registry bytes, plus the working directory and resolved root only when a corpus-root, profile or table `path`/`state` is non-absolute (`${name}` is not; a home-spelled table value is not), plus $HOME only when one starts with `~` or a table location or spelling names the home, plus $FACTLATTICE_PROFILE_DIR when it is set (otherwise the names and contents of the profiles the deployment overlay loads, when it loads any; an overlay that loads none changes nothing); `sha256_at_boot` is the registry the
   server actually loaded and `sha256_now` the file as it is at the call, so a difference means the server serves an
   older registry and needs a restart). If the registry cannot be resolved at boot (after one retry), the server boots
   in REGISTRY-ERROR MODE: all tools are listed, `registry_choice` is `{source, path, error, error_persist}` (`error_persist` is the error with every path reduced to its basename, for persisted records), every corpus-scoped
@@ -879,6 +1114,30 @@ Domain profiles may define:
   - STRUCTURE only: the query log writes `error_class`, `error_code` and, for a registry refusal only, the error's `persist_text` (basenames built from parts); it writes no other error text (schema change: the old `error` free-text field is gone). REVIEW/UNREVIEWED fields carry `<source> <file name> sha256:<hex>`, the reviewer's fixed reasons and the same `persist_text`, never a raw tool error.
   - Where the named path is a directory (the example registry's root, the cwd, or an environment variable or the pointer names a directory), the persisted basename is that directory's own name; a directory's own name is accepted.
   - CONTENT never, on any surface.
+- registry entry keys (maintainers' ruling of 2026-10-29): ONE schema, `factlattice.registry.REGISTRY_ENTRY_KEYS` (`roots`, `root`,
+  `domain_suffix`, `profile`, `private`, `external_id_prefixes`) and `REGISTRY_ROOT_KEYS` (`path`, `area`, `only_file`), defined in the
+  module that owns registry lookup and derived from the code that reads an entry; the contradiction checker imports it and defines no
+  list of its own. A key ending `_note` is free text: no code reads it and none refuses it. The suffix is case-sensitive; a key ending `_NOTE` or `_Note` is refused with the hint "comment keys end in lowercase `_note`" rather than a nearest data key. Any other key is an UNKNOWN KEY, and an
+  unknown key is not ignored (a misspelt `private` would leave a corpus public, `profile` a profile unloaded, `domain_suffix` a default
+  suffix): the corpus whose entry carries it FAILS, and ONLY that corpus, in the way an unreadable member file already fails its corpus.
+  It is not served (no partial view), it is recorded in `store.failed_corpora` with the code `registry-entry-unknown-key` (an entry
+  key) or `registry-root-unknown-key` (a key of one `roots` item), and it appears in `lts_list_corpora` `failed_corpora`
+  (`{corpus_id, code, key, nearest}`, no `path`) and in `extent.corpora_skipped`. A corpus-scoped tool answers it with
+  `{success: false, reason: <code>, error_class: RegistryEntryKeyError, corpus, key, nearest, problems}`; `nearest` is the closest
+  valid key, or null. The registry itself is fine (this is not `registry-not-found`) and every other corpus keeps serving. What this branch adds, as the architects' design in specs/38 (the maintainers have not ruled on it): the boot verdict of every entry shape is the release's, unchanged, whether a server, `build_store` or the call CLI boots it. A write is never attributed to a corpus, and never called outside every root, while the registry cannot state where one of its entries lives. An entry has no stated location only when the release does NOT serve it and its roots cannot be read as paths: an entry that is not an object, a `roots` that is not a list, a root that is neither a string nor an object, a blank root, a root object with no `path` and no unknown key, a `root` that is not a non-blank string, a `roots` whose every `path` is not a non-blank string, or a corpus that failed on an unknown key whose unknown key holds a root-ish string that is not path-like (`pth: "bad"`). An entry the release serves has a stated location, its declared roots, whatever else is wrong with it: a non-boolean `private` or an int `domain_suffix` flags nothing. While an entry with no stated location stands, every write lands flagged (`corpora_error`, `corpora` null); none is refused, and none is called outside every root. The flag ends when the entry is fixed and registered, unregistered, or registered again. A string is path-like when, after stripping, it starts with `/` or `~` or holds a `/`; a bare word (`bad`, `.`) is not. A corpus that failed on an unknown key has a location nobody can trust, so each path-like string of its entry is probed in the background, off the writer's thread, and its real path is kept. A write whose file lies under such a string as typed, or under the kept real path, lands flagged and unattributed, and is never refused for that. A string that is not answering counts in `marked_count`, and only a write under it as typed is refused `root-unresponsive`, before anything is read; every other write is unaffected. An entry with no readable location (a named-root failure, a `${...}` string, a NUL) is flagged for every write. A `private` that is not a boolean counts as PRIVATE wherever privacy is decided, so a typo can never make a corpus public. `lts_register_corpus` refuses a malformed entry with the stable code `corpus-entry-shape` (the class name only, never the text), and registers nothing. A failed
+  PRIVATE corpus is counted (`private_failed`, `{reason: private-corpus-failed, count}`), never named, on an unnamed call; a corpus
+  with an unknown key that is `private` in any case or a near-miss of it, written at entry level OR on a root object, counts as private for this purpose whatever its value, so the typo cannot make it public (it still fails, with the entry or root code). The match is generous (it also catches unrelated words such as `pirate`) and fails safe: such a corpus is hidden, never exposed, and can be found only by naming it. A `private`-shaped key on a root object is refused with the hint that `private` is an entry key, not a root key. The reviewer's `resolve-output` applies the same validation to every corpus, not only the named one: while ANY entry has failed on a key or a name it refuses every document with that code, whatever the document and however the entry spells its location, because a failed entry's location cannot be trusted and a scan of its strings cannot be complete. It refuses in the same way (`private-corpus-location-unknown`) for a clean private entry none of whose roots can be read, or with none declared: so a private corpus on an unmounted drive, or registered before its folder exists, stops every review of every corpus until it is back or corrected. A private entry with at least one readable root does not trigger this, even if another of its roots is mistyped; a document meant for the mistyped root is judged by the corpora around it. A review sent to a shared root cannot be recalled, so this errs towards refusing; other tools keep serving the healthy corpora. The `dangles` verb, which routes and writes nothing, still scans a failed entry: every string in it, keys included, is tried as a path after `~` expansion against the caller's working directory, a list of strings is also tried joined, and a NUL or a `${...}` string anywhere makes it stop for every document. That scan is lexical: a location spelt another way (`$HOME`, a `file://` URL, a path in prose) passes it, and the over-match depends on the working directory. The
+  same check runs in `lts_register_corpus`, for an entry read from the registry and for an explicit `spec`: the call is refused with
+  the same reply and registers nothing. Every route builds its corpora through `factlattice_engine.config.build_store`, so the
+  server, `python -m factlattice_engine call`, the semantic command and the reviewer helpers (which stop with the same code, naming no
+  corpus when they stop on a document path) behave the same. The reviewer's `resolve-output` applies the same validation before any
+  rule can choose a root: a corpus with an unknown key resolves to no output root with the same code (a misspelt `private` can never
+  route a review to the shared default root), also when only a document path inside that corpus is given. The contradiction checker
+  calls the same validation (`entry_key_problems`), at entry and root level. The library's profile lookups (`registered_profile_for_root`, the profile
+  audit) still read the entry as written; they do not decide whether a corpus is served. A root given as a plain string has no keys.
+  Another deployment whose registry holds other free-text keys sees a loud, named refusal of those corpora at its first boot after
+  upgrading: rename them to end in `_note`.
+  Operator note: `lts_register_corpus` runs the shape check and refuses an entry that boot serves (for example `private: "yes"`, which boot counts as private); boot keeps the release's verdict for a registry already on disk, registration does not.
 
 #### 4.6.1 Response tiers [LTS-TIER]
 
@@ -886,10 +1145,11 @@ Domain profiles may define:
 `full`, additive-only over `find`/`traverse`/`node`) shipped in `factlattice_engine/tiers.py`
 (2026-08-13) but was never promoted into this SPEC — the only normative text lived in
 that module's docstring. A defect this section exists to close
-([ISSUE-EXCERPT-BUDGET]) went undetected for four weeks
+([DEFECT-LTS-NODE-FULL-EXCERPT-VS-BUDGET-CEILING]) went undetected for four weeks
 precisely because there was no SPEC contract for the fix to be checked against.
 
 - `tier` omitted: the LEGACY path, byte-identical to the pre-tier engine.
+  One exception (2026-10-27, maintainers' ruling of 2026-10-27): on `find`, a match whose own size exceeds `token_budget` is no longer carried whole. It is skipped and reported in `oversize_skipped`, as [ENGINE-BUDGET] always specified. The pre-tier behaviour contradicted that rule, so this guarantee never protected it.
 - `tier="digest"`: ALWAYS COMPLETE for the result set it claims — every matching node,
   carrying only routing metadata (id/title/token_count/property_count/edge_count/
   source_file/line_range/content_hash/timestamp) and NOTHING derived from the body.
@@ -912,7 +1172,7 @@ precisely because there was no SPEC contract for the fix to be checked against.
 
 #### 4.6.2 `limit` + `order_by` [LTS-LIMIT-ORDER]
 
-⛔ **Implemented 2026-09-11** (`specs/20-engine-layers.lts`'s
+⛔ **Implemented 2026-09-11** (`factlattice/specs/20-engine-layers.lts`'s
 `[QUERY-LIMIT-ORDER]` section — `rollout-status` there moves from `proposed` to
 `shipped` alongside this entry). Two optional, per-query parameters on `find` and
 `traverse` ONLY (§4.6-scope; NOT `capabilities` — no `tier` support to re-base against
@@ -1044,11 +1304,11 @@ hash-chained JSON record to a per-file ledger,
 `<state_dir>/ledger/<sha256(realpath)[:32]>.jsonl`, inside the per-file write lock,
 right after `os.replace` (`factlattice/ledger.py`). A refusal appends nothing. Records
 carry the verb (`set_property`, `append`, `repair_property`, `rename_property`,
-`remove_property`, `add_node`, `write_document`), node and key, the value-aware `delta`, `discarded` (verbatim lines),
+`remove_property`, `add_node`, `write_document`, and the note verb `unread_time_guard_fault`, see below), node and key, the value-aware `delta`, `discarded` (verbatim lines),
 `inserted` (verbatim lines, for appends and added nodes), node and file hashes before
 and after, `backup_path`, the caller's `proposer`/`approver`/`reason`/`via`, the
 write-time `corpora`, `engine_head`, `ledger_seq` and `prev_sha256`. The record alone
-can undo a write (CRLF files are restored in their LF form; see the ledger spec).
+can undo a write (CRLF files are restored in their LF form; see the ledger spec). A write whose placeholder-time check faulted (UNREAD TIMES IN INPUT, 4.6.6) appends a SECOND record straight after the write's own: verb `unread_time_guard_fault`, `delta` `{"exception_class": <class name>}` (never the message), `ledger_seq` one above the write's record, and `file_sha256_before` equal to `file_sha256_after` (the file as the write left it). It is a NOTE, not an edit: it is listed in `ledger.NOT_AN_EDIT_VERBS`, `ledger.check_undoable` refuses it, and undo and verify tools REFUSE it (they never treat it as an edit to undo or verify). Its verb, `delta.exception_class` and the per-file layout are a contract with the reader that raises the alert.
 Every successful write receipt carries `ledger: {status: "ok", seq, file}`, or
 `{status: "failed", reason: "ledger-write-failed", error_class, live_detail, live_detail_note}` (the `reason` is a fixed CODE; the
 exception class is `error_class` and its text, which can hold a path, is `live_detail`, live reply only) with the warning and the report led by
@@ -1062,6 +1322,20 @@ node's records, newest first, and DECLARES absence: `ledger: "none"` with
 `chain_file_breaks` (records whose `file_sha256_before` does not match the previous
 record's `file_sha256_after`, i.e. an edit made outside the writers) and
 `history_has_out_of_band_edits`.
+
+Where history lives ([MECH-NR-LEDGER], `specs/36-named-roots.lts`; [LEDGER-LOCATE-ONE-FUNCTION]). With a `named_roots` table, a file under a root
+with a `was` spelling also has the ledgers written under those spellings counted as its history, unless a different file is there now.
+`lts_history` returns the union in ts order and adds `ledger_files` (always present on a served history), and, only when one applies,
+`ledger_left_out` (fixed reasons) with `left_out_note`. A `chain_file_breaks` entry where two ledgers meet carries
+`ledger_file_boundary: true`, absent otherwise. A root that declares `state` keeps its history at `<state>/ledger/`, with a marker naming the root. This engine cannot begin a state location and the commands that would are parked, not scheduled (`specs/36-named-roots.lts`), so a root that declares one, with no marker, has its writes refused. History therefore stays in each machine's state folder: a move on one machine keeps it, and another machine does not have it.
+A write is refused before anything is written, with the code in `evidence.refusal` and the fixed reason in `evidence.detail`. `state-unavailable`: the location
+is absent, holds no marker for this root or cannot be read, or a stat at an old spelling failed; `evidence.fix` says what clears each. Three codes are faults in the registry and stay until it is fixed: `named-root-state-inside-corpus`;
+`named-root-state-unprovable` (a state-rooted write while any registry entry has failed or holds a root that cannot be resolved, since that root cannot be shown to lie outside the state); `named-roots-malformed` (every write outside the temp dir, since no location can be proved). A registry that cannot be read at all is not one of these: the older `registry_unavailable` rule stands, and a write goes under today's key with its warning.
+A root or state on an absent volume is not a failed entry: other roots' writes go on. `evidence.fix` says what clears each refusal.
+Where the corpus is served, `lts_history` puts the code in `ledger`, with `state_detail`; except that under `named-roots-malformed`, an unreadable old location or a path that spells a state root in another case it serves what today's key or the readable ledgers hold, with `write_refused`, `write_refused_fix`, `history_partial: true` and `partial_note`, each absent otherwise. A ledger that cannot be read at all is left out with `ledger_left_out: ["ledger-unreadable"]`, `history_partial: true` and `partial_note`, with `write_refused` only if a write would be refused for another reason, and a line that is not a record counts in `unparseable_lines`; neither raises. `evidence.fix` says which corpora keep serving reads under each code. If a location goes away in the instant after the check, the corpus write has landed: the receipt says "WRITTEN, BUT NOT LEDGERED" and nothing starts at the location.
+A scratch copy under the OS temp dir is not refused. A receipt's `ledger` gains `new_chain: true` and `new_chain_reason` on a file's first record, and
+`several_ledgers` when a ledger starts beside several counted ones, `other_ledgers` when a write continues the current ledger beside counted ones, so history is split; each is absent otherwise. A file created later at an old spelling takes that ledger as its own, including records a moved file wrote there after the move; history shows it as a break. A record gains `named_root: {name, rel}` where a root applies, absent otherwise; `path_real`
+stays the literal real path. A server goes by the table it booted from; a short-lived process reads the file each time.
 
 Two further record fields. `follows_out_of_band_edit` (bool, always present): true when the
 file's bytes at write time (`file_sha256_before`) differ from the previous record's
@@ -1092,6 +1366,23 @@ If the prior content of a whole-file write cannot be stored, the record is STILL
 `ledger` entry is `{status: "ok_without_undo", reason: "undo-blob-not-stored", live_detail, live_detail_note}` and `write_document` warns "WRITTEN AND
 LEDGERED, BUT THE PRIOR CONTENT WAS NOT PRESERVED": the gap lives in the chain. A ledger file is
 never created without a record in it.
+
+#### 4.6.4a Default scope [DEFAULT-SCOPE]
+
+`LTS_DEFAULT_CORPORA`, a comma-separated list of corpus ids in the process environment, makes a corpus-omitted `lts_find` or `lts_find_in_prose` read those corpora only. It is a default, not a wall and not privacy: `corpus` reaches any corpus, `lts_list_corpora` and `extent.corpora_available` still name every public corpus, and `lts_reverse`, `lts_traverse`, `lts_flow`, `lts_aggregate` and `lts_profile_audit` are unchanged. `corpora` on those two tools gives a non-empty list for one call, replacing the server's list, or `"all"` for every public corpus; it is exclusive with `corpus` and `path`, and a malformed value or a name not loaded is refused. A `corpus` that is a non-empty list or mapping is refused too (it used to raise a raw error); `0`, `false` and an empty list still read as omitted, and another scalar is still `corpus not found`. A private corpus on the server's list is not read and not named; one named in `corpora` is read. A reply over a list carries `extent.search_scope`: `source` (`server-list`, `call-list`, `call-all`), `left_out_count`, `widen`, `unknown_count` when above zero (names on the server's list that are not loaded, counted and never named), `stale_count` when a corpus in the scope could not be read, and `zero_in_scope: true` on a zero with none stale. A listed corpus that failed to build is not stale: it counts in `unknown_count` and is named in `corpora_skipped` under the existing rule, so a `zero_in_scope` beside an `unknown_count` means part of the list was not read. `widen` is absent on `call-all`, and `extent.scope.corpus` reads `SEARCH SCOPE` rather than `ALL LOADED` on a list. If no listed corpus is loaded the search reads nothing; it never falls back to all. With the variable unset or empty and no `corpora`, the key is absent and the reply is as before. `call_context` states the list's size as `default_scope.listed`, never its names. An engine component that goes through dispatch and needs every corpus passes `corpora="all"`. See `specs/37-default-scope.lts`.
+
+#### 4.6.4b Private corpora [PRIVATE-CORPORA]
+
+A corpus is PRIVATE when its registry entry says `private: true`, or when its id ends in `-personality` and the
+entry does not say `private: false`. `private: null` is treated as unset. A `private` value that is not a boolean
+(`"yes"`, `1`) counts as private: at boot such a corpus is still served (the pinned boot verdicts,
+`tests/boot_verdicts/`) and, being private, is read only when named; `lts_register_corpus` refuses the entry. A private corpus is read only when a caller names it: a
+corpus-omitted read skips it and counts it, without naming it, in one anonymous `{reason, count}` entry under
+`extent.corpora_skipped`. The engine applies this rule in one place (`factlattice_engine/privacy.py`), and every
+feature that asks whether a corpus is private uses that rule. Two sites add to it and take nothing away: a registry
+entry that fails on an unknown key shaped like `private` (a typo such as `privat`) is also treated as private, so the
+typo cannot get it named; and a file read by `path` is answered because the caller named it, even when it lies
+under a private corpus root, and nothing in the answer names that corpus.
 
 #### 4.6.5 The `lts_find` query surface [FIND-QUERY-SURFACE]
 
@@ -1135,7 +1426,7 @@ string query syntax exists: a human form compiles to these parameters.
   evicted to fit (also on the next call after the value is lowered); a corpus whose estimate alone exceeds the
   ceiling serves its call and is not retained, so each later word/prefix/phrase call on it rebuilds the cache
   (about 17x slower per call on a 9,661-node corpus: ~230 ms against ~14 ms).
-  **Ruled 2026-10-05 by the architect** (acme-team ISSUE-SEMANTIC-DESIGN,
+  **Ruled 2026-10-05 by the architect** (acme-team LTS-SEMANTIC-QUERY-DESIGN-AND-BUILD-MODEL,
   `cache-ceiling-ruling-2026-10-05`): keep the default at 150. A cache ceiling bounds the CACHE, not whole
   processes. Measured at the plateau (word+prefix on all 14 v3-snapshot corpora, `footprint`, load average
   ~4-5), one session's lts-engine is ~265 MB at the default, so six sessions are ~1.6 GB together, plus the
@@ -1178,7 +1469,8 @@ note. The codes: `node_not_found`, `key_absent`,
 list or mapping), `key_lines_unreconciled`, `key_line_unlocatable`, `edge-context-incomplete`, `expect_value_mismatch`
 (remove), `new_key_exists` (rename; there is no silent merge), `new_key_same`, `new_key_illegal`,
 `edge_change_refused`, `edge_change_outside_node`, `gate_failed`, `bad_argument`, `not_a_file`,
-`metadata_invalid`, `os_error`, `not_utf8`, `duplicate_node_id` (the parser keeps the LAST of two nodes with one
+`metadata_invalid`, `os_error`, `not_utf8`, `non_string_value`, `unread_time_placeholder` (a text the call adds holds an unquoted placeholder clock time; see UNREAD TIMES below), the four location codes of 4.6.4 (`state-unavailable`, `named-root-state-inside-corpus`, `named-root-state-unprovable`, `named-roots-malformed`), `corpus-verdict-pending` (the file lies under the root of a corpus held pending for the registry-error verdict, still held when the one-root-deadline wait ended: retryable, nothing written, no root marked), `root-unresponsive` (the file lies under a registered root that is pending or unresponsive; refused before the writer starts; see the bounded-reads paragraph), `membership-unconfirmed` (a candidate root that could hold the file did not confirm where it lives within the root deadline; retryable, nothing written), `line_break_in_input` (a text input holds a character at which the parser ends a
+line; see the next paragraphs), `duplicate_node_id` (the parser keeps the LAST of two nodes with one
 id, so the first would be invisible to the gate; both heading lines are in `evidence.lines`), plus the lock codes
 `lock_busy` / `lock_unavailable` and `write_refused` for any other refusal. For the two lock codes `reason` is the
 code and the text, which may name the state directory, is in `live_detail` with a `live_detail_note` (never
@@ -1189,11 +1481,13 @@ removed or added is refused unless `allow_edge_change` is true, and the receipt 
 What the edge rule covers is stated in every receipt as `edge_check`. The adapter resolves the file's corpus
 through the same membership path as `root_membership`, loads that corpus's registered profile, and parses BEFORE
 and AFTER with the profile's `property_edges` plus the built-in tables, so a profile-registered edge key (the
-widgetkit profile's `documents` -> DOCUMENTS) is protected like `see-also`: `edge_check: profile applied:
+an example profile's `documents` -> DOCUMENTS) is protected like `see-also`: `edge_check: profile applied:
 <profile file> (corpus <id>) (its property_edges plus the built-in tables)`. When no profile can be determined
 the receipt and a warning carry `edge_check: built-in tables only (no profile applied: <code>)`, <code> being
 `outside_every_corpus`, `registry_unavailable`, `profile_file_missing`, `profile_load_failed`, `corpus_not_in_registry`
-(a corpus seated in the process but absent from the registry file). Each of the first five degrades THAT corpus (or, for
+(a corpus seated in the process but absent from the registry file), `membership_partial` (a registered root is pending or unresponsive, so which corpora hold the file, and which profile applies, is not fully known; a candidate that
+does not confirm refuses the write instead: the edge context is INCOMPLETE and a change that could be an edge key
+refuses `edge-context-incomplete` unless `allow_edge_change`). Each of the first five degrades THAT corpus (or, for
 `registry_unavailable` and `outside_every_corpus`, the whole check) to the built-in keys, and says so; in a file that belongs to
 several corpora the other corpora's profiles are still applied (`edge_check` then reads `...; NOT applied: <corpus> (<code>)`).
 `corpus_registers_no_profile` (the registry entry has no `profile`) means nothing to apply: no warning, no refusal. A file in several
@@ -1212,12 +1506,72 @@ no profile can apply and the built-in check is complete. A caller of the core
 functions (`edit.rename_property`, `edit.remove_property`) that passes no `edge_configs` gets
 `built-in tables only (no profile applied: not_resolved)`.
 
-`lts_add_property` VALUE CHECK. After the whole-file gate, an add or an append (not a replace) is refused, writing nothing
-(`gate_failed`, "the stored value ... is not the requested one") unless the value stored on the node, AS THE PARSER READS IT,
-equals the requested value as the parser reads the single line `- key: value` (for an append, the earlier items must also be
-unchanged). It catches an insertion that makes the new value absorb neighbouring lines; it does not catch one that only
-separates an indented block from its head. Where the line lands is unchanged from earlier versions and has known defects
-(ISSUE-INSERT-IN-FENCE, ISSUE-LINE-SEPARATOR-TRUNCATION).
+DUPLICATE NODE. `lts_add_node` on an id the file already holds is refused with `evidence.refusal: duplicate_node_id` and no `evidence.lines`; that field belongs to the rename and remove writers' use of the code.
+
+NON-STRING VALUES. A typed writer stores text. A property value that is not a string (a list, mapping, number, boolean or null) is refused with the coded `non_string_value` and nothing is written; `evidence` names the `field` and, on `lts_add_node`, every such key in `keys`. The one exception: `lts_repair_property` takes `value` as optional, so a null there means none was given and the value comes from the line. `lts_add_node`'s `properties` must itself be a mapping, null or absent; anything else is refused `bad_argument`, or `create_argument_invalid` with `create` or `create_parent`, including an empty list, `false`, `0` and an empty string. It is never stored as its Python spelling. Several values for one key are written one at a time with `lts_add_property` `mode=append`. A string that merely looks like a list is ordinary text and is written as sent.
+
+LINE BREAKS IN INPUT (maintainers' ruling of 2026-10-28). A property is ONE physical line, so no typed writer will put a
+character on a line that the parser ends the line at. Every typed writer (`lts_add_property` in set and append mode,
+`lts_add_node` with and without `create`, `lts_repair_property`, `lts_rename_property`, `lts_remove_property`, and the
+document writer `write_document`) REFUSES such a character in every text input it emits or looks a line up by: `node_id`,
+`key`, `new_key`, `value`, `expect_value`, `title`, `section`, `doc_title`, `domain`, `doctype`, every `properties` key and
+value, and every string of a document (frontmatter, section, node titles, property keys, values, list items and mapping
+entries). The refusal is coded `line_break_in_input`; its `evidence` names the `field`, the character as `codepoint`
+(`U+XXXX`) and its 0-based `index` in the field (counted in code points), and its sentence names the character; nothing is
+written. THE SET IS DERIVED FROM THE PARSER, NEVER LISTED: a character is refused exactly when the parser's own line
+splitting, `parser.split_source_lines` (the one function `parse_text` reads its lines through; today `str.splitlines`),
+ends a line at it. That is LF, CR, VT (U+000B), FF (U+000C), FS, GS and RS (U+001C to U+001E), NEL (U+0085), LINE SEPARATOR
+(U+2028) and PARAGRAPH SEPARATOR (U+2029). If the parser's splitting changes, the refusal changes with it; a test measures
+the parser independently over every code point and fails on any difference. An input holding CR LF holds two such
+characters and is refused, naming the CR; CRLF line endings of an existing FILE are not input and are left as they are.
+Ordinary space, tab, no-break space, other non-ASCII text and emoji are accepted unchanged. One older case keeps its older
+text: an `lts_add_node` property VALUE holding LF is refused by the `properties` check whose reply is pinned for the
+non-create path, as before.
+THREE BEHAVIOUR CHANGES follow from the refusal. (a) `write_document` now refuses a value, list item or mapping entry that
+holds an INDENTED continuation line (`"para one\n  continued"`); earlier versions stored it folded into one line (`para one
+continued`), with nothing lost. Join the parts with a space before writing. (b) A KEY holding one of these characters is
+refused; earlier versions' key normalisation turned the character into a hyphen (`my` U+2028 `key` was written as `my-key`).
+(c) An LF in an `lts_add_property` or `lts_repair_property` value, which earlier versions refused with the uncoded reply
+"multi-line values are not supported by the surgical editor", and an LF in an `lts_remove_property` `expect_value`, which
+earlier versions refused as `expect_value_mismatch`, are now refused with the coded `line_break_in_input` reply.
+
+UNREAD TIMES IN INPUT. A clock time with a digit and an `x`, `X` or `?` in a digit place (`04:2xZ`, `21:3?Z`, `06:5x`; also after
+an ISO date's `T`) is what an author types when it wrote a time without reading a clock. A typed writer REFUSES such an
+UNQUOTED token in any text the call adds to a record, with the coded `unread_time_placeholder`, and writes nothing. The
+checked inputs are `value` (`lts_add_property` in set and append mode, and `lts_repair_property` when a `value` is sent),
+`title`, every `properties` value, and on a create `doc_title`, `domain` and `doctype` (`lts_add_node`), and every text of a
+document except its keys (`write_document`). `lts_rename_property` and `lts_remove_property` add no text, and a key, a node id
+or a section id cannot hold a time (their grammar has no colon). The check runs on the call's ARGUMENTS, before the per-file lock is taken and before any file is read, so a refused call to a missing path still returns `unread_time_placeholder` and leaves no lock file. It is on the text the call ADDS: `lts_repair_property`
+with no `value` keeps the value already on the line, and a slip already in a file is never refused or edited. The refusal's
+`evidence` carries `field`, `count` and `hits` (each with `field`, `token`, `line` (1-based) and `column` (0-based)), and its
+sentence names every token and says how to proceed: read the clock with `date -u` and type the real time, or write "time
+unread"; a token meant on purpose goes inside backticks, double quotes, or single quotes (which can fail, for example when an apostrophe inside a word, as in it's, comes before the token on its line). Quotes pair per kind (each pairs only
+with its own kind), left to right on one line; a token wholly inside a pair is exempt, an unpaired quote opens no span, a pair
+split over two lines does not count, and an unquoted token beside a quoted one is still refused. An apostrophe with a word
+character on both sides ("Ann's", "don't") opens and closes no single-quote span, and a token is exempt only inside a span of both the word-aware and the plain pairing, so that rule only adds refusals. KNOWN LIMITS: single quotes are a quote form, so
+an apostrophe that does not sit between two word characters (a possessive plural such as "the cats' ") can still pair with a later
+single quote on the same line and exempt a token falsely; a lowercase `z` suffix and a lowercase ISO `t` are placeholders too, a line ends at every character the parser ends one at (a quote pair split by CR, U+2028 or another such character does not exempt), and STATED LIMITS are that a one-digit hour (`4:2x`) and non-ASCII digits, colons or x are not caught, and a guessed time with
+real digits (`about 23:10Z`) is not caught; the check is for the plausible mistake, not for an author who evades it on
+purpose. The detector, the quoted-span rule and the refusal text are one stdlib-only module, `factlattice/authoring/unread_time_shared.py`, kept byte-identical with its
+twin in the other repository that calls it and pinned by a hash in `tests/test_unread_time_guard.py`; the shared cases are
+`tests/data/unread_time_cases.json`. The same check covers the ledger metadata `reason`, `proposer` and `approver` of every
+writer, and the free text after `clerk:` in `via` (they are stored text in a record people read) and the free-text fields `query`, `why`, `tool_used` and `found_via` of
+`lts_report_miss`, which refuses with `reason: unread_time_placeholder`. FAIL OPEN: a fault in the detector itself (an exception from the shared detector, as distinct from a refusal raised on purpose) never blocks a write. The write lands as if there were no hit, and the receipt's `warnings` carries `unread_time_guard_fault: <exception class name>` (never the message, which may hold a value). The ledger gets one `unread_time_guard_fault` record after the write's own (4.6.4). NO record is made when the write's own ledger append is skipped (a scratch path) or failed, when the fault record's own append fails, and for `lts_report_miss`, which has no ledger; the receipt then says "no ledger record was made, so this fault will not reach the maintainer's alert". A record made is reported as "a record was made in the write ledger". KNOWN GAP: the interim helpers in `tools/` that write a
+title or value through `write_whole_file` do not call the guard.
+SHARED WITH GNOMON. Three contracts of this check are shared with Gnomon (SDLC 7.6 ENGINE-CONTRACTS-SHARED-WITH-GNOMON): (1) the detector module `factlattice/authoring/unread_time_shared.py`, shared with Gnomon as a byte-for-byte copy (sha256 `eaf250185838e26052e7217760b24a9195a164373cc1bddb9f224d1e2998e1be`); (2) the environment variable `FACTLATTICE_UNREAD_TIME_GUARD` (values `off`, `on`, unset), shared with Gnomon; (3) the ledger record verb `unread_time_guard_fault` with its `delta.exception_class` key and the per-corpus-file ledger layout of 4.6.4, shared with Gnomon. A change to any of them is announced to Gnomon's owner before it merges and is listed in the go-live packet; Gnomon binds to the RUNNING engine's build stamp, so the change is live only when the engine goes live.
+OFF SWITCH. The check has its own setting, ON by default, that turns off only this check: the environment variable `FACTLATTICE_UNREAD_TIME_GUARD`. `off` turns the unread-time check off in the typed writers and in `lts_report_miss`; `on` or unset leaves it on; ANY OTHER VALUE LEAVES IT ON and the receipt's `warnings` names the bad value, so a typo never disables the check. It is env-only (no tool argument, no file), and every receipt of a write made with the check off carries `unread_time_guard: off`.
+
+`lts_add_property`, `lts_add_node` and `lts_repair_property` VALUES GATE. After the whole-file gate the stored value is compared
+with the value that was SENT, after the one normalisation the writers document (surrounding whitespace is trimmed, as the
+parser trims it). If the parser reads anything else, the write is refused and nothing is written, even if the input check
+above were bypassed: an add must store exactly the value sent; an append must add exactly one item equal to it and leave the
+earlier items untouched; a replace (and a repair) must store the value sent, optionally followed by the wrapped tail the
+replaced line already carried; an `lts_add_node` property must come back exactly. The refusal is `gate_failed` for the
+property writers and for `lts_add_node` (`create_gate_failed` on a create); `evidence.requested_value` and
+`evidence.parsed_value` are the two values. The add and append checks also still compare the
+stored value with the value the parser reads from the new line standing alone, which catches an insertion that makes the
+new value absorb neighbouring lines; they do not catch one that only separates an indented block from its head. Where the
+line lands is unchanged from earlier versions and has a known defect (a line can land inside a code fence).
 
 LINE ENDINGS DIFFER between the writers. These two edit one line (rename: only its key span) or remove one line with the wrapped tail the parser folds into it (remove), and keep every other byte (CRLF, a lone CR, U+2028,
 U+000C, U+0085, a missing final newline). `lts_add_property`, `lts_add_node` and `lts_repair_property` read with
@@ -1487,6 +1841,7 @@ Audience derivation routes Scenario changes preferentially to QA-engineer, test-
 
 - Scenarios are **not** flows. A Flow describes an ordered actor sequence; a Scenario describes one trigger-outcome pair. A complex multi-step interaction is a Flow; the acceptance criteria for that Flow are a set of Scenarios attached to it.
 - Scenarios are **not** test code. A Scenario is the normative acceptance criterion; the implementation test is downstream of it (and may live as an `impl` anchor on the Scenario node, analogous to Flow steps' `impl` field — Section 5.4).
+- A scenario in a non-normative section (§1.3.4) is not an acceptance criterion: the scenario is the normative acceptance criterion only where its `normative_effective` is `true`.
 - Scenarios are **not** examples in prose. Prose examples illustrate intent; Scenarios are parser-extracted, hash-tracked, and audience-routable structured nodes.
 
 ---
@@ -1507,8 +1862,8 @@ Computed edges are generated at graph build time by scanning artifacts outside t
   "edges": [
     {
       "edge_type": "TESTED_BY",
-      "source_node": "[ALG-LATENCY]",
-      "target": "tests/test_latency.py::TestLatency",
+      "source_node": "[ALG-FARFRR]",
+      "target": "tests/test_farfrr.py::TestFARFRR",
       "confidence": "high",
       "rule": "test_file_scan",
       "evidence": "File name matches node ID pattern"
@@ -1606,35 +1961,35 @@ Git tells you *what* changed. The DELTA tells you *what it means.*
 - estimated_highest_impact: breaking
 
 ## Node Changes
-### [CRED-TOKEN] — modified
+### [CRED-ADC] — modified
 - change-type: modified
 - suggested_impact: breaking
 - possible_audience: [mobile-dev, security-reviewer]
 - content-hash-before: sha256:...
 - content-hash-after: sha256:...
 - context_for_change:
-    prior_state: "Token issuing used the legacy signing transport"
+    prior_state: "ADC signing used legacy ceremony transport"
     reasoning: "New transport protocol required for multi-device support"
     rejected_alternative: "Wrapping legacy transport — adds latency, doesn't solve root cause"
     counter_argument: "Breaking change disrupts all mobile SDK consumers"
     counter_response: "Mobile SDK 3.x already abstracts the transport layer — update is internal"
     invalidating_assumption: "That mobile SDK 3.x abstracts the transport. If SDK 2.x consumers exist, this is more disruptive than estimated."
-    implication: "All flows that depend on CRED-TOKEN need transport-aware test coverage"
+    implication: "All ceremony flows that depend on CRED-ADC need transport-aware test coverage"
 - property-diffs:
   - REWORDED: definition (old → new)
   - ADDED: transport-protocol
 
 ## Edge Changes
-- ADDED: [FLOW-TOKEN-REQ] → DEPENDS_ON → [CRED-TOKEN] (semantic)
+- ADDED: [FLOW-ADC-REQ] → DEPENDS_ON → [CRED-ADC] (semantic)
 
 ## Impact by Audience
 | Role | Changes Visible | Estimated Impact | Suggested Action |
 |------|----------------|-----------------|-----------------|
-| mobile-dev | CRED-TOKEN properties | breaking | Update SDK signing flow |
+| mobile-dev | CRED-ADC properties | breaking | Update SDK signing flow |
 
 ## Estimated Blast Radius
-- [FLOW-TOKEN-REQ] ← DEPENDS_ON ← [CRED-TOKEN] (depth 1)
-- [SYS-IDX] ← DEPENDS_ON ← [FLOW-TOKEN-REQ] (depth 2)
+- [FLOW-ADC-REQ] ← DEPENDS_ON ← [CRED-ADC] (depth 1)
+- [SYS-IDX] ← DEPENDS_ON ← [FLOW-ADC-REQ] (depth 2)
 ```
 
 **Impact classification vocabulary:**
@@ -1673,7 +2028,7 @@ DELTAs are one output format the diff_agent produces. The diff_agent MAY also pr
   "date": "2026-03-29T14:30:00Z",
   "commit": "abc1234",
   "highest_impact": "breaking",
-  "nodes_modified": ["CRED-TOKEN"],
+  "nodes_modified": ["CRED-ADC"],
   "change_record_path": "deltas/DELTA-2026-03-29-abc1234.lts"
 }
 ```
@@ -1692,15 +2047,15 @@ The JSONL event is a summary pointer. The DELTA document is the canonical record
 | ID prefixes | `[TERM-*]` | `[PT-*]` (medical), `[GOV-*]` (Example), `[EX-*]` (ExampleCorp) |
 | Properties | `scope` | `diagnosis` (medical), `policy-ref` (Example) |
 | Document tags | `SYSTEM` | `PRODUCT` (ExampleCorp), `AMEND` (Example) |
-| Cross-domain refs | — | `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[ops.example:SPEC:EX-ROUTER]` |
+| Cross-domain refs | — | `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[bio.example:SPEC:EX-MATCHER]` |
 | Event stream types | `core.confidence_annotation` | `method.session` |
 
 ### 9.2 Cross-Domain References
 
 Syntax: `[{domain}:{DOCTYPE}:{NODE-ID}]`
 
-- Intra-domain: `[SYSTEM:EX-ROUTER]` (domain qualifier optional within the owning domain)
-- Cross-domain: `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[ops.example:SPEC:EX-ROUTER]` (domain qualifier required)
+- Intra-domain: `[SYSTEM:EX-MATCHER]` (domain qualifier optional within the owning domain)
+- Cross-domain: `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[bio.example:SPEC:EX-MATCHER]` (domain qualifier required)
 
 ---
 
@@ -1808,6 +2163,7 @@ A profile may REGISTER review extensions (a `.lts` document adding review proces
 - **The look-alike check.** The `.lts` loader projects only the node kinds it knows and skips any other without a word. A registration spelled under another kind (`REVEXT-X`, `REVEXTREG_X`) therefore parses, lints clean and registers nothing. `lts_profile_audit` returns a `review_extensions` section (registered extensions, the validator's findings, the `review-output`, and `unprojected_review_extension`: every profile node that carries `path` and `ext-id` under an unknown kind). The section is ABSENT when the profile registers no extension, names no `review-output` and has no look-alike.
 - **Validation** (`factlattice.profile.validate_review_extensions`, reported in `review_extensions.findings`): each `path` must resolve, by realpath, to a readable `.lts` file; each `ext-id` must exist in that file; ext-ids must be unique across the profile (a duplicate names both realpaths); and an extension inside a root of the corpus it serves must not be stamped `lts: "1.1"` unless the host profile declares every `REV*` key it uses, because registering it would make the host fail its own structure gate.
 - `review-output` is the per-corpus output root. Its precedence against a site configuration is fixed in code by `factlattice_engine.reviewer.resolve_output`, not here.
+- **A private document never takes a shared root.** `resolve_output` receives the whole registry and, before any rule chooses a root, finds EVERY registered corpus whose roots contain the document's realpath (component-aware, symlinks resolved), not only the named corpus. If a container other than the named corpus is private (the registry flag or the `-personality` id suffix), only an override keyed to that private corpus may route the document (against that corpus's own roots and path prefixes, all containers agreeing on one root); otherwise it refuses with the stable code `document-in-private-corpus`, which names no corpus. The named corpus's own override, its profile `review-output` and the default root are never used for such a document. A private corpus that is itself the named one is unchanged: its own override or profile output, never the default root (`private-corpus-needs-override`). The registry is a required, keyword-only argument of `resolve_output` (no default; `None` is a `TypeError`), and the container search reads every registry entry through one DECLARED-roots reader that is a superset of what the engine serves (`roots` AND the single `root`, `~` expanded), so the single-`root` shape is seen; the guard that the document is under the NAMED corpus uses a separate SERVED-roots reader (`roots` if present, otherwise `root`, exactly as the engine builds the corpus). Two limits are stated, not fixed: (1) containment is by path, so a hard link of a private file placed inside another corpus's root is a different path and is not recognised as private; (2) the check sees the corpora of the registry file the command resolves, so a corpus registered only at run time with an inline spec, held in a server's memory, is not a container for it.
 
 ---
 
@@ -1837,14 +2193,14 @@ Every FactLattice agent that discovers, reports, or resolves an issue MUST emit 
   "id": "GAP-DC-001",
   "date": "2026-03-28T17:30:00Z",
   "agent": "factlattice-gap-analyzer",
-  "cycle_id": "GAP-2026-03-28-widgets",
-  "spec": "34-router-pipeline.lts",
-  "implementation": "~/project/src/router/pipeline.py",
+  "cycle_id": "GAP-2026-03-28-logistics",
+  "spec": "34-matcher-pipeline.lts",
+  "implementation": "~/project/src/matcher/pipeline.py",
   "severity": "P1",
   "category": "SPEC_IMPL_MISMATCH",
   "summary": "VALID_TYPES missing 4 new message types",
   "resolution_status": "open",
-  "domain": "ops.example"
+  "domain": "bio.example"
 }
 ```
 
@@ -1893,7 +2249,7 @@ Every FactLattice agent that discovers, reports, or resolves an issue MUST emit 
   "warnings": 4,
   "info": 3,
   "density_score": 0.91,
-  "domain": "ops.example"
+  "domain": "bio.example"
 }
 ```
 
@@ -1969,7 +2325,7 @@ Documents may include loading trigger tables:
 ```
 | Question Type | Example | Load |
 |---------------|---------|------|
-| Flow details | "How does token issuing work?" | 32-flow-token-issuing.lts |
+| Flow details | "How does ADC signing work?" | 32-flow-adc-signing.lts |
 ```
 
 The `tier:` frontmatter key enables tiered loading strategies for context window management.
@@ -1988,6 +2344,9 @@ The `tier:` frontmatter key enables tiered loading strategies for context window
 **Status**: Draft | Operational | Deprecated
 **Intelligence**: Claude Opus 4.6
 ```
+
+A footer names the authoring model and records nothing about whose words a node holds. Whose words a node
+holds is recorded by a source statement (§1.3.4).
 
 ### 14.2 Intelligence Provenance
 
@@ -2072,7 +2431,7 @@ The core taxonomy evolves through observed convergence, not upfront design:
 | 3+ domains, compatible semantics | **Candidate for promotion.** Two paths: (a) promote to core if genuinely universal, or (b) create an intermediate namespace (e.g., `physical.WIRED_TO`) if useful to a cluster but not all domains. |
 | 3+ domains, incompatible semantics | Namespaces already deconflict. No action needed — `medical.STATUS` and `engineering.STATUS` coexist without collision. |
 
-**Intermediate namespaces:** When a concept is shared by a cluster of domains but not universally applicable, it gets its own namespace rather than core promotion. Example: `physical.WIRED_TO` is useful to Maker and Example but irrelevant to Medical and Legal. It lives at `physical.*`, not `core.*`.
+**Intermediate namespaces:** When a concept is shared by a cluster of domains but not universally applicable, it gets its own namespace rather than core promotion. Example: `physical.WIRED_TO` is useful to a hardware domain and Example but irrelevant to Medical and Legal. It lives at `physical.*`, not `core.*`.
 
 **Core promotion criteria:** An item is promoted to core when:
 - 3+ domains use it with compatible semantics
@@ -2185,7 +2544,8 @@ Adopting FactLattice means adopting its tooling as a set — linter, profile val
 ## 19. Errata Register — Divergences Between SPEC, Parser, and Corpus
 
 ⛔ **NEW 2026-08-16 (Era 0, the engine maintainers), implementing amendment A5 of
-the parser's engineering notes (rev 2, not published).** Per the parser's architectural review (not published): this project has three artifacts that each behave as an authority — the
+`PARSER-ENGINEERING-SPEC.md` rev 2.** Per §0 of the companion `PARSER-ARCHITECTURAL-
+REVIEW.md`: this project has three artifacts that each behave as an authority — the
 corpus, this SPEC, and the parser — and **no mechanism has bound any pair of them**.
 Divergences were managed in *parser comments* ("DELIBERATELY NOT ADDED", "documented
 scope choice") — the parser's comment block was the de-facto errata of this SPEC,
@@ -2226,10 +2586,10 @@ exactly as amending any other section here is.
 
 | # | Finding | Class | Evidence |
 |---|---|---|---|
-| V12 | A "pure reference list" under a non-minting key is common and was entirely uninstrumented | **(b), now DETECTED** | `factlattice_engine.binding.is_pure_reference_list` + `factlattice_engine.lint.unminted` (`origin=unminted`, `kind=unminted_reference_list`). Measured against the Acme deployment's `corpora/` tree, 2026-08-16: 130 findings across 14 distinct keys (`re-derive-via` 47, `documents` 28, `upholds` 14, `uses` 13, `grounds-claim` 9, ...). Three of those counts (`documents`=28, `upholds`=14, `uses`=13) match the parser engineering notes' (rev 2, not published) §6 predicted per-key breakdown exactly; `grounds-claim` (9 measured vs. 54 predicted) and the total (130 vs. ≈186 predicted) do not, and the gap is UNEXPLAINED by this build — reported, not reconciled. See the Era 0 build report. |
+| V12 | A "pure reference list" under a non-minting key is common and was entirely uninstrumented | **(b), now DETECTED** | `factlattice_engine.binding.is_pure_reference_list` + `factlattice_engine.lint.unminted` (`origin=unminted`, `kind=unminted_reference_list`). Measured against the Acme deployment's `corpora/` tree, 2026-08-16: 130 findings across 14 distinct keys (`re-derive-via` 47, `documents` 28, `upholds` 14, `uses` 13, `grounds-claim` 9, ...). Three of those counts (`documents`=28, `upholds`=14, `uses`=13) match `PARSER-ENGINEERING-SPEC.md` rev 2 §6's predicted per-key breakdown exactly; `grounds-claim` (9 measured vs. 54 predicted) and the total (130 vs. ≈186 predicted) do not, and the gap is UNEXPLAINED by this build — reported, not reconciled. See the Era 0 build report. |
 | V12b | V12's detection landed in `lts_lint` (corpus-wide) but NOT in `lts_preview` — the AUTHORING LOOP, the compose→preview→land gate an author actually runs before the corpus exists | **(b), NEW 2026-08-17, CLOSED the same day** | ⭐ **THE SILENT HALF OF V12.** MEASURED before the fix: `lts_preview` reported `LOST total: 0` on a draft carrying `blocks: [X]` and `exemplifies: [X]` — pure reference lists under non-minting keys that mint no edge — because preview's two loss channels (`line_accounting` = a structure-shaped line no branch consumed; `declared_nothing_minted` = a DEFINING-position id that inflated to no node) BOTH miss it: an edge-shaped property value is CONSUMED as a plain string (so line accounting is green) and its bracket is a REFERENCE, not a definition (so the declaration channel is silent). So an author composing in the loop lands the draft on a green preview while the edge they wrote does not exist; the corpus is exactly where the defect was then discovered — the failure `lts_preview` exists to prevent. This is the same shape as V6/V5c one surface over: the CORPUS-WIDE linter saw the loss and the AUTHORING instrument did not, so the loop reports success over a vanished edge (`the epistemics rule`: an instrument that can only report success is not an instrument). **Closed 2026-08-17** by a THIRD preview loss channel, `edge_shaped_property_minted_nothing`, computed from the ONE shared predicate `find_unminted_reference_lists` (never a second copy — the drift V5b/V12 keep re-finding), scoped to the draft's own nodes and resolved against THIS parse's profile, so a profile-registered key that now MINTS (e.g. `documents:` under the acme profile) is correctly NOT reported. Control: `tests/test_preview.py::test_spec41_total_loss_is_fifteen_across_three_named_channels` (the SPEC41 positive control's `ACME-IH-HOMES` carries `pinned-to:` + `exemplifies:`, 13→15) plus a bidirectional negative control (`test_a_minting_key_reference_is_NOT_reported_lost` — `see-also` mints and must never appear). ⛔ **NOT in scope, the maintainer's call (`[DEC-PROFILES-MAY-REGISTER-THEIR-OWN-EDGE-KEYS]`):** WHICH domain verbs (`blocks`, `exemplifies`, `requires`, `re-derive-via` 47, `documents` 28, `upholds` 14, `uses` 13, …) should be profile-registered to MINT rather than merely reported. The engine's obligation — make the silent loss LOUD in the loop — is what closed here; the vocabulary decision is surfaced, not taken. |
 | V12c | An edge-shaped property under an UNDECLARED key was reported as one undifferentiated loss — a CASE TYPO of a declared verb (`Depends-On` for `depends-on`) was indistinguishable from a GENUINELY-unknown verb (`frobnicate`), and neither was returned as an actionable de-duplicated list | **(b), NEW 2026-08-17 (the maintainer's two rulings), CLOSED the same day** | **RULING 1 (which verbs mint):** "core verbs as defined in the spec, UNION any corpus-defined extensions." VERIFIED against the authority: `factlattice.parser.REL_PROPERTY_EDGES` equals the SPEC §1.3 relationship-bearing table verb-for-verb (17 keys, same edge type / layer / direction) — no engine change owed for minting. Pinned by `tests/test_repair_and_binding.py::test_engine_core_minting_allowlist_matches_the_spec_1_3_table`, which re-parses the SPEC table and diffs it, so a future drift in EITHER direction fails. **RULING 2 (undeclared handling), with the 2026-08-17 amendment:** an edge-shaped non-minting key is now split by the ONE shared classifier `factlattice_engine.binding.classify_edge_key` (casefold + separator-unify, compared to the EFFECTIVE minting vocabulary = core UNION profile `property_edges`) into **(a) case_variant** — a case/separator variant of a declared verb: a WARN of the exact shape `Case-mismatch {verb1, verb2, …}` (de-duplicated), NEVER silently normalised-and-minted, so the author corrects the source; **(b) undeclared** — matches no declared verb even by case: the positive alert, returned as the de-duplicated `undeclared_edge_verbs` list (the register-vs-typo worklist); **(c) declared** — mints, in neither channel. The distinguishing logic lives in that ONE predicate so `lts_lint` (V12) and `lts_preview` (V12b) cannot disagree; two non-overlapping input sources feed it (PARSED properties for lowercase keys + the UNCONSUMED raw node-body line for the uppercase variant the `^[a-z][a-z0-9_-]*$` key grammar rejects). Output fields, identical on both surfaces: `undeclared_edge_verbs`, `case_mismatch_edge_verbs`, `case_mismatch_canonical` (each miscased key → the verb to fix it TO); lint adds finding kind `edge_verb_case_mismatch` (warning) and preview adds `case_mismatch_warn`. Controls: `test_repair_and_binding.py::test_classify_edge_key_splits_declared_case_variant_and_undeclared` / `::test_edge_verb_channels_dedup_and_route` / `::test_lint_surface_carries_both_channels_and_the_case_warn` and `test_preview.py::test_case_mismatch_of_a_declared_verb_goes_to_the_case_channel_not_undeclared` / `::test_genuinely_undeclared_verb_lists_once_even_used_n_times`. **Still the maintainer/architect's call:** which `undeclared_edge_verbs` become registered profile extensions vs. are fixed as typos — the list is the input to that decision, not the decision. |
-| V12d | A BARE reference `[X]` that fails to resolve gave the author no hint that a NAMESPACE-QUALIFIED definition `[NS:X]` exists — it read as an ordinary dangle | **(b), NEW 2026-08-17 (the maintainer RULING C: "C is the right approach … if this *ever* happens (and it has) C is the right solution"), CHANNEL LANDED + ENGINE GAP SURFACED** | The namespace analog of V12c's Case-mismatch: `factlattice_engine.lint.dangle.classify_unqualified_references` splits a bare, unresolved reference by how many namespace-qualified definitions share its bare id — **exactly one → `unqualified_references` {bare → NS:bare}** ("did you mean [NS:bare]?"), **two or more → `ambiguous_references` {bare → [candidates]}** (listed, never guessed), **zero → ordinary forward-dangle** (unchanged). STRICT identity is kept — bare and `NS:bare` are NEVER auto-equated (that "breaks the day two namespaces share a bare id, e.g. `[SPEC:X]` and `[DEC:X]`") — the engine only WARNs so the AUTHOR qualifies the source. Wired identically on `lts_lint` (report `unqualified_references`; findings `unqualified_reference` / `ambiguous_unqualified_reference` at warning; the matched bare targets are routed OUT of the plain `dangle.forward` / `structure.dangling` stream) and `lts_preview` (`unqualified_references` block + `warn`/`ambiguous_warn`), off the ONE resolution the dangle stream already uses — no second copy. ⛔ **MEASURED INERT ON THE CURRENT ID MODEL, and this is the load-bearing finding, surfaced not silently shipped:** `factlattice.parser._heading_id` / `_resolve_ref` keep only the LAST `:`-segment of an id, so `[SPEC:ACME-VISION]` is STORED as bare `ACME-VISION`, the per-node doctype is discarded, and a bare `[ACME-VISION]` **already resolves** to it — there are ZERO namespace-qualified stored ids, so the channel is empty on every current corpus (**measured 2026-08-17: 0 across `~/.config/factlattice/acme/corpora`, against 80 forward-dangles / 12 unresolved-target / 0 id-collisions**), and the ACME-FOUNDATION→ACME-VISION dangle that motivated this was a PARTITION-scope artifact of the live merged query engine, not a namespace one. The classifier's logic is proven by `tests/test_unqualified_reference.py` over constructed namespaced-id inputs, so it is correct the day the **id model preserves the namespace as identity (SPEC §1.1/§9.2) — a strict-identity change that is the maintainer's/architect's call and BREAKING to every existing bare↔qualified resolution.** Until then the wired channel is present, honest, and empty, and this row is where the decision is recorded. |
+| V12d | A BARE reference `[X]` that fails to resolve gave the author no hint that a NAMESPACE-QUALIFIED definition `[NS:X]` exists — it read as an ordinary dangle | **(b), NEW 2026-08-17 (the maintainer RULING C: "C is the right approach … if this *ever* happens (and it has) C is the right solution"), CHANNEL LANDED + ENGINE GAP SURFACED** | The namespace analog of V12c's Case-mismatch: `factlattice_engine.lint.dangle.classify_unqualified_references` splits a bare, unresolved reference by how many namespace-qualified definitions share its bare id — **exactly one → `unqualified_references` {bare → NS:bare}** ("did you mean [NS:bare]?"), **two or more → `ambiguous_references` {bare → [candidates]}** (listed, never guessed), **zero → ordinary forward-dangle** (unchanged). STRICT identity is kept — bare and `NS:bare` are NEVER auto-equated (that "breaks the day two namespaces share a bare id, e.g. `[SPEC:X]` and `[DEC:X]`") — the engine only WARNs so the AUTHOR qualifies the source. Wired identically on `lts_lint` (report `unqualified_references`; findings `unqualified_reference` / `ambiguous_unqualified_reference` at warning; the matched bare targets are routed OUT of the plain `dangle.forward` / `structure.dangling` stream) and `lts_preview` (`unqualified_references` block + `warn`/`ambiguous_warn`), off the ONE resolution the dangle stream already uses — no second copy. ⛔ **MEASURED INERT ON THE CURRENT ID MODEL, and this is the load-bearing finding, surfaced not silently shipped:** `factlattice.parser._heading_id` / `_resolve_ref` keep only the LAST `:`-segment of an id, so `[SPEC:ACME-VISION]` is STORED as bare `ACME-VISION`, the per-node doctype is discarded, and a bare `[ACME-VISION]` **already resolves** to it — there are ZERO namespace-qualified stored ids, so the channel is empty on every current corpus (**measured 2026-08-17: 0 across `~/.claude/factlattice_corpora/acme/corpora`, against 80 forward-dangles / 12 unresolved-target / 0 id-collisions**), and the ACME-FOUNDATION→ACME-VISION dangle that motivated this was a PARTITION-scope artifact of the live merged query engine, not a namespace one. The classifier's logic is proven by `tests/test_unqualified_reference.py` over constructed namespaced-id inputs, so it is correct the day the **id model preserves the namespace as identity (SPEC §1.1/§9.2) — a strict-identity change that is the maintainer's/architect's call and BREAKING to every existing bare↔qualified resolution.** Until then the wired channel is present, honest, and empty, and this row is where the decision is recorded. |
 | V5c | A corpus's OWN REGISTERED PROFILE (`corpus-config.json`'s `profile:` key) reached the SERVED graph through **no path at all** — it was read only by the AUDIT surfaces | **(a), NEW 2026-08-16 (Era 1), CLOSED the same day** | ⭐ **NOT PREVIOUSLY SEPARATED FROM V5, AND IT IS THE ONE THAT MADE THE OTHER TWO UNFALSIFIABLE.** MEASURED before the fix: `spec.get("profile")` was read by `analytics.profile_audit` (:198) and `analytics.profile_registration` (:105) and by **no graph-building path** — `config.build_store` / `build_partition` / `build_merged_partition` used ONLY `engine_profile_config()`, i.e. the SHIPPED EXAMPLE `domain-profiles/` directory (namespaces `art/cln/dec/ext/mkr/swe`). The Acme deployment's own profile, which carries **all 17 of its domain verbs and its ONE `property_edges` key**, was loaded by nothing that builds a graph. ⛔ **WHY THIS IS THE HIGH-STAKES ROW:** fixing V5's threading WITHOUT this would have produced a green wire with nothing flowing through it — the entry-point-equivalence control passes its profile explicitly, so it would have gone GREEN while the real deployment gained **zero** edges. That is precisely a signal AGREEING WITH THE WRONG ANSWER (`the epistemics rule`), and it is the same shape as V6 ("the audit reports declared as in-effect") one level up: here the AUDIT read the registered profile and the GRAPH BUILDER did not, so an operator could be told which profile governed a corpus whose served graph had never seen it. Closed by `factlattice_engine.config.registered_profile` / `parser_config_for`. MEASURED AFTER: +29 source lines minting 44 property-inferred `DOCUMENTS` edges, 1,663 edges losing a now-incorrect `unregistered_verb` flag, **0 edges lost and 0 nodes changed**. |
 | V14 | `lts_lint` counted sentence-shaped titles and DECLINED to flag them, asserting that citation-travel *"is the entire harm model"* | **(c) — a normative claim in an instrument, and it was INCOMPLETE**; **AMENDED 2026-08-16 (the maintainer)** | ⛔ **THE CLAIM WAS FALSE AS STATED, AND 454 TITLES WERE BEING WAVED THROUGH ON THE INCOMPLETE HALF.** the maintainer's amendment: a key or id whose name reads as SELF-EVIDENT **suppresses reading the body that carries the real guidance** — his example, a name shaped like `ALWAYS-QUERY-BROADLY`, is easy to skip when busy, because reading the name FEELS like having read the instruction. Nothing has to travel anywhere for that harm to land. So there are **TWO** harms: **(1) CITATION LEAKAGE** — the name ARGUES (signal: a copula), the id gets cited unread; **(2) READ SUPPRESSION** — the name INSTRUCTS (signal: an IMPERATIVE in initial position), and the body goes unopened. ⭐ **THE TWO RULES CARRY OPPOSITE GENRE LICENCES, WHICH IS THE PROOF THEY ARE INDEPENDENT RATHER THAN ONE RULE SPELLED TWICE**: `PRINCIPLE`/`STRATEGY`/`DEC` are LICENSED for (1) — a principle that asserts nothing is not a principle — and are the HIGHEST RISK for (2). MEASURED over 1,900 live nodes: 24 read-suppression findings (3 ids, 22 titles), 7 claim-shaped ids, and **ZERO overlap**; 7 of the 24 sit in families rule (1) licenses. Implemented as `read_suppressing_name` (`lint/claim_id.py`), warning severity, titles now IN SCOPE — a title travels into no edge but into every find-result row and digest listing, which is exactly where skimming happens. ⚠ Stated limit: this is a LEXICAL PROXY for a claim about a reader. The direct instrument would be the query log (nodes cited but never fetched); it is not built, and the gap is named rather than glossed. |
 | V13 | A "labeled citation" shape (`- stage-evidence: committed -> [COMMIT-09b80e9]`) is invisible to BOTH the malformed-ref detector (V1, scoped to minting-key values by A4's own closed list) and the unminted-reference-list detector (V12, scoped to PURE reference lists) | **(b), NEWLY NAMED, UNDETECTED** | Measured: 176 malformed-shaped bracket tokens exist across ALL property values in the Acme `corpora/` tree (close to the review's original 164/V1 population); 173 of those 176 sit under NON-minting keys (`re-derive-via` 102, `stage-evidence` 29, `frame`/`chosen`/`recommendation`/`requirement`/... the remainder), and most of THOSE (e.g. every `stage-evidence` line) carry a leading prose label before the bracket, so `is_pure_reference_list` correctly refuses them too (a leading gloss is not a trailing one). Neither Era 0 instrument names this shape; it is real, authored, and currently silent. Left for Era 1: either A4's ref-expecting-position list widens, or this becomes a third, explicitly-scoped detector. |
@@ -2238,8 +2598,8 @@ exactly as amending any other section here is.
 
 ## 20. Amendment A4 (partial) — Malformed-Ref Detection Landed, Era 0
 
-⛔ **NEW 2026-08-16.** Implements the detection half of amendment A4 (§2) of the parser's
-engineering notes (rev 2, not published), at Era 0's no-ratification, no-breakage scope. A bracket
+⛔ **NEW 2026-08-16.** Implements the detection half of `PARSER-ENGINEERING-SPEC.md`
+rev 2's amendment A4 (§2), at Era 0's no-ratification, no-breakage scope. A bracket
 token at a REF-EXPECTING POSITION — a minting-key property value (built-in or
 profile-registered), a `## Relationships` source/target operand, a `## Causal Graph`
 operand, or a heading id-candidate — is now partitioned into **REF | MALFORMED-REF |
@@ -2349,6 +2709,18 @@ ids MUST resolve, and a reference into it MUST NOT report as dangling merely bec
 is unread. Otherwise the freshness invariant (§19/`INV-FRESH`) and the dangle-lint would
 both answer confidently and wrongly depending on load order — which is the same
 entry-point-dependence review V5b measured, one layer up.
+
+## 22. Deployment-declared external id families (the contradiction checker)
+
+The contradiction checker (`factlattice/authoring/contradiction.py`, check C) must not report a citation of an id that lives outside the checked corpus as a dangling reference. Which id families live outside is a fact about one deployment, so the engine ships none: `DEFAULT_EXTERNAL_PREFIXES` is `()`. This is the maintainers' ruling of 2026-10-28.
+
+**The surface.** A registry entry may carry `external_id_prefixes`, a JSON list of non-empty strings; a reference starting with any of them is external. The check takes the list as a REQUIRED keyword argument, `check(..., external_prefixes=...)` and `check_c_dangling(nodes, corpus, external_prefixes)`; omitting it is a `TypeError`, and `()` declares "none". `external_prefixes_from_registry(corpora, corpus_ids=None)` returns the union over the named entries (all entries when none are named); `external_prefixes_from_live_registry(corpus_ids=None)` reads the registry the engine itself resolves and never falls back to an empty list. A bare string, an empty string or a non-string element is a `ValueError` for both functions, never reinterpreted: "ACME-" iterated as characters would match nearly every id. `external_prefixes_from_registry` also checks every key of each entry it reads against ONE allowlist, `REGISTRY_ENTRY_KEYS` (`roots`, `root`, `domain_suffix`, `profile`, `private`, `external_id_prefixes`: the keys the engine's registry readers use). A key ending `_note` is a free-text comment that no code reads and is always allowed. Any other key is a `ValueError` that names the nearest valid key when there is one, because a misspelt `external_id_prefixes` would otherwise leave the list empty without a word. The allowlist is the registry's own schema (section 4.6, registry entry keys); the engine also enforces it where it builds a corpus.
+
+**Why the registry and not the profile.** The registry is already the only deployment-specific surface of the engine (`factlattice_engine/config.py`), it is read by one resolver with no silent fallback, and an entry names exactly the corpora a check runs against. A profile would need a new key in both loaders, the typed accessors and the validator (SDLC 7.6, `[PROFILE-KEY-PROJECTION]`) for a value that is not vocabulary of the corpus's own nodes, and a check spanning several corpora would have to choose among their profiles. The cost accepted: a deployment that checks several corpora repeats the list on each entry, and the union is taken at the call. There is no precedence between two sources because there is one source.
+
+**What stays in code.** The rule that a reference of four characters or fewer is external is generic and stays: the id grammar starts at three characters, and such tokens in prose are scraped from a regex character class or a worked example, not cited. It carries no deployment vocabulary.
+
+**Visibility.** The result's `denominators.external_prefixes_supplied` states how many prefixes were in force, and `bound` shouts when it was zero, so a check run with an empty list cannot read as a clean one.
 
 ---
 

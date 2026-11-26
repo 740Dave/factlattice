@@ -1,4 +1,4 @@
-"""[ISSUE-WRITE-ATOMICITY] typed writes are atomic and serialised per file.
+"""[DEC-LTS-WRITES-NOT-ATOMIC-NO-LOCK] typed writes are atomic and serialised per file.
 
 RED-first, measured on 25541f6 (see the commit message for the rates):
   (a) two PROCESSES add DIFFERENT properties to the SAME node from the same base, released at the
@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from factlattice.authoring import edit
-from factlattice.authoring.edit import EditRefused, set_property, add_node, repair_property
+from factlattice.authoring.edit import EditRefused, add_node, repair_property, set_property
 from factlattice.parser import parse_text
 
 ROUNDS = int(os.environ.get("FL_ATOMIC_ROUNDS", "30"))

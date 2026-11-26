@@ -43,9 +43,10 @@ them at any other site would reintroduce exactly the divergence this module clos
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Dict, FrozenSet, Mapping, Optional, Tuple
+from typing import Any
 
 from .parser import DEFAULT_DOMAIN_VERBS, DEFAULT_REGISTERED_NS
 
@@ -81,19 +82,19 @@ class ParserConfig:
     without editing the fixture (SPEC §1.5, amendment A1).
     """
 
-    registered_ns: FrozenSet[str] = DEFAULT_REGISTERED_NS
-    profile_layers: Mapping[str, str] = _EMPTY_MAP
-    domain_verbs: FrozenSet[str] = DEFAULT_DOMAIN_VERBS
-    property_edges: Mapping[str, Tuple[str, str, bool]] = _EMPTY_MAP
-    declared_property_keys: FrozenSet[str] = frozenset()
+    registered_ns: frozenset[str] = DEFAULT_REGISTERED_NS
+    profile_layers: Mapping[str, str] = field(default_factory=lambda: _EMPTY_MAP)
+    domain_verbs: frozenset[str] = DEFAULT_DOMAIN_VERBS
+    property_edges: Mapping[str, tuple[str, str, bool]] = field(default_factory=lambda: _EMPTY_MAP)
+    declared_property_keys: frozenset[str] = frozenset()
     strict_default: bool = False
 
     # --- construction ------------------------------------------------------
     @classmethod
-    def from_profile(cls, profile: Optional[object] = None,
-                     edge_config: Optional[object] = None,
-                     registered_ns: Optional[object] = None,
-                     strict_default: bool = False) -> "ParserConfig":
+    def from_profile(cls, profile: object | None = None,
+                     edge_config: object | None = None,
+                     registered_ns: object | None = None,
+                     strict_default: bool = False) -> ParserConfig:
         """THE ONE SEAM where the two profile systems become one parser vocabulary.
 
         `profile` is a `factlattice.profile.Profile` (or None).
@@ -113,9 +114,9 @@ class ParserConfig:
         from .profile import ProfileCollisionError
 
         ns: set = set(DEFAULT_REGISTERED_NS)
-        layers: Dict[str, str] = {}
+        layers: dict[str, str] = {}
         verbs: set = set()
-        prop_edges: Dict[str, Tuple[str, str, bool]] = {}
+        prop_edges: dict[str, tuple[str, str, bool]] = {}
         declared_keys: set = set()
 
         # -- the ProfileEdgeConfig side (D5 layer table + D6 namespaces) -----
@@ -143,7 +144,7 @@ class ParserConfig:
                         f"({getattr(profile, 'path', None)!r}). Refusing to build a "
                         f"parser config whose meaning depends on which profile reader "
                         f"ran first — every layer-scoped traversal would silently "
-                        f"return a subset. (SPEC §1.3.2 constraint 2.)")
+                        f"return a subset. (SPEC §1.3.2 constraint 2.)", names=(etype,))
                 layers[etype] = layer
 
         if registered_ns is not None:
@@ -162,7 +163,7 @@ class ParserConfig:
     @classmethod
     def from_kwargs(cls, registered_ns=None, profile_layers=None, domain_verbs=None,
                     property_edges=None, declared_property_keys=None,
-                    strict_default: bool = False) -> "ParserConfig":
+                    strict_default: bool = False) -> ParserConfig:
         """Build a config from the legacy loose keyword arguments.
 
         Kept so every pre-C3 caller (including third-party ones — this is a PUBLIC
@@ -181,7 +182,7 @@ class ParserConfig:
             strict_default=strict_default,
         )
 
-    def merge(self, other: "ParserConfig") -> "ParserConfig":
+    def merge(self, other: ParserConfig) -> ParserConfig:
         """Union two configs. Layer disagreement refuses, per §1.3.2 constraint 2."""
         from .profile import ProfileCollisionError
 
@@ -191,7 +192,7 @@ class ParserConfig:
             if prior is not None and prior != layer:
                 raise ProfileCollisionError(
                     f"edge type '{etype}' declared at both layer '{prior}' and "
-                    f"'{layer}' by two merged parser configs")
+                    f"'{layer}' by two merged parser configs", names=(etype,))
             layers[etype] = layer
         return ParserConfig(
             registered_ns=self.registered_ns | other.registered_ns,
@@ -205,7 +206,7 @@ class ParserConfig:
         )
 
     # --- reporting ---------------------------------------------------------
-    def describe(self) -> Dict[str, Any]:
+    def describe(self) -> dict[str, Any]:
         """A JSON-safe summary — what an audit surface should report as THREADED.
 
         Deliberately named `describe`, not `to_dict`: this is the value an instrument
@@ -228,7 +229,7 @@ class ParserConfig:
 CORE_ONLY = ParserConfig()
 
 
-def _profile_edge_layers(profile: object) -> Dict[str, str]:
+def _profile_edge_layers(profile: object) -> dict[str, str]:
     """Project a `Profile`'s own edge-type declarations onto the D5 layer table.
 
     Reads the profile's ALREADY-PARSED `raw` dict (`edge_types[].layer`) rather than
@@ -246,7 +247,7 @@ def _profile_edge_layers(profile: object) -> Dict[str, str]:
     recs = raw.get("edge_types")
     if not isinstance(recs, list):
         return {}
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for rec in recs:
         if not isinstance(rec, dict):
             continue

@@ -224,6 +224,7 @@ def test_no_usage_measurement_reaches_the_warrants_input_path():
     cannot consult a usage measurement, because it cannot reach one. A comment saying
     'usage-blind' decays; an import that would have to be added does not."""
     import inspect
+
     from factlattice import enumeration_gap
     src = inspect.getsource(conformance)
     assert "enumeration_gap" not in src, (

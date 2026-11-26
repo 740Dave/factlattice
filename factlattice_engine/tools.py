@@ -37,37 +37,49 @@ MCP/stdio. `server.py` wraps it.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import logging
-import io
 import os
 import re
 import threading
-from typing import Any, Dict, List, Optional, Tuple
+import time
+from typing import Any
 
-from . import querylog
-from . import query_surface as _qs
 from factlattice import registry as _registry
-from factlattice.registry import RegistryError
+from factlattice.core_keys import ENGINE_MINTED_KEYS, minted_keys_in
 from factlattice.hashing import CORPUS_FILE_CODES, CorpusFileError, safe_read_bytes, safe_read_text
+from factlattice.profile import ProfileCollisionError
+from factlattice.registry import RegistryError
 
+from . import query_surface as _qs
+from . import querylog
+from .budget import budget_slice, budget_slice_declared, declare, resolve_budget
 from .caution import caution_for
-from .budget import budget_slice, declare, resolve_budget
 from .extent import declare_extent, unknown_corpus
-from .reverse_index import ReverseIndex, build_domain_index, snapshot_key
+from .kernel import KernelSealed
 from .lifecycle import (
-    LIFECYCLE_KEYS, is_bare_lifecycle_token, lifecycle_matches, lifecycle_token,
-    status_matches,
+    LIFECYCLE_KEYS,
+    lifecycle_matches,
 )
-from .reason_codes import NAMED_CORPUS_REASON, WITHHELD_HOP_REASON
-from .privacy import PRIVATE_NOTE, PRIVATE_REASON, is_private_partition, private_reason
 from .ordering import OrderError, order_and_window, resolve_order_by, result_metadata
-from .store import FreshnessResult, LtsStore, Partition
+from .privacy import PRIVATE_NOTE, PRIVATE_REASON, is_private_partition, private_reason
+from .reason_codes import NAMED_CORPUS_REASON, WITHHELD_HOP_REASON
+from .reverse_index import ReverseIndex, snapshot_key, snapshot_sources, sources_current
 from .router import AclCheck, AllowAllAcl, Router, StalePartitionError
+from .store import CorpusPresent, FreshnessResult, LtsStore, Partition, StoreSealed
 from .tiers import (
-    TIER_DIGEST, TIER_FULL, TIER_PAGE, TierError, assert_digestable,
-    assert_full_fits, digest_row, digest_rows, incident_degree_fn, resolve_tier,
+    TIER_DIGEST,
+    TIER_FULL,
+    TierError,
+    assert_digestable,
+    assert_full_fits,
+    digest_row,
+    digest_rows,
+    incident_degree_fn,
+    resolve_tier,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,7 +131,7 @@ _TRAILING_PAREN_RE = re.compile(r"\s*\([^)]*\)\s*$")
 _ISO_LEADING_RE = re.compile(r"^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?")
 
 
-def normalize_date(value: object) -> Optional[str]:
+def normalize_date(value: object) -> str | None:
     """Extract a comparable `YYYY-MM-DD` from a corpus date-property value.
 
     Handles (whitespace-tolerant): full `2026-07-20`; `2026-07-20 (c14)` (trailing
@@ -145,7 +157,7 @@ def normalize_date(value: object) -> Optional[str]:
     return f"{year}-01-01"
 
 
-def _resolve_limit(limit: Any) -> Tuple[Optional[int], Optional[dict]]:
+def _resolve_limit(limit: Any) -> tuple[int | None, dict | None]:
     """`limit` -> `(resolved_int_or_None, error_payload_or_None)` ([PARAM-LIMIT]).
 
     `None`/absent -> `(None, None)`: unbounded, today's behavior, byte-identical
@@ -191,15 +203,33 @@ def _not_found(corpus: str, known=(), private=()) -> dict:
     return unknown_corpus(corpus, known, private=private)
 
 
+from datetime import UTC
+
+from factlattice import rootview as _rootview
+
+from . import membership as _membership
+from . import rootstate as _rs
+
 PRIVATE_FAILED_REASON = "private-corpus-failed"      # the anonymous `corpora_skipped` entry for a failed PRIVATE corpus (count only)
 
 
-def _corpus_file_refusal(corpus: Optional[str], failed: dict) -> dict:
-    """The reply for a corpus whose build failed LOUD on a member `.lts` ([ISSUE-NONREGULAR-MEMBER]).
+def _in_look(look, corpus: str):
+    """`(partition, pending record, failed record, no-roots record)` of one corpus, found in the caller's ONE look (`snapshot_all`'s tuple)."""
+    return (next((p for p in look[0] if p.corpus_id == corpus), None), look[1].get(corpus), look[2].get(corpus), look[3].get(corpus))
+
+
+def _corpus_file_refusal(corpus: str | None, failed: dict) -> dict:
+    """The reply for a corpus whose build failed LOUD on a member `.lts` ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]).
 
     `reason` is the FIXED CODE (`corpus-file-not-regular|broken-link|unreadable`); the root-relative path rides in `path`.
     The corpus is not served (never a partial view), the registry is fine (this is NOT `registry-not-found`), and the
     other corpora are unaffected. `error` begins with the exception class and carries no absolute path."""
+    if failed["code"] in _registry.KEY_CODES:          # a registry ENTRY key the schema does not know (not a member file)
+        return _registry_key_refusal(corpus, failed)
+    if failed["code"] == _rs.CODE_CORPUS_ROOT_UNRESPONSIVE:     # a root that did not answer when the corpus was read: no member file, no path
+        return _build_root_refusal(corpus, failed)
+    if failed["code"] == _rs.CODE_CORPUS_LOAD_ERROR:            # [MECH-BR-BOOT] x-load-error: an unexpected error loading this corpus: no file, no path
+        return _load_error_refusal(corpus, failed)
     code, rel = failed["code"], failed["path"]
     if corpus is None:       # a path-mode tool (lint, preview of a directory, the typed writers, property_loss): no corpus id
         return {"success": False, "reason": code, "error_class": "CorpusFileError", "path": rel,
@@ -211,7 +241,127 @@ def _corpus_file_refusal(corpus: Optional[str], failed: dict) -> dict:
                      "restart or re-register the corpus."}
 
 
-def _writer_target_error(path) -> Optional["CorpusFileError"]:
+def _load_error_refusal(corpus: str | None, failed: dict) -> dict:
+    """[MECH-BR-BOOT] x-load-error: the reply for a corpus whose load raised something unexpected. `reason` is the FIXED CODE `corpus-load-error`; the
+    only detail is the error's CLASS NAME (`failed["error"]`), never its message and never a path (the message of an unexpected error may carry one).
+    With no corpus id (a path-mode tool) it names none, since the corpus may be private. It is not a registry problem and no other corpus is affected."""
+    name = str(failed.get("error") or "error")
+    if failed.get("reason") in ("profile-collision", "profile-invalid"):      # spec 39: the corpus's registered profile was refused (a NAME or a MALFORMED profile; never a path)
+        base = {"success": False, "reason": _rs.CODE_CORPUS_LOAD_ERROR, "error_class": "CorpusLoadError", "profile_failure": failed["reason"]}
+        if failed["reason"] == "profile-collision":
+            names = list(failed.get("names") or ())
+            base["names"] = names
+            what = f"its registered profile declares {', '.join(str(n) for n in names) or 'a name'}, which the engine reserves or owns (profile collision)"
+        else:
+            base["detail"] = str(failed.get("detail") or "profile-rejected")
+            what = f"its registered profile is invalid ({base['detail']})"
+        fix = ("Remove the name from the profile (or namespace it)" if failed["reason"] == "profile-collision" else "Correct the profile")
+        if corpus is None:
+            return {**base, "error": f"CorpusLoadError: a corpus could not be loaded: {what}. It is not served; every other corpus is unaffected."}
+        return {**base, "corpus": corpus, "error": f"CorpusLoadError: corpus {corpus!r} could not be loaded: {what}. It is not served; every other corpus is "
+                f"unaffected and the registry is fine. {fix}, then restart or lts_register_corpus the corpus id."}
+    if corpus is None:
+        return {"success": False, "reason": _rs.CODE_CORPUS_LOAD_ERROR, "error_class": "CorpusLoadError",
+                "error": f"CorpusLoadError: an unexpected error ({name}) while loading a corpus; it is not served. Every other corpus is unaffected."}
+    return {"success": False, "reason": _rs.CODE_CORPUS_LOAD_ERROR, "error_class": "CorpusLoadError", "corpus": corpus,
+            "error": f"CorpusLoadError: corpus {corpus!r} could not be loaded: an unexpected error ({name}). It is not served; every other corpus is "
+                     "unaffected and the registry is fine. Restart the process or lts_register_corpus the corpus id after fixing the cause."}
+
+
+def _root_refusal(corpus: str, mark: dict) -> dict:
+    """[MECH-BR-CALLS] x-gate: the reply for a call naming a corpus with a root that is marked ([ROOT-STATE-ONE-REGISTRY]).
+    `reason` is the FIXED CODE. It carries the state (`root_health`: status, how many roots, since when) and NO path and no
+    root name: the corpus may be private, and the caller who named it is owed what clears the refusal, not where the disk is.
+    The corpus is not served, however the old data would have read; every other corpus is unaffected."""
+    n = mark["roots"]
+    return {"success": False, "reason": _rs.CODE_ROOT_UNRESPONSIVE, "error_class": "RootUnresponsive", "corpus": corpus,
+            "root_health": dict(mark),
+            "error": f"RootUnresponsive: {n} registered root{'s' if n != 1 else ''} of corpus {corpus!r} did not answer within "
+                     f"the root deadline (since {mark['since']}), so the corpus is NOT served: its last-read content is not "
+                     "shown as current. Every other corpus is unaffected. It clears by itself, with no restart, when the "
+                     "root answers (the next call finds it served); if the drive is gone, restore it or remove it from the "
+                     "registry. Nothing was read from the disk for this refusal."}
+
+
+def _verdict_pending_refusal(corpus: str, mark: dict) -> dict:
+    """The reply for a call naming a corpus held pending for the registry's verdict, still held when its one-deadline wait ended. `reason` is the FIXED CODE
+    `corpus-verdict-pending`; it states the true cause and never says a root did not answer. Retryable; nothing is read or changed. No path."""
+    return {"success": False, "reason": _rs.CODE_CORPUS_VERDICT_PENDING, "error_class": "CorpusVerdictPending", "corpus": corpus, "root_health": dict(mark),
+            "error": f"CorpusVerdictPending: the registry entry of corpus {corpus!r} is one the release refuses, so the corpus is NOT served; " + _rootview.VERDICT_PENDING_WHEN + ". Retry then. "
+                     "No root failed to answer. Every other corpus is unaffected until then. Nothing was read from the disk for this refusal."}
+
+
+def _build_root_refusal(corpus: str | None, failed: dict) -> dict:
+    """[MECH-BR-REPORT] x-codes, [MECH-BR-BOOT] x-library (x-build-traps 6): the reply for a corpus whose build failed with
+    `corpus-root-unresponsive`, a root that did not answer inside the deadline when this process read it. It has NO member file
+    and no path, so it takes none of `_corpus_file_refusal`'s path wording; with no corpus id (a path-mode tool, the reviewer's
+    document-side stop) it names no corpus either, since the corpus may be private. Nothing emits the code yet: the build_store
+    slice does, and this branch is here so the first emission cannot reach a path lookup that does not exist."""
+    code = _rs.CODE_CORPUS_ROOT_UNRESPONSIVE
+    if failed.get("reason") == "profile":
+        # the corpus's PROFILE file did not answer (it may live under a root that hangs); its own roots may be fine
+        what = "the corpus's profile file did not answer within the root deadline"
+        clears = ("It is not served. It is read again when the profile answers (the watcher retries it), or restart the process, or "
+                  "lts_register_corpus the corpus id after the drive is back, or move the profile.")
+        out = {"success": False, "reason": code, "error_class": "RootUnresponsive", "cause": "profile",
+               "error": f"RootUnresponsive: {('corpus ' + repr(corpus) + ' could not be built: ') if corpus else ''}{what}. Every other corpus is unaffected. {clears}"}
+        if corpus is not None:
+            out["corpus"] = corpus
+        return out
+    clears = ("It is not served. The corpus is read again when the root answers: restart the process or lts_register_corpus the "
+              "corpus id after the root is back, or remove the root from the registry.")
+    if corpus is None:
+        return {"success": False, "reason": code, "error_class": "RootUnresponsive",
+                "error": f"RootUnresponsive: {code}: a registered root did not answer within the root deadline when the "
+                         f"corpus was read, so it is not served (no partial view). {clears}"}
+    return {"success": False, "reason": code, "error_class": "RootUnresponsive", "corpus": corpus,
+            "error": f"RootUnresponsive: corpus {corpus!r} could not be built: a registered root did not answer within the "
+                     f"root deadline. Every other corpus is unaffected. {clears}"}
+
+
+def _registry_key_refusal(corpus: str | None, failed: dict) -> dict:
+    """The reply for a corpus whose registry ENTRY carries a key the schema does not know (`registry-entry-unknown-key`,
+    `registry-root-unknown-key`; maintainers' ruling of 2026-10-29). `reason` is the FIXED CODE; the corpus, the first unknown key and
+    the nearest valid key ride in their own fields, and `problems` lists every unknown key of the entry. The registry itself is fine
+    (this is NOT `registry-not-found`), the corpus is NOT served, and the other corpora are unaffected. With no corpus id (a path-mode
+    tool, the reviewer's document-side stop) the reply names NO corpus and no key: the corpus may be private."""
+    code = failed["code"]
+    problems = list(failed.get("problems") or [])
+    if code in _registry.NAMED_ROOT_CODES:
+        return _named_root_refusal(corpus, code, problems[0] if problems else {})
+    if corpus is None:
+        return {"success": False, "reason": code, "error_class": "RegistryEntryKeyError",
+                "error": f"RegistryEntryKeyError: {code}: a registry entry that covers this path carries an unknown key, so that "
+                         "corpus is not served (no partial view). Fix the registry entry (a key ending `_note` is free text)."}
+    first = problems[0] if problems else {"scope": "entry", "key": None, "nearest": None}
+    where = "root" if first["scope"] == "root" else "entry"
+    hint = _registry.problem_hint(first, where)
+    more = f" ({len(problems) - 1} more unknown key(s): " + ", ".join(repr(p["key"]) for p in problems[1:]) + ")" \
+        if len(problems) > 1 else ""
+    return {"success": False, "reason": code, "error_class": "RegistryEntryKeyError", "corpus": corpus,
+            "scope": first["scope"], "key": first["key"], "nearest": first.get("nearest"), "problems": problems,
+            "error": f"RegistryEntryKeyError: corpus {corpus!r} could not be built: registry {where} key {first['key']!r} is not "
+                     f"a registry {where} key{hint}{more}. The corpus is NOT served (no partial view); other corpora are "
+                     "unaffected. Fix the registry (a key ending `_note` is free text), then lts_register_corpus the corpus "
+                     "id or restart."}
+
+
+def _named_root_refusal(corpus: str | None, code: str, problem: dict) -> dict:
+    """The reply for a corpus whose registry entry refers to a name the table does not hold, or to a malformed table
+    ([GRAM-NR-TABLE] x-refusals). As for an unknown key, with no corpus id the reply names no corpus and no name."""
+    if corpus is None:
+        return {"success": False, "reason": code, "error_class": "NamedRootError",
+                "error": f"NamedRootError: {code}: a registry entry that covers this path could not be expanded, so that corpus is "
+                         "not served (no partial view). Fix the registry."}
+    which = {k: problem[k] for k in ("name", "detail") if k in problem}
+    said = f"name {which['name']!r}" if "name" in which else f"{which.get('detail')}"
+    return {"success": False, "reason": code, "error_class": "NamedRootError", "corpus": corpus, **which,
+            "error": f"NamedRootError: corpus {corpus!r} could not be built: {code}: {said}. The corpus is NOT served (no partial "
+                     "view); other corpora are unaffected. Fix the registry's named_roots, then lts_register_corpus the corpus id or "
+                     "restart."}
+
+
+def _writer_target_error(path) -> CorpusFileError | None:
     """The corpus-file-* condition (if any) of the file a typed writer was asked to edit. A path that does not exist, or a
     directory, is NOT one: the writer's own message stands for those. This pre-check sits OUTSIDE the writers' own coded
     exception net, so it must never raise: ANY other failure (a NUL in the path, a non-string, an injected fault) returns None
@@ -235,7 +385,7 @@ def _writer_target_error(path) -> Optional["CorpusFileError"]:
     return None
 
 
-def _writer_corpus_file_refusal(_auth, exc: "CorpusFileError") -> dict:
+def _writer_corpus_file_refusal(_auth, exc: CorpusFileError) -> dict:
     """A typed writer's `refused: true` reply for a corpus-file-* condition: the usual refusal shape, with `reason` = the code,
     `error_class`, `evidence.refusal` = the code (the query log reads it there) and a basename-only `path`."""
     r = _auth._refusal(_auth.EditRefused(
@@ -245,7 +395,7 @@ def _writer_corpus_file_refusal(_auth, exc: "CorpusFileError") -> dict:
     return r
 
 
-def _coded(exc: "CorpusFileError") -> dict:
+def _coded(exc: CorpusFileError) -> dict:
     return _corpus_file_refusal(None, {"code": exc.code, "path": exc.rel_path})
 
 
@@ -270,7 +420,7 @@ def _stale_marker(fr: FreshnessResult, heal=None) -> dict:
         marker["heal"] = heal.to_dict()
         marker["error"] += f" Self-heal did not restore freshness: {heal.reason}"
     if marker.get("reason") is None:
-        # [ISSUE-NONREGULAR-MEMBER] a corpus that is stale BECAUSE a member is not readable carries that code in
+        # [DEC-LTS-NONREGULAR-FILE-IN-ROOT-...] a corpus that is stale BECAUSE a member is not readable carries that code in
         # its top-level `reason` (a closed set of fixed codes), not only inside the heal text.
         blob = f"{getattr(fr, 'detail', '') or ''} {getattr(heal, 'error', '') or ''}"
         for code in CORPUS_FILE_CODES:
@@ -284,7 +434,7 @@ def _stale_marker(fr: FreshnessResult, heal=None) -> dict:
     return marker
 
 
-def _date_in_range(node: dict, since: Optional[str], until: Optional[str],
+def _date_in_range(node: dict, since: str | None, until: str | None,
                    date_property: str) -> bool:
     """since/until time filter over a configured date property (lexicographic ISO compare).
 
@@ -305,7 +455,7 @@ def _date_in_range(node: dict, since: Optional[str], until: Optional[str],
     return True
 
 
-def _did_you_mean(node_id: str, nodes: Dict[str, dict]) -> List[str]:
+def _did_you_mean(node_id: str, nodes: dict[str, dict]) -> list[str]:
     """Near-matches for an unknown NODE id. Same argument as the corpus one: a wrong id
     and an absent node present identically, and the correct response to that ambiguity is
     currently to grep."""
@@ -313,28 +463,37 @@ def _did_you_mean(node_id: str, nodes: Dict[str, dict]) -> List[str]:
     return did_you_mean(node_id, nodes.keys())
 
 
-# ISSUE-PRIVATE-NAMES-IN-ERRORS (review F1): a withheld hop is declared but
+# DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA (review F1): a withheld hop is declared but
 # ANONYMOUS: no corpus id (engine-resolved from the authored domain), no target node id.
 _WITHHELD_STUB = {"withheld": True, "reason": WITHHELD_HOP_REASON}
 
 
-def _private_skips(private_corpora) -> List[dict]:
+DEFAULT_CORPORA_ENV = "LTS_DEFAULT_CORPORA"   # specs/37-default-scope.lts
+
+
+def default_corpora_listed() -> list[str]:
+    """The one reading of the variable: ids in order, spaces ignored, duplicates once."""
+    return list(dict.fromkeys(c.strip() for c in os.environ.get(DEFAULT_CORPORA_ENV, "").split(",") if c.strip()))
+
+
+def _private_skips(private_corpora) -> list[dict]:
     """[INV-PRIVATE-FANOUT] ONE anonymous entry counting EVERY private corpus skipped, hit
     or no hit: the count never reveals which private corpus held a match, and the entry
-    carries no corpus NAME (ISSUE-PRIVATE-NAMES-IN-ERRORS: no error, suggestion
-    or extent field may name a private corpus). The skip is still DECLARED."""
+    carries no corpus NAME (DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA: no error, suggestion
+    or extent field may name a private corpus). The skip is still DECLARED. A private corpus that is still PENDING (held included) is not in this entry: it is counted once, in
+    the `private-corpus-failed` entry (`_failed_view`), so no corpus is counted twice."""
     n = len(list(private_corpora))
     return [{"reason": PRIVATE_REASON, "count": n}] if n else []
 
 
-def _scalar_or_elements(v) -> List[str]:
+def _scalar_or_elements(v) -> list[str]:
     """`str(v)` for a scalar (today's comparison, unchanged); each element for a list."""
     if isinstance(v, list):
         return [str(e) for e in v]
     return [str(v)]
 
 
-def _string_values(v) -> List[str]:
+def _string_values(v) -> list[str]:
     """The STRING values a property carries: the string itself, or every string ELEMENT of a
     list. A repeated key (`- alias: a` / `- alias: b`) and a nested `- item` block both parse to
     a LIST (parser._maybe_multivalue), and every element is live. A mapping (P5) is still not
@@ -359,7 +518,7 @@ def _text_hit(node: dict, node_id: str, needle: str) -> bool:
     return bool(_structure_hit_in(node, node_id, needle))
 
 
-def _structure_hit_in(node: dict, node_id: str, needle: str) -> List[str]:
+def _structure_hit_in(node: dict, node_id: str, needle: str) -> list[str]:
     """WHERE in the structured scope the needle appears — `['title', 'properties.artifact']`.
 
     Empty list == no structured hit == `_text_hit` is False. This exists so
@@ -379,13 +538,15 @@ def _structure_hit_in(node: dict, node_id: str, needle: str) -> List[str]:
     though the term may sit in something the author authored as structure.
     """
     needle = needle.lower()
-    where: List[str] = []
+    where: list[str] = []
     if needle in node_id.lower():
         where.append("id")
     if needle in (node.get("title") or "").lower():
         where.append("title")
     props = node.get("properties") or {}
     for k, v in props.items():
+        if k in ENGINE_MINTED_KEYS:
+            continue          # the engine-minted state ("true"/"false") is on EVERY node: a text search for those words would match them all. Filter it with `where`.
         if any(needle in sv.lower() for sv in _string_values(v)):
             where.append(f"properties.{k}")
     return where
@@ -425,8 +586,8 @@ def _clip(line: str) -> str:
     return s if len(s) <= MAX_PROSE_LINE_CHARS else s[:MAX_PROSE_LINE_CHARS] + " …"
 
 
-def _prose_hit(node: dict, node_id: str, rows: List[tuple], matched: List[tuple],
-               where: List[str], context: int) -> dict:
+def _prose_hit(node: dict, node_id: str, rows: list[tuple], matched: list[tuple],
+               where: list[str], context: int) -> dict:
     """One prose hit: routing identity + locality + the structure classification.
 
     `rows` is the node's whole body (for the context window), `matched` the subset whose
@@ -483,7 +644,7 @@ def _prose_digest_row(corpus: str, hit: dict) -> dict:
 
 
 def _node_matches(node: dict, node_id: str, domain, function, service,
-                  prefix, status, text, area=None, cq=None) -> Optional[dict]:
+                  prefix, status, text, area=None, cq=None) -> dict | None:
     """taxonomy/prefix/status/text predicate for find(),
     + [ENH-2] area-scope: a node's `area` is stamped at build time (config.py) from
     which labeled root (decisions/specs/artifacts/...) it was parsed under.
@@ -527,7 +688,7 @@ def _node_matches(node: dict, node_id: str, domain, function, service,
 
 
 def _keys_consulted(domain, function, service, prefix, status, text, area,
-                    date_property, dated: bool) -> List[str]:
+                    date_property, dated: bool) -> list[str]:
     """The field/property keys the predicate actually READ, in a stable order.
 
     ⛔ THE KEYS CONSULTED, NOT THE KEYS PRESENT. A zero over `[status,
@@ -535,7 +696,7 @@ def _keys_consulted(domain, function, service, prefix, status, text, area,
     `[status]` alone, and until the response said which it was, the caller could not tell
     them apart — [FL-RECALL-ZERO-IS-AMBIGUOUS] state-4.
     """
-    keys: List[str] = []
+    keys: list[str] = []
     if prefix:
         keys.append("id")
     if domain:
@@ -590,17 +751,26 @@ def _path_in_any_root(path, roots) -> bool:
     case-insensitive, and realpath does not fold case); and filesystem identity (st_dev, st_ino) of
     every existing ancestor of `path` against each root, which is immune to case, symlinks and
     bind-style aliases."""
+    # [MECH-BR-WRITES] x-sites (report_miss): a ROOT is resolved from the call's reading of the roots (its last answered probe), and a root the
+    # reading found not answering is not stat'd at all; the miss-log PATH is resolved as it always was.
+    view = _rootview.current()
+
+    def rreal(x):
+        return view.real(str(x)) if view is not None else os.path.realpath(str(x))
+
     def fold(x):
         return os.path.normcase(os.path.realpath(str(x))).casefold()
     real, f = os.path.realpath(str(path)), fold(path)
     ids = set()
     for r in roots:
-        try:
-            st = os.stat(str(r))
-            ids.add((st.st_dev, st.st_ino))
-        except OSError:
-            pass
-        rr, rf = os.path.realpath(str(r)), fold(r)
+        if not (view is not None and view.marked_holding(r)):
+            try:
+                st = os.stat(str(r))
+                ids.add((st.st_dev, st.st_ino))
+            except OSError:
+                pass
+        rr = rreal(r)
+        rf = os.path.normcase(rr).casefold()
         if real == rr or real.startswith(rr + os.sep) or f == rf or f.startswith(rf + os.sep):
             return True
     cur = os.path.abspath(str(path))
@@ -626,11 +796,36 @@ def _semantic_fault(ex: BaseException) -> dict:
             "live_detail_note": "live_detail is for this live reply only: NEVER persist it"}
 
 
+FIRST_PASS_ERROR_NOTE = ("The first-pass step raised; the registry-error verdict may not have been reached (the hook can raise after it): this server may be serving corpora a "
+                         "server with the same registry would refuse. Check the server log, fix the registry, and restart.")
+
+
+def effective_semantic_mode(semantic):
+    """The semantic mode a `lts_find` call runs under, decided in ONE place: the argument if given, else `LTS_SEMANTIC_ON_MISS` from the environment ("1", "on", "on_miss",
+    "true", "yes" mean `on_miss`; anything else or unset means `off`). A value that is neither `off` nor `on_miss` is returned as given (the caller refuses it). The post-call check
+    (`_mode_began_meanwhile`) asks this same function, so it skips exactly the calls the tool treats as `on_miss` (which may persist a derived vector index)."""
+    if semantic is None:
+        return "on_miss" if os.environ.get("LTS_SEMANTIC_ON_MISS", "").strip().lower() in ("1", "on", "on_miss", "true", "yes") else "off"
+    return semantic
+
+
+def could_persist_derived_index(semantic, corpus, path, text, result=None) -> bool:
+    """THE ONE DECISION whether a `lts_find` call can persist a derived vector index: its EFFECTIVE semantic mode is `on_miss` (a `path=` find is forced off), a corpus is NAMED
+    (a corpus-omitted find only reports `skipped`), there is query `text`, and, once the result is known, the find succeeded with ZERO matches. `lts_find` asks it to decide
+    whether to run the persisting path; the post-call check asks it (with the result) to decide whether "refused" would misstate what happened. Nothing else is skipped."""
+    mode = "off" if path is not None else effective_semantic_mode(semantic)
+    if mode != "on_miss" or not corpus or not text:         # `not text` exactly as `lts_find`'s own guard reads it: whitespace-only text is text (it goes to the suggestion path, as before)
+        return False
+    if result is not None:
+        return isinstance(result, dict) and result.get("success", True) is not False and result.get("total_matched") == 0
+    return True
+
+
 class LtsEngine:
     """The 4 tool handlers over a LtsStore + Router. Pure/testable — no server import,
     no caller identity, no ACL ceremony. Every tool is `tool(corpus, ...) -> dict`."""
 
-    def __init__(self, store: LtsStore, acl: Optional[AclCheck] = None,
+    def __init__(self, store: LtsStore, acl: AclCheck | None = None,
                  default_token_budget: int = DEFAULT_TOKEN_BUDGET,
                  freshness_provider: object = None,
                  date_property: str = DEFAULT_DATE_PROPERTY,
@@ -666,41 +861,54 @@ class LtsEngine:
         # built from. `None` until the first `reverse()`/`_reverse_digest()` call —
         # building it eagerly here would cost every engine construction (tests included)
         # a full-store scan nothing asked for yet.
-        self._reverse_index: Optional[ReverseIndex] = None
-        self._reverse_index_key: Optional[tuple] = None
+        # ONE slot `(index, key, sources)`: assigned and read as a unit, so two threads can never leave
+        # (or read) the index of one build beside the key or sources of another.
+        self._reverse_slot: tuple | None = None
         # [CAPABILITY-REGISTRY-CHOICE] which registry this engine was built from, captured ONCE by the
         # composition root (`server.build_tools` / `server.boot_engine`) via `seat_registry` /
         # `seat_registry_error`. None on an engine seated by hand (a unit test): the field is then ABSENT
         # from `lts_list_corpora`, which a reader treats as "server too old", never as "nothing to report".
-        self.registry_boot: Optional[dict] = None
-        self.registry_ids: frozenset = frozenset()
-        self.registry_error: Optional[RegistryError] = None
+        # ONE state tuple `(boot, ids, error)`, assigned as a unit (`_reg_state`): `seat_registry_error` builds the new state completely and assigns it in ONE statement, so a
+        # fault while it is built leaves the old state whole and no reader (`lts_list_corpora`) ever finds a boot dict without its keys. The three names below are
+        # READ-ONLY properties over it (no single-field setter exists), so the state can only be assigned whole.
+        self._reg_state: tuple = (None, frozenset(), None)
+
+    @property
+    def registry_boot(self) -> dict | None:
+        return self._reg_state[0]
+
+    @property
+    def registry_ids(self) -> frozenset:
+        return self._reg_state[1]
+
+    @property
+    def registry_error(self) -> RegistryError | None:
+        return self._reg_state[2]
 
     # --- the registry this engine was built from -----------------------------
     def seat_registry(self, choice) -> None:
         """Record the registry the store was built from (what the server ACTUALLY loaded)."""
         import datetime as _dt
-        self.registry_boot = {"source": choice.source, "path": choice.path, "sha256_at_boot": choice.sha256,
-                              "resolved_at": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-        self.registry_ids = frozenset(str(k) for k in choice.corpora)
-        self.registry_error = None
+        boot = {"source": choice.source, "path": choice.path, "sha256_at_boot": choice.sha256,
+                "resolved_at": _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
+        ids = frozenset(str(k) for k in choice.corpora)
+        self._reg_state = (boot, ids, None)                      # built completely, assigned in one statement
 
     def seat_registry_error(self, err: RegistryError) -> None:
         """REGISTRY-ERROR MODE: the registry could not be resolved at boot. The engine serves NO corpus data;
         every corpus-scoped tool refuses with `registry-not-found`; the mode ends only by a RESTART."""
-        self.registry_boot = {"source": err.source, "path": err.path, "error": str(err)}
-        self.registry_ids = frozenset()
-        self.registry_error = err
+        boot = {"source": err.source, "path": err.path, "error": str(err)}      # everything is built FIRST; a fault here changes nothing
+        self._reg_state = (boot, frozenset(), err)                              # ... and assigned in ONE statement
 
-    def _registry_choice(self) -> Optional[dict]:
+    def _registry_choice(self, state=None) -> dict | None:
         """`lts_list_corpora.registry_choice`: {source, path, sha256_at_boot, sha256_now, resolved_at}, or
         {source, path, error} in error mode. Corpus-free by construction. None when never seated."""
-        b = self.registry_boot
+        err, b = state if state is not None else (self.registry_error, self.registry_boot)       # `state`: the pair the caller read in the store's one step
         if b is None:
             return None
-        if self.registry_error is not None:
+        if err is not None:
             return {"source": b["source"], "path": b["path"], "error": b["error"],
-                    "error_persist": self.registry_error.persist_text}
+                    "error_persist": err.persist_text}
         out = dict(b)
         try:
             out["sha256_now"] = _registry.resolve_registry().sha256
@@ -724,6 +932,104 @@ class LtsEngine:
     def _freshness_eval(self, part: Partition) -> FreshnessResult:
         return self.freshness_provider.evaluate(part)
 
+    # --- [MECH-BR-CALLS] x-gate: a marked root is read from memory, never from its disk -------------------------
+    def _root_mark(self, part: Partition | None) -> dict | None:
+        """{status, roots, since} when a root this corpus depends on is pending or unresponsive, else None. Memory only
+        (the kernel's registry, `rootstate`); a corpus with several roots is marked if ANY root is."""
+        if part is None:
+            return None
+        k = getattr(part, "_kernel", None) or getattr(self.store, "kernel", None)
+        fn = getattr(k, "root_mark", None)
+        return fn(part) if fn is not None else None
+
+    def _settled_mark(self, part: Partition) -> dict | None:
+        """The mark after giving a PENDING root its one chance (a call naming it waits for the first read, up to the root
+        deadline, then is refused). An unresponsive root is refused at once."""
+        mark = self._root_mark(part)
+        if mark is not None and mark["status"] == _rs.PENDING:
+            k = getattr(part, "_kernel", None) or getattr(self.store, "kernel", None)
+            if k is not None:
+                k.await_ready(part)
+            mark = self._root_mark(part)
+        return mark
+
+    # --- [MECH-BR-BOOT] x-server: a corpus registered but not read yet -------------------------------------------------------
+    def _root_deadline(self) -> float:
+        k = getattr(self.store, "kernel", None)
+        reg = getattr(k, "roots", None)
+        return float(getattr(reg, "deadline_s", None) or _rs.DEFAULT_ROOT_DEADLINE_S)
+
+    def _pending_mark(self, cid: str, rec: dict | None) -> dict | None:
+        """The mark of a corpus that is pending, from the pending RECORD the caller holds (its snapshot's): the worse state of its declared roots (a
+        root that did not answer reads unresponsive), else `pending` since it was declared. None when there is no record. Memory only. No path."""
+        if rec is None:
+            return None
+        k = getattr(self.store, "kernel", None)
+        mark = k.root_mark_paths(rec["paths"]) if k is not None and hasattr(k, "root_mark_paths") else None
+        if mark is None:
+            mark = {"status": _rs.PENDING, "roots": len(rec["paths"]), "since": _rs.iso_utc(rec.get("since") or time.time())}
+        if rec.get("verdict") and mark["status"] == _rs.PENDING:
+            mark = {**mark, "reason": _rs.VERDICT_PENDING}          # held for the registry's verdict: the status stays `pending`; the reason is additive
+        return mark
+
+    def _await_loaded(self, cids, deadline_s: float | None = None) -> None:
+        """Wait, up to the root deadline in all, for these pending corpora to be read. A corpus whose root is marked unresponsive is not waited for
+        (it will not finish in time); a corpus that is not pending returns at once. Touches no disk and holds no lock a read needs."""
+        store = self.store
+        pending_now = store.tables()[0]                  # the wait is its own decision point: one look here, and a new one by the caller after it
+        pend = [c for c in cids if c in pending_now]
+        if not pend:
+            return
+        end = time.monotonic() + (self._root_deadline() if deadline_s is None else deadline_s)
+        for c in pend:
+            def stuck(c=c):
+                m = self._pending_mark(c, store.lookup_all(c)[1])          # polled while waiting: the record as it is NOW
+                return m is not None and m["status"] == _rs.UNRESPONSIVE
+            store.wait_loaded(c, max(0.0, end - time.monotonic()), stop=stuck)
+
+    def _pending_refusal(self, corpus: str, rec: dict | None = None) -> dict | None:
+        """The refusal for a corpus still pending after its wait: root-unresponsive, carrying the state (pending or unresponsive)."""
+        mark = self._pending_mark(corpus, rec)
+        if mark is not None and mark.get("reason") == _rs.VERDICT_PENDING:
+            return _verdict_pending_refusal(corpus, mark)
+        return _root_refusal(corpus, mark) if mark is not None else None
+
+    def _corpus_mark(self, cid: str, look) -> dict | None:
+        """The mark of one corpus, from the caller's ONE look at the store (`snapshot_all`'s tuple)."""
+        part = next((p for p in look[0] if p.corpus_id == cid), None)
+        return self._root_mark(part) if part is not None else self._pending_mark(cid, look[1].get(cid))
+
+    def _verified(self, parts):
+        """[MECH-BR-PROBE] a read that gates many corpora submits one probe per root together first (K hung roots cost one deadline,
+        not K) and lets each gate reuse a probe begun after the read began. No kernel (a library engine): a no-op."""
+        k = getattr(self.store, "kernel", None)
+        fn = getattr(k, "verified_scope", None)
+        return fn(parts) if fn is not None else contextlib.nullcontext()
+
+    def _stale_skip_entries(self, stale, look) -> list[dict]:
+        """`corpora_skipped` entries for corpora a corpus-omitted read could not serve: a corpus left out because of a marked
+        root says so (root-pending / root-unresponsive), not the generic 'stale'."""
+        out = []
+        for c in stale:
+            mark = self._corpus_mark(c, look)
+            out.append({"corpus": c, "reason": _rs.skip_reason(mark) if mark is not None else "stale"})
+        return out
+
+    def _flag_root_skips(self, res, private_unread: bool = False):
+        """A corpus-omitted answer that left a corpus out because of a marked root is not complete, whatever tier it came in."""
+        if isinstance(res, dict) and res.get("success"):
+            skipped = (res.get("extent") or {}).get("corpora_skipped") or []
+            # `complete` is false iff the search left out a corpus, public or private, for one of THIS spec's not-read reasons: root-pending, root-unresponsive, corpus-verdict-pending,
+            # corpus-root-unresponsive. Every other skip reason (a release-era failure such as corpus-file-*, a registry-key failure, a private corpus left out by design) keeps the
+            # release's value exactly: in the release `complete` describes the result set, not corpus coverage.
+            not_read = set(_rs.SKIP_REASON.values()) | {_rs.CODE_CORPUS_ROOT_UNRESPONSIVE}
+            # A private corpus left out because it is not read is known from the SAME look the extent took (`_extent` hands it back through the caller's `decision` dict; the caller passes it here): the anonymous
+            # `private-corpus-failed` count also holds a private corpus that failed for a release-era reason, which does not change `complete`.
+            if any(s.get("reason") in not_read for s in skipped) or (
+                    any(s.get("reason") == PRIVATE_FAILED_REASON for s in skipped) and private_unread):
+                res["complete"] = False
+        return res
+
     def _gate(self, corpus: str):
         """THE CHOKE POINT: existence + freshness + [LEC-SELF-HEAL] recovery.
 
@@ -739,50 +1045,207 @@ class LtsEngine:
         only a genuinely fresh verdict serves. During the rebuild window, and on any heal
         failure, the phase-2 refusal stands verbatim ([INV-LTS-FRESH]).
         """
-        part = self.store.get_partition(corpus)
+        look = self.store.snapshot_all()               # one look: a corpus ending its read is never found in none of the tables
+        part, pend_rec, failed, no_roots = _in_look(look, corpus)
+        if part is None and pend_rec is not None:
+            # [MECH-BR-BOOT] x-server: a call naming a corpus whose read is not done waits for it, up to the root deadline (as a first call waits at
+            # boot today), then is served, or refused with the state of its roots. It is never answered as an empty or an unknown corpus.
+            self._await_loaded([corpus])
+            look = self.store.snapshot_all()           # after the wait: a NEW look replaces the old one whole
+            part, pend_rec, failed, no_roots = _in_look(look, corpus)
+            if part is None and pend_rec is not None:
+                return None, self._pending_refusal(corpus, pend_rec)
         if part is None:
-            failed = self.store.failed_corpora.get(corpus)
             if failed is not None:
                 return None, _corpus_file_refusal(corpus, failed)
-            return None, _not_found(corpus, self._public_corpus_ids(),
-                                    self._private_corpus_ids())
+            if no_roots is not None:
+                return None, self._no_roots_refusal(corpus, no_roots)
+            if self.registry_error is not None:
+                # a call that passed the lock-free registry gate just BEFORE registry-error mode began finds the emptied store here: the error was seated in the
+                # same locked step that emptied it, so this re-check (after the look) always sees it. The answer is the mode's, never "no public corpora".
+                return None, _registry.refusal(self.registry_error, restart_note=True)
+            return None, _not_found(corpus, self._public_corpus_ids(look), self._private_corpus_ids(look))
+        # [MECH-BR-CALLS] x-gate: a marked root is refused from memory, BEFORE anything reads a disk, and again AFTER the
+        # verify below (that wait is what can mark a root that had not been marked when the call began) and after a heal:
+        # [INV-LTS-FRESH] a corpus whose root did not answer is never served on its last result, however fresh that reads.
+        mark = self._settled_mark(part)
+        if mark is not None:
+            return None, _root_refusal(corpus, mark)
         fr = self._freshness_eval(part)
+        mark = self._root_mark(part)
+        if mark is not None:
+            return None, _root_refusal(corpus, mark)
         if fr.fresh:
             return part, None
         if self.healer is None:
             return None, _stale_marker(fr)
         outcome = self.healer.heal(part)
         fr = self._freshness_eval(part)          # re-verify; never trust the heal's word
+        mark = self._root_mark(part)
+        if mark is not None:
+            return None, _root_refusal(corpus, mark)
         if fr.fresh:
             return part, None
         return None, _stale_marker(fr, heal=outcome)
 
-    # --- corpora that FAILED to build on a corpus-file-* code ([ISSUE-NONREGULAR-MEMBER]) ---
-    def _failed_view(self):
+    # --- corpora that FAILED to build on a corpus-file-* code ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]) ---
+    def _failed_view(self, tables):
         """(public failures [{corpus_id, code, path}], number of PRIVATE failures). [INV-PRIVATE-FANOUT]: a failed private
         corpus never reached a Partition, so the privacy decision is the one stamped when the failure was recorded; on an
         UNNAMED call it is COUNTED anonymously and never named (a caller that names it gets the code from the gate)."""
-        fails = sorted(self.store.failed_corpora.items())
-        pub = [{"corpus_id": cid, "code": f["code"], "path": f["path"]} for cid, f in fails if not f.get("private")]
-        return pub, sum(1 for _cid, f in fails if f.get("private"))
+        pending_t, failed_t, _nr = tables                              # the caller's ONE snapshot of the three unserved tables
+        fails = sorted(failed_t.items())
+        pub = []
+        for cid, f in fails:
+            if f.get("private"):
+                continue
+            if f["code"] in _registry.NAMED_ROOT_CODES:  # a named-root failure has no file path: it names the name or the fault
+                p0 = (f.get("problems") or [{}])[0]
+                pub.append({"corpus_id": cid, "code": f["code"], **{k: p0[k] for k in ("name", "detail") if k in p0}})
+            elif f["code"] == _rs.CODE_CORPUS_LOAD_ERROR:            # an unexpected error loading it: no path, the class name only
+                pub.append({"corpus_id": cid, "code": f["code"], "error": f.get("error"),
+                            **({"reason": f["reason"]} if f.get("reason") else {}),          # a profile the loader refused: why (profile-collision | profile-invalid), never a path
+                            **({"names": list(f["names"])} if f.get("names") else {}),        # profile-collision: the colliding NAME(S)
+                            **({"detail": f["detail"]} if f.get("detail") else {})})          # profile-invalid: a short fixed phrase
+            elif f["code"] == _rs.CODE_CORPUS_ROOT_UNRESPONSIVE:     # a root that did not answer: no member file, no path
+                pub.append({"corpus_id": cid, "code": f["code"], **({"reason": f["reason"]} if f.get("reason") else {})})
+            elif f["code"] in _registry.KEY_CODES:       # a registry-key failure has no file path: it names the key and the nearest
+                p0 = (f.get("problems") or [{}])[0]
+                pub.append({"corpus_id": cid, "code": f["code"], "key": p0.get("key"), "nearest": p0.get("nearest")})
+            else:
+                pub.append({"corpus_id": cid, "code": f["code"], "path": f["path"]})
+        # a PENDING private corpus is counted here too (never named): it is not served, so the answer it is missing from is not whole
+        return pub, sum(1 for _cid, f in fails if f.get("private")) + sum(1 for r in pending_t.values() if r.get("private"))
 
-    def _failed_skips(self) -> List[dict]:
-        pub, n = self._failed_view()
+    def _failed_skips(self, tables) -> list[dict]:
+        pub, n = self._failed_view(tables)
         return ([{"corpus": f["corpus_id"], "reason": f["code"]} for f in pub]
                 + ([{"reason": PRIVATE_FAILED_REASON, "count": n}] if n else []))
 
     def _attach_failed(self, out: dict, arguments: dict) -> dict:
         """A corpus-OMITTED fan-out answer (aggregate, profile_audit) says which corpora it could not read."""
         if isinstance(out, dict) and out.get("success") and not arguments.get("corpus"):
-            skips = self._failed_skips()
+            skips = self._failed_skips(self.store.tables())
             if skips:
                 out["corpora_skipped"] = skips
         return out
 
+    @staticmethod
+    def _observer_of(p: Partition):
+        k = getattr(p, "_kernel", None)
+        return getattr(k, "observe", None)
+
+    def _observer(self, p: Partition):
+        return self._observer_of(p)
+
+    # --- [DECLARED-ROOT-HEALTH] -------------------------------------------------
+    def _root_health_view(self, look) -> dict[str, dict]:
+        """corpus_id -> `root_health`, ONLY for corpora that are not healthy: a registered root is missing or holds
+        no `.lts` file ("degraded"), or every contributing root is also registered by another corpus, so the corpus
+        has no content of its own ("shared-only", which takes precedence). Healthy corpora are absent, so their
+        `lts_list_corpora` entries are unchanged."""
+        infos: dict[str, dict] = {}
+        use: dict[str, int] = {}
+        for p in look[0]:
+            ci = getattr(p, "corpus_index", None)
+            if ci is None or not hasattr(ci, "root_health"):
+                continue
+            if self._root_mark(p) is not None:     # a marked corpus reports its mark (list_corpora), not a disk read
+                continue
+            h = ci.root_health(seated=p.root_paths, observe=self._observer(p))
+            infos[p.corpus_id] = h
+            for r in set(h["contributing_roots"]):      # per corpus, not per occurrence (one dir pinned twice)
+                use[r] = use.get(r, 0) + 1
+        out: dict[str, dict] = {}
+        for cid, h in infos.items():
+            own = any(use.get(r, 0) == 1 for r in h["contributing_roots"])
+            degraded = bool(h["missing_roots"] or h["empty_roots"] or h["unindexed_roots"])
+            if degraded or not own:
+                out[cid] = {"status": "shared-only" if not own else "degraded",
+                            "missing_roots": h["missing_roots"], "empty_roots": h["empty_roots"],
+                            "unindexed_roots": h["unindexed_roots"], "own_content": own}
+        return out
+
+    @staticmethod
+    def _no_roots_refusal(corpus: str, rec: dict) -> dict:
+        """A caller that names a corpus `lts_list_corpora` lists as no-roots is told that, not 'corpus not found'. A private one's
+        code goes to the caller who named it, with no path, like a failed private corpus."""
+        from . import config as _config
+        out = {"success": False, "reason": "no-roots", "error_class": "NoRootsError", "corpus": corpus,
+               "error": f"NoRootsError: corpus {corpus!r} is registered and every root was missing when this server built its corpora, "
+                        "so it is not served. Restore the root or correct the registry, then lts_register_corpus the corpus id or restart."}
+        if not rec.get("private"):
+            out["missing_roots"] = []
+            for r in _config.declared_root_entries(rec["spec"]):
+                why = _config.root_missing_reason(r)
+                if why:
+                    out["missing_roots"].append({"path": r.get("path"), "area": r.get("area"), "reason": why})
+        return out
+
+    def _no_roots_view(self, tables):
+        """(public `lts_list_corpora` entries, number of PRIVATE ones) for corpora whose every root was missing at build. Read fresh
+        at each call, so a root that has come back stops reading as no-roots. A private one is counted like a failed private
+        corpus and never named. These are not served: they stay out of `stale_corpora` and the extent's consulted corpora."""
+        from . import config as _config
+        public: list[dict] = []
+        private = 0
+        for cid, rec in sorted(tables[2].items()):
+            if rec.get("private"):
+                private += 1
+                continue
+            spec = rec["spec"]
+            missing, unindexed = [], []
+            for r in _config.declared_root_entries(spec):
+                reason = _config.root_missing_reason(r)
+                if reason:
+                    missing.append({"path": r.get("path"), "area": r.get("area"), "reason": reason})
+                else:
+                    unindexed.append({"path": r.get("path"), "area": r.get("area")})
+            profile = spec.get("profile")
+            if isinstance(profile, str) and profile and not os.path.isfile(profile):
+                missing.append({"path": profile, "area": None, "reason": "profile-missing"})
+            public.append({
+                "corpus_id": cid, "domain_suffix": spec.get("domain_suffix", f"proj.{cid}"),
+                "total_nodes": 0, "total_nodes_live": 0, "counts_agree": True, "total_edges": 0, "resolved_edge_count": 0,
+                "root_paths": [], "fresh": False, "built_at": None,
+                "counts_are_as_of": "nothing is served: no registered root could be read when this server built its corpora",
+                "root_health": {"status": "degraded" if unindexed else "no-roots", "missing_roots": missing, "empty_roots": [],
+                                "unindexed_roots": unindexed, "own_content": False}})
+        return public, private
+
+    @staticmethod
+    def _root_health_notes(parts: list[Partition]) -> list[str]:
+        """One `extent.notes` line per skipped or empty registered root of the corpora a response searched."""
+        notes: list[str] = []
+        for p in parts:
+            ci = getattr(p, "corpus_index", None)
+            if ci is None or not hasattr(ci, "root_health"):
+                continue
+            h = ci.root_health(seated=p.root_paths, observe=LtsEngine._observer_of(p))
+            for m in h["missing_roots"]:
+                if m["reason"] == "profile-missing":
+                    notes.append(f"corpus {p.corpus_id}: registered profile {m['path']} does not exist (profile-missing); "
+                                 f"this answer was parsed on core vocabulary")
+                    continue
+                what = "does not exist" if m["reason"] == "not-a-directory" else "lacks its pinned file"
+                notes.append(f"corpus {p.corpus_id}: registered root {m['path']} {what} ({m['reason']}); "
+                             f"this answer comes from its other root(s) only")
+            for e in h["empty_roots"]:
+                notes.append(f"corpus {p.corpus_id}: registered root {e['path']} holds no .lts file")
+            for u in h["unindexed_roots"]:
+                notes.append(f"corpus {p.corpus_id}: registered root {u['path']} appeared after the index was built "
+                             f"and is not served until a rebuild")
+        return notes
+
     # --- [INV-DECLARED-EXTENT] --------------------------------------------------
-    def _extent(self, parts: List[Partition], *, keys_consulted=(), skipped=(),
-                scope=None, notes=(), body_scanned=None, scope_note=None) -> dict:
-        """`{"extent": {...}}` for a set of partitions actually searched.
+    def _extent(self, parts: list[Partition], *, keys_consulted=(), skipped=(),
+                scope=None, notes=(), body_scanned=None, scope_note=None, read=None, decision=None) -> dict:
+        """The extent. When the caller supplies `decision` (a dict), `decision["private_unread"]` is set to the private-unread decision: True iff a PRIVATE corpus that the search HAD IN SCOPE was left out because it is not read (pending, held included, or
+        failed because a root did not answer), decided from the ONE look this extent takes (no second look) and handed back to the caller, which passes it to `_flag_root_skips`.
+        `read` is the search's scope (`_scope["read"]`): None means every corpus, so every private corpus counts; a list means only the corpora in it (a private corpus outside a
+        scoped search is not one the search left out).
+
+        `{"extent": {...}}` for a set of partitions actually searched.
 
         ⛔ IT COUNTS THE NODES IN SCOPE, NOT THE NODES RETURNED. That number is the
         DENOMINATOR — "the corpora themselves insist that a claim of clean without a
@@ -796,33 +1259,41 @@ class LtsEngine:
         They still answer — a self-healing gate makes that safe — but they now SAY what
         they answered from.
         """
+        look = self.store.snapshot_all()          # the extent's ONE look: skipped failures and the available ids come from the same moment
         built_at = {}
         for p in parts:
             sc = (p.index.get("source_corpus") or {}) if isinstance(p.index, dict) else {}
             built_at[p.corpus_id] = sc.get("built_at") or p.index.get("generated_at")
         skipped = list(skipped)
         # A corpus-OMITTED (fan-out) read must not look like it read everything: a corpus that FAILED to build on a
-        # corpus-file-* code is named, with the code, in `corpora_skipped` ([ISSUE-NONREGULAR-MEMBER]).
+        # corpus-file-* code is named, with the code, in `corpora_skipped` ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]).
+        private_unread = False
         if not (scope and scope.get("corpus") not in (None, "", "ALL LOADED")):
-            skipped += self._failed_skips()
+            skipped += self._failed_skips(look[1:])
+            # from THIS look (the one the skips above were made from): a private corpus that is pending (held included), or failed because a root did not answer
+            private_unread = (any(r.get("private") and (read is None or c in read) for c, r in look[1].items())
+                              or any(f.get("private") and f.get("code") == _rs.CODE_CORPUS_ROOT_UNRESPONSIVE and (read is None or c in read) for c, f in look[2].items()))
+        if decision is not None:
+            decision["private_unread"] = private_unread
         return declare_extent(
             corpora_consulted=[p.corpus_id for p in parts],
             corpora_skipped=skipped,
-            corpora_available=self._public_corpus_ids(),
+            corpora_available=self._public_corpus_ids(look),
             nodes_in_scope=sum(len(p.nodes) for p in parts),
             keys_consulted=list(keys_consulted),
             index_fresh=not [x for x in skipped if x.get("reason") == "stale" or x.get("reason") in CORPUS_FILE_CODES
-                             or x.get("reason") == PRIVATE_FAILED_REASON],
+                             or x.get("reason") == PRIVATE_FAILED_REASON or x.get("reason") in _rs.SKIP_REASON.values()
+                             or x.get("reason") == _rs.CODE_CORPUS_ROOT_UNRESPONSIVE or x.get("reason") == _rs.CODE_CORPUS_LOAD_ERROR],
             built_at=built_at,
             root_paths={p.corpus_id: list(p.root_paths) for p in parts},
             scope=scope,
-            notes=list(notes),
+            notes=list(notes) + self._root_health_notes(parts),
             body_scanned=body_scanned,
             scope_note=scope_note,
             **self._registry_extent_kw(bool(scope) and scope.get("corpus") == "ALL LOADED"),
         )
 
-    def _budget(self, token_budget: Optional[int]) -> int:
+    def _budget(self, token_budget: int | None) -> int:
         """Resolve the effective budget — DELEGATES to `budget.resolve_budget`.
 
         A caller who names a budget has stated the size of the context it is willing to
@@ -832,8 +1303,8 @@ class LtsEngine:
         """
         return resolve_budget(token_budget, self.default_token_budget)
 
-    def _budget_slice(self, items: List[Any], offset: int, budget: int,
-                      keyfn) -> Tuple[List[Any], bool, Optional[int], int]:
+    def _budget_slice(self, items: list[Any], offset: int, budget: int,
+                      keyfn) -> tuple[list[Any], bool, int | None, int]:
         """Token-budget slice ([ENGINE-BUDGET]) — DELEGATES to `budget.budget_slice`.
 
         The body used to live here, as a private method on the engine. That put the
@@ -848,12 +1319,12 @@ class LtsEngine:
         return budget_slice(items, offset, budget, keyfn)
 
     def _source_excerpt(self, part: Partition, node: dict,
-                        token_budget: Optional[int], *,
-                        tier: Optional[str] = None) -> Tuple[Optional[str], bool]:
+                        token_budget: int | None, *,
+                        tier: str | None = None) -> tuple[str | None, bool]:
         """Read the node's own `line_range` from its source file.
 
         `tier` decides which cap governs — and the split is load-bearing, not
-        cosmetic ([ISSUE-EXCERPT-BUDGET]):
+        cosmetic ([DEFECT-LTS-NODE-FULL-EXCERPT-VS-BUDGET-CEILING]):
 
         * `tier is None` (the LEGACY path): capped at `MAX_EXCERPT_CHARS`, exactly as
           before this fix — that constant predates the tier feature by one commit and
@@ -866,9 +1337,9 @@ class LtsEngine:
           legacy `MAX_EXCERPT_CHARS` floor MUST NOT additionally clamp a tiered read:
           doing so silently substitutes a ~1000-token constant for whatever budget the
           caller declared, so raising `token_budget` (the error's own remediation)
-          could never help — measured on `Acme-RESEARCH-FRAME` (1,437-token body, 10
+          could never help — measured on `Acme-RESEARCH-FRAME` (1,509-token body, 10
           edges) refusing at the DEFAULT 32,768-token budget, and on
-          `DEC-ACME-LOOKUP-ORDER-IS-FIXED` (2,871-token body) still refusing at
+          `DEC-ZS3-CZI-PREFILTER-UZI-DECIDES` (3,412-token body) still refusing at
           `token_budget=90000`. `token_estimate()` (`factlattice/parser.py`) is the
           engine's one canonical ~4-chars/token ratio — the same ratio used here keeps
           this cap and the node's own `token_count` commensurable.
@@ -904,7 +1375,7 @@ class LtsEngine:
         td = edge.get("target_domain")
         return bool(td and td != part.domain_suffix)
 
-    def _route(self, edge: dict, origin_corpus: Optional[str] = None):
+    def _route(self, edge: dict, origin_corpus: str | None, look):
         """Route a cross-corpus edge. Returns (kind, payload):
           ('node', routed_node)      target readable + fresh;
           ('withheld', stub)         target lives in a PRIVATE corpus other than
@@ -916,78 +1387,194 @@ class LtsEngine:
         # target is the same withheld stub as a fresh one (one rule, not two paths).
         td = edge.get("target_domain")
         if td:
-            _status, tpart = self.router._resolve_corpus(td)
+            _status, tpart = self.router._resolve_corpus(td, look[0])
             if (tpart is not None and tpart.corpus_id != origin_corpus
                     and is_private_partition(tpart)):
                 return "withheld", dict(_WITHHELD_STUB)
         try:
-            rr = self.router.route_edge(edge)
+            rr = self.router.route_edge(edge, parts=look[0])
         except StalePartitionError as spe:
+            if spe.freshness.reason in _rs.SKIP_REASON.values():
+                # a hop into a corpus whose root is not answering is DECLARED (routed_stale), never dropped and never read
+                return "stale", {"corpus": spe.freshness.corpus_id, "target": edge.get("target"),
+                                 "reason": spe.freshness.reason,
+                                 "error": "routed partition has a root that is not answering; the hop is withheld and nothing "
+                                          "was read from it [INV-LTS-FRESH]"}
             return "stale", {"corpus": spe.freshness.corpus_id,
                              "target": edge.get("target"),
                              "error": "STALE routed partition; not served [INV-LTS-FRESH]"}
         if rr.ok and rr.node is not None:
-            tpart = self.store.get_partition(rr.corpus_id)
+            tpart = next((p for p in look[0] if p.corpus_id == rr.corpus_id), None)
             if (rr.corpus_id != origin_corpus and tpart is not None
                     and is_private_partition(tpart)):
                 return "withheld", dict(_WITHHELD_STUB)
             return "node", {"corpus": rr.corpus_id, **rr.node}
+        if td:
+            # [MECH-BR-BOOT] the served owners of this domain (if any) do not hold the target. A corpus that owns the same domain but is NOT SERVED
+            # (pending, failed for any reason, or with no roots) may: the hop is DECLARED stale with that corpus's reason, never dropped as unresolved
+            # ([INV-BR-NOT-EMPTY]). Privacy first: a private one is the same withheld stub.
+            held = self._unserved_domain(td, look)
+            if held is not None:
+                cid, private, reason = held
+                if private and cid != origin_corpus:
+                    return "withheld", dict(_WITHHELD_STUB)
+                return "stale", {"corpus": cid, "target": edge.get("target"), "reason": reason, "unserved": True,
+                                 "error": "routed corpus is not served (not read yet, or its read failed); the hop is withheld and nothing "
+                                          "was read from it [INV-LTS-FRESH]"}
         return "unresolved", {"target": edge.get("target"),
                               "target_domain": edge.get("target_domain"),
                               "status": rr.status}
 
-    # --- [INV-PRIVATE-FANOUT] corpus-omitted reads skip private corpora --------
-    def _private_corpus_ids(self) -> List[str]:
-        return sorted(p.corpus_id for p in self.store.partitions()
-                      if is_private_partition(p))
+    def _unserved_domain(self, domain: str, look):
+        """(corpus id, private, reason) of a corpus that owns `domain` but is not served, else None. Reason: `root-pending` / `root-unresponsive`
+        for a corpus still being read, the failure's own stable code for a failed one (`corpus-file-not-regular`, ...; a failure because a root or a
+        profile did not answer reads `root-unresponsive`, as for a served corpus whose root stopped answering), `no-roots` for one whose every root was
+        missing. They are read from the caller's ONE look (`snapshot_all`'s tuple): a corpus that moves between the tables is never missed."""
+        pending, failed, no_roots = look[1], look[2], look[3]          # the caller's ONE look
+        for cid, rec in sorted(pending.items()):
+            if rec.get("domain_suffix") == domain:
+                mark = self._pending_mark(cid, rec)
+                return cid, bool(rec.get("private")), _rs.skip_reason(mark)
+        for cid, rec in sorted(failed.items()):
+            if rec.get("domain_suffix") == domain:
+                code = rec.get("code")
+                return cid, bool(rec.get("private")), (_rs.SKIP_REASON[_rs.UNRESPONSIVE] if code == _rs.CODE_CORPUS_ROOT_UNRESPONSIVE else code)
+        for cid, rec in sorted(no_roots.items()):
+            spec = rec.get("spec") if isinstance(rec, dict) else None
+            if isinstance(spec, dict) and spec.get("domain_suffix", f"proj.{cid}") == domain:
+                return cid, bool(rec.get("private")), "no-roots"
+        return None
 
-    def _public_corpus_ids(self) -> List[str]:
+    # --- [INV-PRIVATE-FANOUT] corpus-omitted reads skip private corpora --------
+    @staticmethod
+    def _private_ids_in(parts, pending) -> list[str]:
+        """The private corpus ids of ONE look at the store (served partitions and the pending table taken together)."""
+        pend = [c for c, r in pending.items() if r.get("private")]               # a pending private corpus is never named either
+        return sorted([p.corpus_id for p in parts if is_private_partition(p)] + pend)
+
+    def _private_corpus_ids(self, look) -> list[str]:
+        return self._private_ids_in(look[0], look[1])
+
+    def _public_corpus_ids(self, look) -> list[str]:
         """Every corpus id that may be NAMED in a response (error, suggestion, extent).
         A private corpus is reached only when the caller names it exactly, so its id
         never appears in anything the engine volunteers."""
-        private = set(self._private_corpus_ids())
-        return sorted(c for c in self.store.corpus_ids() if c not in private)
+        private = set(self._private_corpus_ids(look))
+        return sorted(p.corpus_id for p in look[0] if p.corpus_id not in private)
 
-    def _name_safe_stale(self, stale) -> List[str]:
+    def _name_safe_stale(self, stale, look) -> list[str]:
         """`stale` minus private corpora (a stale private corpus is counted in
         `complete`, never named)."""
-        private = set(self._private_corpus_ids())
+        private = set(self._private_corpus_ids(look))
         return [c for c in stale if c not in private]
 
-    def _private_stale_field(self, stale) -> dict:
-        n = len(stale) - len(self._name_safe_stale(stale))
+    def _private_stale_field(self, stale, look) -> dict:
+        n = len(stale) - len(self._name_safe_stale(stale, look))
         return {"private_stale_count": n} if n else {}
 
-    def _private_stale_skips(self, stale) -> List[dict]:
+    def _private_stale_skips(self, stale, look) -> list[dict]:
         """ONE anonymous stale entry for private corpora: keeps `extent.index.fresh` false
         (self-consistent with `complete: false`) without naming any of them."""
-        n = len(stale) - len(self._name_safe_stale(stale))
+        n = len(stale) - len(self._name_safe_stale(stale, look))
         return [{"reason": "stale", "private_stale_count": n}] if n else []
 
-    def _fanout_parts(self):
+    def _fanout_parts(self, read=None):
         """The corpus-omitted arm of every multi-corpus read: gate each PUBLIC corpus
         through the self-heal choke point and return `(parts, stale_corpora,
         private_corpora)`. A private corpus is never gated, read or healed here; it is
-        returned by id only so the caller can declare the skip."""
-        private = set(self._private_corpus_ids())
-        parts: List[Partition] = []
-        stale: List[str] = []
-        for cid in self.store.corpus_ids():
-            if cid in private:
-                continue
-            p, _gate_err = self._gate(cid)
-            if p is not None:
-                parts.append(p)
-            else:
-                stale.append(cid)
-        return parts, stale, sorted(private)
+        returned by id only so the caller can declare the skip.
 
-    def _public_referrers(self, idx, corpus: str, node_id: str):
+        `read` (specs/37-default-scope.lts, a list from dispatch): only these corpora. It already holds
+        no private corpus unless a caller named one exactly, which is the rule for reading one."""
+        wanted = None if read is None else set(read)
+        parts: list[Partition] = []
+        stale: list[str] = []
+        # [MECH-BR-BOOT] x-server: a corpus-omitted read waits (once, up to the root deadline, for all of them together) for the corpora not read
+        # yet, then leaves out any still unread and DECLARES it, as for a marked root. Each look at the store is ONE snapshot: before the wait, after
+        # it, and after the gates.
+        parts0, pend0, _f0, _n0 = self.store.snapshot_all()
+        private = set(self._private_ids_in(parts0, pend0))
+        pend_ids = [c for c in pend0 if (c not in private if wanted is None else c in wanted)]
+        self._await_loaded(pend_ids)
+        served1, pend1, _f1, _n1 = self.store.snapshot_all()
+        still = [c for c in pend_ids if c in pend1]
+        private = set(self._private_ids_in(served1, pend1))
+        todo = [p.corpus_id for p in served1 if (p.corpus_id not in private if wanted is None else p.corpus_id in wanted)]
+        by_id = {p.corpus_id: p for p in served1}
+        with self._verified([by_id[c] for c in todo]):
+            for cid in todo:
+                p, _gate_err = self._gate(cid)
+                if p is not None:
+                    parts.append(p)
+                else:
+                    stale.append(cid)
+        _s2, pend2, _f2, _n2 = self.store.snapshot_all()
+        stale += [c for c in still if c in pend2 and c not in private]          # unread: declared, never silently dropped
+        # a private corpus still PENDING is counted once, in the anonymous `private-corpus-failed` entry (`_failed_view`); the `private: name it explicitly` count holds the served ones
+        return parts, stale, sorted(private - (wanted or set()) - set(pend2))
+
+    def _search_scope(self, arguments: dict):
+        """specs/37-default-scope.lts: what a search from dispatch reads. `(scope, refusal)`: scope is None when no list
+        applies, else {"source", "read" (None = every public corpus), "unknown_count"}."""
+        given = arguments.get("corpora")
+        named = arguments.get("corpus") or arguments.get("path")
+        if arguments.get("corpus") and isinstance(arguments.get("corpus"), (list, dict)):
+            # only what raised a raw TypeError (unhashable). 0, false and [] have always read as omitted, and a
+            # scalar such as 7 has always been "corpus not found": both unchanged
+            return None, {"success": False, "error": "`corpus` names one corpus, as a string; for several use `corpora`."}
+        if given is not None:
+            if named:
+                return None, {"success": False, "error": "`corpora` is exclusive with `corpus` and `path`: name one way."}
+            if given == "all":
+                return {"source": "call-all", "read": None, "unknown_count": 0}, None
+            if (not isinstance(given, list) or not given or not all(isinstance(c, str) and c for c in given)):
+                return None, {"success": False, "error": "`corpora` must be a non-empty list of corpus ids, or \"all\"."}
+            served, pending, _failed, _no_roots = self.store.snapshot_all()
+            known = {p.corpus_id for p in served} | set(pending)
+            for c in given:
+                if c not in known:
+                    err = self._gate(c)[1]
+                    if err is not None:               # a corpus that is not here, or failed: refused. One that is here by now is read: the named list is never dropped
+                        return None, err
+            return {"source": "call-list", "read": list(dict.fromkeys(given)), "unknown_count": 0}, None
+        if named:
+            return None, None
+        listed = default_corpora_listed()
+        if not listed:
+            return None, None
+        served, pending, _failed, _no_roots = self.store.snapshot_all()          # one look: a corpus ending its read is served OR pending, never unknown
+        loaded = {p.corpus_id for p in served} | set(pending)                    # a corpus not read yet is in scope: it is declared, not "unknown"
+        private = set(self._private_ids_in(served, pending))
+        return {"source": "server-list", "read": [c for c in listed if c in loaded and c not in private],
+                "unknown_count": sum(1 for c in listed if c not in loaded)}, None
+
+    def _declare_search_scope(self, res: dict, scope: dict | None) -> dict:
+        """[INV-DS-DECLARED] A narrowed reply says so. `corpora_consulted` already names what was read."""
+        if not scope or not isinstance(res, dict) or not isinstance(res.get("extent"), dict):
+            return res
+        read = scope["read"]
+        public = set(self._public_corpus_ids(self.store.snapshot_all()))
+        out = {"source": scope["source"], "left_out_count": 0 if read is None else len(public - set(read))}
+        if scope["source"] != "call-all":
+            out["widen"] = 'corpora="all"'
+            if isinstance(res["extent"].get("scope"), dict):
+                res["extent"]["scope"]["corpus"] = "SEARCH SCOPE"
+        if scope["unknown_count"]:
+            out["unknown_count"] = scope["unknown_count"]
+        stale = res.get("stale_corpora") or res["extent"].get("index", {}).get("stale_corpora") or []
+        if stale:
+            out["stale_count"] = len(stale)   # read nothing from these, so a zero is not a clean zero
+        elif not res.get("total_matched", res.get("count")):
+            out["zero_in_scope"] = True
+        res["extent"]["search_scope"] = out
+        return res
+
+    def _public_referrers(self, idx, corpus: str, node_id: str, look):
         """`idx.referrers` minus every referrer homed in a private corpus OTHER than the
         one the caller named. A personality node citing a public node is a fact about
         that self, and a reverse lookup on the public node is a fan-out over its
         referrers' homes; the named corpus's own referrers are kept."""
-        private = set(self._private_corpus_ids()) - {corpus}
+        private = set(self._private_corpus_ids(look)) - {corpus}
         refs = [r for r in idx.referrers(corpus, node_id) if r.corpus not in private]
         return refs, sorted(private)
 
@@ -997,14 +1584,21 @@ class LtsEngine:
         SAME choke point `_gate` already is) and return `(fresh_parts, stale_corpora)`.
         A corpus that cannot be verified fresh is never handed to `ReverseIndex.build`
         — see `reverse_index.py`'s freshness contract."""
-        fresh_parts: List[Partition] = []
-        stale_corpora: List[str] = []
-        for cid in self.store.corpus_ids():
-            p, err = self._gate(cid)
-            if p is not None:
-                fresh_parts.append(p)
-            else:
-                stale_corpora.append(cid)
+        fresh_parts: list[Partition] = []
+        stale_corpora: list[str] = []
+        _s0, pend0, _f0, _n0 = self.store.snapshot_all()
+        pend_ids = list(pend0)
+        self._await_loaded(pend_ids)          # [MECH-BR-BOOT] x-server: wait once for the corpora not read yet; those still unread are declared
+        served1, _p1, _f1, _n1 = self.store.snapshot_all()
+        with self._verified(served1):
+            for part in served1:
+                p, err = self._gate(part.corpus_id)
+                if p is not None:
+                    fresh_parts.append(p)
+                else:
+                    stale_corpora.append(part.corpus_id)
+        _s2, pend2, _f2, _n2 = self.store.snapshot_all()
+        stale_corpora += [c for c in pend_ids if c in pend2]
         return fresh_parts, stale_corpora
 
     def _reverse_index_for(self):
@@ -1016,16 +1610,20 @@ class LtsEngine:
         corpora that were verifiably fresh AT THIS CALL.
         """
         fresh_parts, stale_corpora = self._reverse_index_snapshot()
+        # The key moves when a file changes; nodes/layers when the heal publishes. An index is served only
+        # for the very objects it was built from (see `Partition._derived`), and is built from that one read.
+        sources = snapshot_sources(fresh_parts)
         key = snapshot_key(fresh_parts)
-        if self._reverse_index is None or self._reverse_index_key != key:
-            self._reverse_index = ReverseIndex.build(fresh_parts)
-            self._reverse_index_key = key
-        return self._reverse_index, fresh_parts, stale_corpora
+        slot = self._reverse_slot                  # read ONCE
+        if slot is None or slot[1] != key or not sources_current(slot[2], sources):
+            slot = (ReverseIndex.build(fresh_parts, sources=sources), key, sources)
+            self._reverse_slot = slot              # an older build landing after a newer one is simply rebuilt over
+        return slot[0], fresh_parts, stale_corpora   # the LOCAL slot: always the index of this call's own snapshot
 
     # --- lts_reverse ([LTS-REVERSE-LOOKUP]) ----------------------------------
-    def reverse(self, node_id: str, corpus: str, limit: Optional[int] = None,
-               offset: int = 0, edge_types: Optional[List[str]] = None,
-               verbs: Optional[List[str]] = None, token_budget=None) -> dict:
+    def reverse(self, node_id: str, corpus: str, limit: int | None = None,
+               offset: int = 0, edge_types: list[str] | None = None,
+               verbs: list[str] | None = None, token_budget=None) -> dict:
         """The COMPLETE `target -> referrers` answer for one node — the completeness
         path `include_reverse_digest` on `lts_find`/`lts_node` deliberately is NOT
         ([R5]). Referrers come from BOTH channels `reverse_index.py` documents: typed
@@ -1049,7 +1647,8 @@ class LtsEngine:
             return err
         budget = self._budget(token_budget)
         idx, _fresh_parts, stale_corpora = self._reverse_index_for()
-        all_refs, private_corpora = self._public_referrers(idx, corpus, node_id)
+        look = self.store.snapshot_all()                     # this reply's ONE look at the store: referrers, stale ids and skips are named from it
+        all_refs, private_corpora = self._public_referrers(idx, corpus, node_id, look)
         if edge_types:
             wanted_edges = {f"edge:{t}" for t in edge_types}
             all_refs = [r for r in all_refs if r.how in wanted_edges]
@@ -1071,14 +1670,13 @@ class LtsEngine:
             "referrers": emitted,
             **declare(emitted, truncated, cursor, total),
             "complete": not stale_corpora,
-            "stale_corpora": self._name_safe_stale(stale_corpora),
-            **self._private_stale_field(stale_corpora),
+            "stale_corpora": self._name_safe_stale(stale_corpora, look),
+            **self._private_stale_field(stale_corpora, look),
             "unresolved_domain_refs": len(idx.unresolved),
             **self._extent(
                 [part], keys_consulted=["edges.*", "properties.*"],
-                skipped=([{"corpus": c, "reason": "stale"}
-                          for c in self._name_safe_stale(stale_corpora)]
-                         + self._private_stale_skips(stale_corpora)
+                skipped=(self._stale_skip_entries(self._name_safe_stale(stale_corpora, look), look)
+                         + self._private_stale_skips(stale_corpora, look)
                          + _private_skips(private_corpora)),
                 scope={"tool": "lts_reverse", "corpus": corpus, "node_id": node_id,
                        "edge_types": edge_types, "verbs": verbs}),
@@ -1088,11 +1686,13 @@ class LtsEngine:
     # --- lts_history ([NODE-CHANGE-LEDGER] v1) ---------------------------------------
     HISTORY_DEFAULT_LIMIT = 20
 
-    def history(self, corpus: str, node_id: str, limit: Optional[int] = None) -> dict:
+    def history(self, corpus: str, node_id: str, limit: int | None = None) -> dict:
         """The ledgered changes to ONE node, newest first. READ-ONLY.
 
         Reads the ledger of the node's SOURCE FILE (one ledger per corpus file; the node's
         `source_file` is resolved against the partition's roots, then realpath'd). ⛔ ABSENCE IS
+        Every ledger that counts comes through `factlattice.ledger.locate` ([MECH-NR-LEDGER]): `ledger_files` names them, a meeting of two ledgers
+        is in `chain_file_breaks` with `ledger_file_boundary: true`, and `ledger` holding a refusal code (`state-unavailable`, or a registry fault) says it cannot be reached or proved now; `history_partial: true` says what is returned may be only part of it, with `write_refused` when a write would be refused too.
         DECLARED: with no ledger, `ledger: "none"` and `history_complete: false` (nothing is known,
         which is not "nothing happened"); with a ledger, `ledger_since` is the first record's ts and
         any change before it is unknown, so `history_complete` stays false in v1 either way.
@@ -1116,33 +1716,69 @@ class LtsEngine:
                     "error": f"source file {sf!r} of node {node_id!r} is not under any root of {corpus!r}"}
         real = os.path.realpath(path)
         lim = self.HISTORY_DEFAULT_LIMIT if limit is None else max(0, int(limit))
-        raw = _ledger.read_lines(real)
+        located, sources = _ledger.read_sources(real)
         base = {"success": True, "corpus": corpus, "node_id": node_id, "source_file": sf,
                 "history_complete": False}
         scope = {"tool": "lts_history", "corpus": corpus, "node_id": node_id, "limit": lim}
-        if raw is None:
-            return {**base, "ledger": "none", "ledger_since": None, "reconciled": None,
+        if located.refusal is not None and not located.reads_serve:
+            code, detail = located.refusal
+            return {**base, "ledger": code, "ledger_since": None, "reconciled": None,
                     "chain_file_breaks": [], "history_has_out_of_band_edits": None,
                     "records": [], "count": 0, "total_matched": 0, "truncated": False,
-                    "note": "this file has NO ledger: changes made before ledgering began, or by any "
-                            "writer that bypasses the typed writers, are UNKNOWN, not absent.",
+                    "ledger_files": [], "state_detail": detail,
+                    "note": (("where this file's history lives cannot be proved, because of a fault in the registry. "
+                              if code in _ledger.CONFIGURATION_CODES else
+                              "this file's history is at a location not reachable now, could not be read, or was never begun. ")
+                             + "Writes to this file are refused. " + _ledger.fix_for(code, detail)),
                     **self._history_extent(part, scope, ledger_file=None, records_scanned=0)}
-        recs, bad = [], 0
+        where = "this machine's state folder" if not located.state else (
+            "this root's state location" if located.private_root else f"the state location of root {located.root}")
+        left_out = ({"ledger_left_out": list(located.left_out),
+                     "left_out_note": " ".join(_ledger.LEFT_OUT_NOTES[r] for r in dict.fromkeys(located.left_out))} if located.left_out else {})
+        if "ledger-unreadable" in located.left_out:
+            left_out = {**left_out, "history_partial": True, "partial_note": "this may be only part of this file's history: a ledger could not be read."}
+        if located.refusal is not None:         # the write waits; what could be read still serves, and says it may be part of the history
+            left_out = {**left_out, "write_refused": located.refusal[0], "state_detail": located.refusal[1],
+                        "write_refused_fix": _ledger.fix_for(*located.refusal), "history_partial": True,
+                        "partial_note": "this may be only part of this file's history: "
+                                        + ("the table cannot be read, so old spellings were not searched."
+                                           if located.refusal[0] == _ledger.TABLE_MALFORMED else
+                                           "whether a file exists at an old spelling could not be read, so its ledger is left out."
+                                           if located.refusal[1] == "old-location-unknown" else
+                                           "this path spells a state root in another case, so that root's history was not read."
+                                           if located.refusal[1] == "case-variant-of-a-state-root" else "a ledger could not be read.")}
+        if not sources:
+            return {**base, "ledger": "none", "ledger_since": None, "reconciled": None,
+                    "chain_file_breaks": [], "history_has_out_of_band_edits": None,
+                    "records": [], "count": 0, "total_matched": 0, "truncated": False, "ledger_files": [], **left_out,
+                    "note": (f"no ledger was found in {where}, and the table cannot be read, so old spellings were not searched; unknown, not absent."
+                             if located.refusal is not None and located.refusal[0] == _ledger.TABLE_MALFORMED else
+                             f"no ledger was found in {where} or through the table; history may exist in another state folder, under a "
+                             "spelling the table does not hold, or in a ledger named in ledger_left_out; unknown, not absent."),
+                    **self._history_extent(part, scope, ledger_file=None, records_scanned=0)}
+        raw = _ledger.merge_lines(sources)
+        recs, bad, prev_raw = [], 0, None
+        boundary = set()                        # a record that does not chain onto the line before it: where two ledgers meet
         for line in raw:
-            try:
-                recs.append(json.loads(line))
-            except ValueError:
+            parsed = _ledger.parse_record(line)
+            if parsed is None:
                 bad += 1
+                prev_raw = None
+                continue
+            if len(sources) > 1 and prev_raw is not None and parsed.get("prev_sha256") != hashlib.sha256(prev_raw).hexdigest():
+                boundary.add(len(recs))
+            recs.append(parsed)
+            prev_raw = line
         tail_ok = True
-        try:
-            json.loads(raw[-1]) if raw else None
-        except ValueError:
+        if raw and _ledger.parse_record(raw[-1]) is None:
             tail_ok = False
         # [F2] out-of-band edits BETWEEN ledgered writes: a record whose file_sha256_before is not the
         # previous record's file_sha256_after (the file changed with no writer involved).
-        breaks = [{"seq": b.get("ledger_seq"), "ts": b.get("ts")}
-                  for a_, b in zip(recs, recs[1:])
-                  if b.get("file_sha256_before") != a_.get("file_sha256_after")]
+        oob_breaks = {i + 1 for i, (a_, b) in enumerate(zip(recs, recs[1:]))
+                      if b.get("file_sha256_before") != a_.get("file_sha256_after")}
+        breaks = [{"seq": recs[i].get("ledger_seq"), "ts": recs[i].get("ts"),
+                   **({"ledger_file_boundary": True} if i in boundary else {})}
+                  for i in sorted(oob_breaks | boundary)]
         mine = [r for r in recs if r.get("node_id") == node_id]
         mine.reverse()
         shown = mine[:lim]
@@ -1156,11 +1792,12 @@ class LtsEngine:
                 "reconciled": reconciled,
                 "reconciled_reason": None if tail_ok else "tail unparseable",
                 "chain_file_breaks": breaks,
-                "history_has_out_of_band_edits": bool(breaks) or reconciled is False,
+                "history_has_out_of_band_edits": bool(oob_breaks) or reconciled is False,
+                "ledger_files": [str(f) for f, _lines in sources], **left_out,
                 "records": shown, "count": len(shown),
                 "total_matched": len(mine), "truncated": len(mine) > len(shown),
                 "unparseable_lines": bad,
-                **self._history_extent(part, scope, ledger_file=str(_ledger.ledger_path(real)),
+                **self._history_extent(part, scope, ledger_file=str(located.write_file),
                                        records_scanned=len(recs))}
 
     def _history_extent(self, part, scope, **ledger_facts) -> dict:
@@ -1177,7 +1814,8 @@ class LtsEngine:
 
     def _reverse_digest(self, corpus: str, node_id: str) -> dict:
         idx, _fresh_parts, stale_corpora = self._reverse_index_for()
-        all_refs, _private = self._public_referrers(idx, corpus, node_id)
+        look = self.store.snapshot_all()
+        all_refs, _private = self._public_referrers(idx, corpus, node_id, look)
         total = len(all_refs)
         sample = [r.to_dict() for r in all_refs[:self.REVERSE_DIGEST_SAMPLE_CAP]]
         returned = len(sample)
@@ -1188,8 +1826,8 @@ class LtsEngine:
             "truncated": total > returned,
             "sample": sample,
             "complete": not stale_corpora,
-            "stale_corpora": self._name_safe_stale(stale_corpora),
-            **self._private_stale_field(stale_corpora),
+            "stale_corpora": self._name_safe_stale(stale_corpora, look),
+            **self._private_stale_field(stale_corpora, look),
             "see_also": (f"lts_reverse(corpus={corpus!r}, node_id={node_id!r}) "
                         f"for the complete, paged referrer list"),
         }
@@ -1206,14 +1844,16 @@ class LtsEngine:
     def _lexrank_for(self, part):
         """Deterministic BM25 over the partition's semantic cards, cached on its freshness key
         (no model stack: semantic.lexrank / index.partition_cards import no numpy)."""
+        from collections import OrderedDict
+
         from .semantic.index import partition_cards
         from .semantic.lexrank import LexRank
-        from collections import OrderedDict
         cache = self.__dict__.setdefault("_lexrank_cache", OrderedDict())
         key = part._freshness_key()
+        nodes = part.nodes          # ONE read: built from, and served only for, this object (see Partition._derived)
         hit = cache.get(part.corpus_id)
-        if hit is None or hit[0] != key:
-            hit = (key, LexRank(partition_cards(part)))
+        if hit is None or hit[0] != key or hit[2] is not nodes:
+            hit = (key, LexRank(partition_cards(part, nodes)), nodes)
         cache[part.corpus_id] = hit
         cache.move_to_end(part.corpus_id)
         while len(cache) > LEXRANK_CACHE_MAX:     # [S5 review F5] bounded (acme-docs ~70 MB)
@@ -1222,6 +1862,134 @@ class LtsEngine:
 
     # --- [QUERY-REPORT-MISS] lts_report_miss ----------------------------------------
     MISS_MAX_IDS, MISS_MAX_WHY, MISS_MAX_QUERY, MISS_MAX_SHORT = 10, 2000, 2000, 500
+
+    def _miss_check_args(self, corpus, query, expected_ids, why, tool_used, found_via):
+        """The argument checks of `report_miss`, in their order. -> (error reply or None, ids, tool_used)."""
+        def bad(msg):
+            return {"success": False, "error": msg}, None, None
+        if not corpus or not isinstance(corpus, str):
+            return bad("lts_report_miss requires `corpus`: a corpus id string (it never fans out)")
+        if not isinstance(query, str) or not query.strip():
+            return bad("lts_report_miss requires a non-empty `query`")
+        if len(query) > self.MISS_MAX_QUERY:
+            return bad(f"`query` is over {self.MISS_MAX_QUERY:,} characters")
+        if (not isinstance(expected_ids, list) or not expected_ids
+                or not all(isinstance(i, str) and i.strip() for i in expected_ids)):
+            return bad("lts_report_miss requires `expected_ids`: a non-empty list of node id strings")
+        ids = list(dict.fromkeys(i.strip() for i in expected_ids))
+        if len(ids) > self.MISS_MAX_IDS:
+            return bad(f"at most {self.MISS_MAX_IDS} expected_ids per report (got {len(ids)})")
+        if not isinstance(why, str) or not why.strip():
+            return bad("lts_report_miss requires `why` (what you needed and why the result did not serve)")
+        if len(why) > self.MISS_MAX_WHY:
+            return bad(f"`why` is over {self.MISS_MAX_WHY:,} characters")
+        tool_used = "lts_find" if tool_used is None else tool_used
+        for label, val in (("tool_used", tool_used), ("found_via", found_via)):
+            if val is not None and (not isinstance(val, str) or len(val) > self.MISS_MAX_SHORT):
+                return bad(f"`{label}` must be a string of at most {self.MISS_MAX_SHORT} characters")
+        return None, ids, tool_used
+
+    @staticmethod
+    def _miss_unread_time_check(query, why, tool_used, found_via):
+        """The placeholder-time check on the four free-text fields. -> (refusal reply or None, detector fault classes)."""
+        from factlattice.authoring import unread_time_guard as _utg
+        _utg.clear()
+        _found = _utg.refusal({"query": query, "why": why, "tool_used": tool_used, "found_via": found_via})
+        _faulted = _utg.take()      # FAIL OPEN: a detector fault lets the report through; the receipt says so (no ledger here)
+        if _found is None:
+            return None, _faulted
+        # free text a person reads later: an unquoted placeholder clock time is refused
+        return _utg.stamp({"success": False, "reason": _utg.CODE, "error": _found[0], "evidence": _found[1]}), _faulted
+
+    @staticmethod
+    def _miss_stamp_receipt(out, faulted):
+        """A detector fault shows as a warning, and the off switch (state `off`, or a warning for a bad value) on the receipt."""
+        from factlattice.authoring import unread_time_guard as _utg
+        if faulted:
+            out["warnings"] = [_utg.fault_warning(faulted, False)]
+        _utg.stamp(out)
+
+    def _miss_exact_evidence(self, corpus, query):
+        """-> (status, {id: rank}) under the exact `lts_find` in relevance order; a find fault is a status."""
+        status, pos = "ok", {}
+        try:
+            ex = self.find(corpus=corpus, text=query, rank="relevance", semantic="off", tier="digest",
+                           word_fallback=False)
+            if ex.get("success") is False:
+                if ex.get("reason") == "digest_ceiling_exceeded" or "ceiling" in str(ex.get("error")).lower():
+                    status = "error: digest ceiling exceeded"
+                else:
+                    logger.warning("[lts-engine] report_miss: exact search failed: %s", str(ex.get("error"))[:300])
+                    status = "error: FindFailed"
+            else:
+                pos = {d["id"]: n for n, d in enumerate(ex.get("digest") or [], 1)}
+        except Exception as exc:  # noqa: BLE001 -- the report is evidence; a find fault must not lose it
+            logger.warning("[lts-engine] report_miss: exact search raised: %s: %s", type(exc).__name__, exc)
+            status = _exc_status(exc)
+        return status, pos
+
+    def _miss_semantic_evidence(self, corpus, query):
+        """-> (status, {id: rank}, index_version) under `lts_semantic_find` (k=50); a model fault is a status."""
+        status, pos, index_version = "unavailable", {}, None
+        try:
+            sem = self.semantic_find(corpus=corpus, text=query, k=50)
+            status = _semantic_status(sem.get("status"))
+            if status != sem.get("status"):
+                logger.warning("[lts-engine] report_miss: semantic status %r reported as %r", sem.get("status"), status)
+            iv = sem.get("index_version")
+            index_version = iv if isinstance(iv, str) and _HEX_DIGEST_RE.fullmatch(iv) else None
+            if status == "ok":
+                pos = {c["id"]: n for n, c in enumerate(sem.get("candidates") or [], 1)}
+        except Exception as exc:  # noqa: BLE001 -- a model fault is a STATUS, never a failed report
+            logger.warning("[lts-engine] report_miss: semantic search raised: %s: %s", type(exc).__name__, exc)
+            status = _exc_status(exc)
+        return status, pos, index_version
+
+    def _miss_append(self, rec, ctx):
+        """Append `rec` to the miss log unless the log would sit inside a corpus root. -> a failure reply, or None when written.
+        `ctx` is the report's own fields (report_id, ranks, unknown_ids, exact_status, semantic_status) for the replies."""
+        _prev_view = _rootview.install(_membership.current_view(self.store))
+        try:
+            path = querylog.miss_log_path()
+            real = os.path.realpath(str(path))
+            try:
+                from .membership import registered_roots  # root-path membership, not corpus content
+                roots, _src = registered_roots(self.store)
+                all_roots = [r for rs in roots.values() for r in rs]
+                # A corpus that failed to build is in no served root, and its location cannot be trusted or was not read: unknown.
+                if self.store.snapshot_all()[2]:
+                    all_roots = []
+            except Exception:  # noqa: BLE001 -- unknown roots: FAIL CLOSED below
+                all_roots = []
+            if not all_roots or any(not isinstance(r, str) or not r.strip() for r in all_roots):
+                # ⛔ fail closed: if the roots cannot be enumerated the guard cannot be verified, so
+                # nothing is written. Names no path and no corpus.
+                return {"success": False, "report_id": ctx["report_id"], "exact_status": ctx["exact_status"],
+                        "semantic_status": ctx["semantic_status"],
+                        "error": ("cannot verify the miss log is outside every corpus root: corpus roots "
+                                  "unknown; nothing written"),
+                        "reason": "corpus-roots-unknown"}
+            if _path_in_any_root(path, all_roots):
+                # ⛔ names no path, no corpus, no root: it may be a private corpus
+                return {"success": False, "report_id": ctx["report_id"], "ranks": ctx["ranks"],
+                        "unknown_ids": ctx["unknown_ids"], "exact_status": ctx["exact_status"],
+                        "semantic_status": ctx["semantic_status"],
+                        "error": ("the state dir resolves inside a registered corpus root; refused, nothing "
+                                  "written. Set FACTLATTICE_STATE_DIR to a directory outside every corpus."),
+                        "reason": "miss-log-inside-corpus-root"}
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[lts-engine] report_miss: could not write the miss log: %s: %s", type(exc).__name__, exc)
+            return {"success": False, "report_id": ctx["report_id"], "ranks": ctx["ranks"],
+                    "unknown_ids": ctx["unknown_ids"], "exact_status": ctx["exact_status"],
+                    "semantic_status": ctx["semantic_status"],
+                    "error": f"could not write the miss log: {_exc_class(exc)}",
+                    "reason": "miss-log-write-failed", "error_class": _exc_class(exc)}
+        finally:
+            _rootview.restore(_prev_view)
+        return None
 
     def report_miss(self, corpus=None, query=None, expected_ids=None, why=None,
                     tool_used=None, found_via=None) -> dict:
@@ -1235,28 +2003,15 @@ class LtsEngine:
         caller chose to disclose them.
         """
         import uuid
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from . import querylog
-        if not corpus or not isinstance(corpus, str):
-            return {"success": False, "error": "lts_report_miss requires `corpus`: a corpus id string (it never fans out)"}
-        if not isinstance(query, str) or not query.strip():
-            return {"success": False, "error": "lts_report_miss requires a non-empty `query`"}
-        if len(query) > self.MISS_MAX_QUERY:
-            return {"success": False, "error": f"`query` is over {self.MISS_MAX_QUERY:,} characters"}
-        if (not isinstance(expected_ids, list) or not expected_ids
-                or not all(isinstance(i, str) and i.strip() for i in expected_ids)):
-            return {"success": False, "error": "lts_report_miss requires `expected_ids`: a non-empty list of node id strings"}
-        ids = list(dict.fromkeys(i.strip() for i in expected_ids))
-        if len(ids) > self.MISS_MAX_IDS:
-            return {"success": False, "error": f"at most {self.MISS_MAX_IDS} expected_ids per report (got {len(ids)})"}
-        if not isinstance(why, str) or not why.strip():
-            return {"success": False, "error": "lts_report_miss requires `why` (what you needed and why the result did not serve)"}
-        if len(why) > self.MISS_MAX_WHY:
-            return {"success": False, "error": f"`why` is over {self.MISS_MAX_WHY:,} characters"}
-        tool_used = "lts_find" if tool_used is None else tool_used
-        for label, val in (("tool_used", tool_used), ("found_via", found_via)):
-            if val is not None and (not isinstance(val, str) or len(val) > self.MISS_MAX_SHORT):
-                return {"success": False, "error": f"`{label}` must be a string of at most {self.MISS_MAX_SHORT} characters"}
+        err, ids, tool_used = self._miss_check_args(corpus, query, expected_ids, why, tool_used, found_via)
+        if err is not None:
+            return err
+        refusal, _faulted = self._miss_unread_time_check(query, why, tool_used, found_via)
+        if refusal is not None:
+            return refusal
         part, err = self._gate(corpus)
         if err is not None:
             return err
@@ -1267,34 +2022,8 @@ class LtsEngine:
                 "none of the expected_ids exist in corpus %r (%s); nothing was recorded. "
                 "Check the ids with lts_find / lts_node." % (corpus, ", ".join(unknown)))}
         # the evidence, captured now ------------------------------------------------------
-        exact_status, exact_pos = "ok", {}
-        try:
-            ex = self.find(corpus=corpus, text=query, rank="relevance", semantic="off", tier="digest",
-                           word_fallback=False)
-            if ex.get("success") is False:
-                if ex.get("reason") == "digest_ceiling_exceeded" or "ceiling" in str(ex.get("error")).lower():
-                    exact_status = "error: digest ceiling exceeded"
-                else:
-                    logger.warning("[lts-engine] report_miss: exact search failed: %s", str(ex.get("error"))[:300])
-                    exact_status = "error: FindFailed"
-            else:
-                exact_pos = {d["id"]: n for n, d in enumerate(ex.get("digest") or [], 1)}
-        except Exception as exc:  # noqa: BLE001 -- the report is evidence; a find fault must not lose it
-            logger.warning("[lts-engine] report_miss: exact search raised: %s: %s", type(exc).__name__, exc)
-            exact_status = _exc_status(exc)
-        sem_status, sem_pos, index_version = "unavailable", {}, None
-        try:
-            sem = self.semantic_find(corpus=corpus, text=query, k=50)
-            sem_status = _semantic_status(sem.get("status"))
-            if sem_status != sem.get("status"):
-                logger.warning("[lts-engine] report_miss: semantic status %r reported as %r", sem.get("status"), sem_status)
-            iv = sem.get("index_version")
-            index_version = iv if isinstance(iv, str) and _HEX_DIGEST_RE.fullmatch(iv) else None
-            if sem_status == "ok":
-                sem_pos = {c["id"]: n for n, c in enumerate(sem.get("candidates") or [], 1)}
-        except Exception as exc:  # noqa: BLE001 -- a model fault is a STATUS, never a failed report
-            logger.warning("[lts-engine] report_miss: semantic search raised: %s: %s", type(exc).__name__, exc)
-            sem_status = _exc_status(exc)
+        exact_status, exact_pos = self._miss_exact_evidence(corpus, query)
+        sem_status, sem_pos, index_version = self._miss_semantic_evidence(corpus, query)
         ranks = {i: {"exact": exact_pos.get(i), "semantic": sem_pos.get(i)} for i in known}
         try:
             from .build_stamp import build_stamp
@@ -1302,7 +2031,7 @@ class LtsEngine:
         except Exception:  # noqa: BLE001
             head = None
         report_id = uuid.uuid4().hex[:16]
-        rec = {"ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        rec = {"ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
                "session": querylog.SESSION_ID, "report_id": report_id, "corpus": corpus,
                "query": query, "expected_ids": ids, "unknown_ids": unknown, "why": why,
                "tool_used": tool_used, "found_via": found_via, "engine_build_stamp": head,
@@ -1310,40 +2039,10 @@ class LtsEngine:
                "semantic_status": sem_status, "ranks": ranks}
         out = {"success": True, "report_id": report_id, "corpus": corpus, "ranks": ranks,
                "unknown_ids": unknown, "exact_status": exact_status, "semantic_status": sem_status}
-        try:
-            path = querylog.miss_log_path()
-            real = os.path.realpath(str(path))
-            try:
-                from .membership import registered_roots      # root-path membership, not corpus content
-                roots, _src = registered_roots(self.store)
-                all_roots = [r for rs in roots.values() for r in rs]
-            except Exception:  # noqa: BLE001 -- unknown roots: FAIL CLOSED below
-                all_roots = []
-            if not all_roots or any(not isinstance(r, str) or not r.strip() for r in all_roots):
-                # ⛔ fail closed: if the roots cannot be enumerated the guard cannot be verified, so
-                # nothing is written. Names no path and no corpus.
-                return {"success": False, "report_id": report_id, "exact_status": exact_status,
-                        "semantic_status": sem_status,
-                        "error": ("cannot verify the miss log is outside every corpus root: corpus roots "
-                                  "unknown; nothing written"),
-                        "reason": "corpus-roots-unknown"}
-            if _path_in_any_root(path, all_roots):
-                # ⛔ names no path, no corpus, no root: it may be a private corpus
-                return {"success": False, "report_id": report_id, "ranks": ranks,
-                        "unknown_ids": unknown, "exact_status": exact_status, "semantic_status": sem_status,
-                        "error": ("the state dir resolves inside a registered corpus root; refused, nothing "
-                                  "written. Set FACTLATTICE_STATE_DIR to a directory outside every corpus."),
-                        "reason": "miss-log-inside-corpus-root"}
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "a", encoding="utf-8") as fh:
-                fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("[lts-engine] report_miss: could not write the miss log: %s: %s", type(exc).__name__, exc)
-            return {"success": False, "report_id": report_id, "ranks": ranks, "unknown_ids": unknown,
-                    "exact_status": exact_status, "semantic_status": sem_status,
-                    "error": f"could not write the miss log: {_exc_class(exc)}",
-                    "reason": "miss-log-write-failed", "error_class": _exc_class(exc)}
-        return out
+        self._miss_stamp_receipt(out, _faulted)
+        failed = self._miss_append(rec, {"report_id": report_id, "ranks": ranks, "unknown_ids": unknown,
+                                         "exact_status": exact_status, "semantic_status": sem_status})
+        return out if failed is None else failed
 
     # --- [SEM-FIND] lts_semantic_find -----------------------------------------------
     def semantic_find(self, corpus=None, text=None, k: int = 10, prefix=None, status=None,
@@ -1393,8 +2092,10 @@ class LtsEngine:
              include_reverse_digest: bool = False, semantic=None, rank=None,
              all_of=None, any_of=None, none_of=None, match=None, where=None, fields=None,
              source_file=None, document_tag=None, explain=False,
-             word_fallback: bool = True, path=None) -> dict:
+             word_fallback: bool = True, path=None, _scope=None, _unread=None) -> dict:
         """`_find_exact` + the optional [SEM-ON-MISS] suggestion block.
+
+        `_unread` (internal): a dict the CALLER supplies; the private-unread decision of the extent is written into it (`private_unread`) for `_flag_root_skips`.
 
         `path` ([A-E7 / FIND-PATH-SOURCE]): ONE `.lts` file parsed in isolation instead of a registered
         corpus, exclusive with `corpus`; see `pathsource`. Read-only, no index, no shared cache; the exact
@@ -1439,10 +2140,7 @@ class LtsEngine:
                                            or text or since or until or area))
         except _qs.QueryError as qe:
             return {"success": False, "error": str(qe)}
-        mode = semantic
-        if mode is None:
-            mode = "on_miss" if os.environ.get("LTS_SEMANTIC_ON_MISS", "").strip().lower() in (
-                "1", "on", "on_miss", "true", "yes") else "off"
+        mode = effective_semantic_mode(semantic)
         if mode not in ("off", "on_miss"):
             return {"success": False, "error": (
                 f"semantic={semantic!r} is not one of 'off' | 'on_miss'")}
@@ -1462,7 +2160,7 @@ class LtsEngine:
                                offset=offset, tier=tier, limit=limit, order_by=order_by,
                                include_reverse_digest=include_reverse_digest,
                                rank=("relevance" if rank == "relevance" else None), cq=cq,
-                               _path_part=path_part)
+                               _path_part=path_part, _read=(_scope or {}).get("read"), _unread=_unread)
         if path_part is not None and res.get("success", True) and "error" not in res:
             res["file_source"] = file_source
         if rank == "relevance" and res.get("success", True) and "error" not in res:
@@ -1489,7 +2187,7 @@ class LtsEngine:
         if mode != "on_miss" or not text or not res.get("success", True) or res.get("total_matched") != 0:
             return res
         blk = self._did_you_mean(
-            corpus, text, domain=domain, function=function, service=service, prefix=prefix,
+            corpus if could_persist_derived_index(mode, corpus, None, text, res) else None, text, domain=domain, function=function, service=service, prefix=prefix,
             status=status, area=area, since=since, until=until, date_property=date_property, cq=cq)
         res["did_you_mean_semantic"] = {**self._preface(blk), **blk}
         ext = res.get("extent")
@@ -1515,7 +2213,7 @@ class LtsEngine:
         return None
 
     def _word_fallback(self, corpus, text, *, domain, function, service, prefix, status, area,
-                       since, until, date_property, cq) -> Optional[dict]:
+                       since, until, date_property, cq) -> dict | None:
         """[FIND-QUERY-SURFACE §6] the phrase-zero fallback block, or None when it does not
         apply. The exact fields are never touched; this only builds the additive
         `matched_all_words`. Words = word-mode words of `text` minus lexrank's STOP list, each
@@ -1609,7 +2307,7 @@ class LtsEngine:
                     date_property=None, area=None, token_budget=None, offset: int = 0,
                     tier=None, limit=None, order_by=None,
                     include_reverse_digest: bool = False, rank=None, cq=None,
-                    _path_part=None) -> dict:
+                    _path_part=None, _read=None, _unread=None) -> dict:
         """Find by taxonomy/prefix/status/text.
 
         `tier` ([LTS-TIER]) is ADDITIVE; None = the LEGACY path, unchanged. See
@@ -1655,18 +2353,18 @@ class LtsEngine:
             # an un-scoped `find` heals every stale corpus it touches instead of silently
             # dropping it into `stale_corpora` forever. [INV-PRIVATE-FANOUT] it never
             # reads a private corpus: those are read only when named.
-            parts, stale_corpora, private_corpora = self._fanout_parts()
+            parts, stale_corpora, private_corpora = self._fanout_parts(_read)
         if cq is not None:
             sf_err = cq.validate_source_file(parts, area)
             if sf_err:
                 return {"success": False, "error": sf_err}
             if since or until:
                 cq.date = (since, until, dprop)
-        matches: List[Tuple[str, dict]] = []
+        matches: list[tuple[str, dict]] = []
         # [FL-RECALL-TWO-VOCABULARIES]: which lifecycle key actually answered, per node,
         # so a corpus keyed on `lifecycle-position` stops looking like a corpus with one
         # `status` hit. Reported as `matched_via` on the node and rolled up in `extent`.
-        via_counts: Dict[str, int] = {}
+        via_counts: dict[str, int] = {}
         for part in parts:
             if cq is not None:
                 cq.bind(part, caches)
@@ -1698,7 +2396,7 @@ class LtsEngine:
             get_properties=lambda cm: cm[1].get("properties") or {})
         filters = {"since": since, "until": until, "date_property": dprop, "area": area}
         skipped = ([] if not fanout else
-                   [{"corpus": c, "reason": "stale"} for c in stale_corpora]
+                   self._stale_skip_entries(stale_corpora, self.store.snapshot_all())
                    + _private_skips(private_corpora))
         # [FL-PROSE-BLIND] the routing pointer. NOTHING above this line changed: the match
         # set is byte-for-byte what it was, and the whole of the fix is that the response
@@ -1729,6 +2427,8 @@ class LtsEngine:
             notes=([f"lifecycle sweep matched via {via_counts}"] if via_counts else []),
             body_scanned=False,
             scope_note=scope_note,
+            read=_read,
+            decision=_unread,                                # handed back to the caller (dispatch), which passes it to `_flag_root_skips`: no thread or context carries it
         )
 
         # --- [LTS-TIER] digest: EVERY node of `windowed`, no bodies, no offset ---
@@ -1776,7 +2476,7 @@ class LtsEngine:
                                  what="match set")
             except TierError as te:
                 return te.payload
-            emitted, cursor = windowed, None
+            emitted, cursor, oversize = windowed, None, []
             # `full` never pages, so its only source of a fraction is `limit` itself
             # — see the digest branch's identical reasoning.
             truncated = len(emitted) < total_matched_raw
@@ -1801,12 +2501,14 @@ class LtsEngine:
             #     window fits in one page (`cursor: null`). The two fields
             #     legitimately diverge once `limit`/`order_by` is in play; that is
             #     not a bug, it is `bound_reason` earning its place in the response.
-            emitted, window_truncated, cursor, _win_total = self._budget_slice(
+            # [ENGINE-BUDGET] skip-and-report (maintainers' ruling of 2026-10-27):
+            # a match whose own size exceeds the budget is never carried whole; it is reported.
+            emitted, window_truncated, cursor, _win_total, oversize = budget_slice_declared(
                 windowed, offset, budget, keyfn=lambda cm: cm[1])
             if limit is None and resolved_order is None:
                 truncated = window_truncated
             else:
-                truncated = len(emitted) < total_matched_raw
+                truncated = len(emitted) < total_matched_raw or bool(oversize)
 
         nodes = [{"corpus": cid, **nd} for cid, nd in emitted]
         if include_reverse_digest:
@@ -1816,6 +2518,16 @@ class LtsEngine:
         out = {"success": True, "nodes": nodes, "count": count,
                "total_matched": total_matched_raw, "truncated": truncated,
                "cursor": cursor, "filters": filters, **extent}
+        if tier != TIER_FULL and oversize:
+            out["oversize_skipped"] = [
+                {"corpus": cid, "id": nd["id"], "title": nd.get("title"),
+                 "token_count": nd.get("token_count"), "position": idx,
+                 "how_to_read": (f"{nd.get('token_count')} tokens, over token_budget={budget}. Its identity and edges, "
+                                 f"without the body: lts_node(corpus={cid!r}, node_id={nd['id']!r}, tier='digest'). "
+                                 f"All its properties (about {nd.get('token_count')} tokens; no budget makes them smaller): "
+                                 f"lts_node(corpus={cid!r}, node_id={nd['id']!r}), or this call again with "
+                                 f"token_budget >= {nd.get('token_count')}.")}
+                for idx, (cid, nd) in oversize]
         if tier is not None:
             # `complete` is "is the WINDOW exhausted" — `cursor is None` — NOT
             # `not truncated`. Once `limit`/`order_by` is set, `truncated` answers a
@@ -1842,7 +2554,7 @@ class LtsEngine:
                       body_only: bool = False, context: int = 0,
                       token_budget=None, offset: int = 0, tier=None,
                       all_of=None, any_of=None, none_of=None, match=None, where=None,
-                      fields=None, source_file=None, document_tag=None, explain=False) -> dict:
+                      fields=None, source_file=None, document_tag=None, explain=False, _scope=None, _unread=None) -> dict:
         """[FL-PROSE-BLIND] Find a term in the BODY TEXT of nodes — the scope `lts_find`
         does not read.
 
@@ -1909,7 +2621,7 @@ class LtsEngine:
             # Same choke point as `find`'s multi-corpus arm ([LEC-SELF-HEAL]): an
             # unscoped prose sweep heals every stale corpus it touches rather than
             # silently dropping it. [INV-PRIVATE-FANOUT] private corpora: named only.
-            parts, stale_corpora, private_corpora = self._fanout_parts()
+            parts, stale_corpora, private_corpora = self._fanout_parts((_scope or {}).get("read"))
 
         if cq is not None:
             sf_err = cq.validate_source_file(parts, area)
@@ -1918,10 +2630,10 @@ class LtsEngine:
             if since or until:
                 cq.date = (since, until, dprop)
         low = needle.lower()
-        hits: List[Tuple[str, dict]] = []
+        hits: list[tuple[str, dict]] = []
         scanned_nodes = 0
         files_read = 0
-        files_unreadable: List[dict] = []
+        files_unreadable: list[dict] = []
         body_chars = 0
         for part in parts:
             if cq is not None:
@@ -1959,7 +2671,7 @@ class LtsEngine:
         filters = {"text": needle, "body_only": bool(body_only), "since": since,
                    "until": until, "date_property": dprop, "area": area}
         skipped = ([] if corpus else
-                   [{"corpus": c, "reason": "stale"} for c in stale_corpora]
+                   self._stale_skip_entries(stale_corpora, self.store.snapshot_all())
                    + _private_skips(private_corpora))
         scanned = bool(files_read) or not parts
         kc = ["body:prose", "body:property-lines"]
@@ -1976,6 +2688,8 @@ class LtsEngine:
             parts,
             keys_consulted=kc,
             skipped=skipped,
+            read=(_scope or {}).get("read"),
+            decision=_unread,
             scope={"tool": "lts_find_in_prose", "corpus": corpus or "ALL LOADED",
                    "filters": sfilters},
             notes=[f"body scan: {scanned_nodes} nodes with body, {files_read} files read, "
@@ -2094,20 +2808,24 @@ class LtsEngine:
                 out.update({"tier": tier, "complete": True})
             return out
         budget = self._budget(token_budget)
-        edges: Dict[str, dict] = {}
-        routed_nodes: List[dict] = []
-        raw_fwd: List[Tuple[str, str]] = []
-        raw_rev: List[Tuple[str, str]] = []
+        edges: dict[str, dict] = {}
+        routed_nodes: list[dict] = []
+        raw_fwd: list[tuple[str, str]] = []
+        raw_rev: list[tuple[str, str]] = []
         # [LEC-FRESHNESS] #2: only the edges incident to this node, from the cache.
         fwd_adj, rev_adj = part.adjacency()
-        routed_withheld: List[dict] = []
+        routed_withheld: list[dict] = []
+        routed_root_stale: list[dict] = []      # [FL-BOUNDED-ROOTS] hops into a corpus whose root is not answering: declared, never dropped
+        look = self.store.snapshot_all()                  # ONE look for every hop of this reply
         for layer, edge in fwd_adj.get(node_id, ()):
             if self._is_cross(part, edge):
-                kind, payload = self._route(edge, origin_corpus=corpus)
+                kind, payload = self._route(edge, corpus, look)
                 if kind == "node":
                     routed_nodes.append(payload)
                 elif kind == "withheld":
                     routed_withheld.append(payload)
+                elif kind == "stale" and (payload.get("unserved") or payload.get("reason") in _rs.SKIP_REASON.values()):
+                    routed_root_stale.append(payload)
             else:
                 raw_fwd.append((layer, edge["target"]))
         for layer, edge in rev_adj.get(node_id, ()):
@@ -2138,6 +2856,8 @@ class LtsEngine:
                 digest_out["reverse_digest"] = self._reverse_digest(corpus, node_id)
             if routed_withheld:   # [INV-PRIVATE-FANOUT] additive: absent when empty
                 digest_out["routed_withheld"] = routed_withheld
+            if routed_root_stale:
+                digest_out["routed_stale"] = routed_root_stale
             return digest_out
 
         emitted_ep, edges_truncated, edge_cursor, edge_total = self._budget_slice(
@@ -2175,6 +2895,8 @@ class LtsEngine:
             out["reverse_digest"] = self._reverse_digest(corpus, node_id)
         if routed_withheld:   # [INV-PRIVATE-FANOUT] additive: absent when empty
             out["routed_withheld"] = routed_withheld
+        if routed_root_stale:   # additive: absent unless a hop met a root that is not answering
+            out["routed_stale"] = routed_root_stale
         return out
 
     # --- lts_traverse -------------------------------------------------------
@@ -2232,12 +2954,12 @@ class LtsEngine:
         et = set(edge_types) if edge_types else None
 
         visited = {start_node}
-        order: List[dict] = [part.get_node(start_node)]
-        used_edges: List[dict] = []
-        routed_nodes: List[dict] = []
-        routed_stale: List[dict] = []
-        routed_withheld: List[dict] = []   # [INV-PRIVATE-FANOUT]
-        frontier: List[Tuple[str, int]] = [(start_node, 0)]
+        order: list[dict] = [part.get_node(start_node)]
+        used_edges: list[dict] = []
+        routed_nodes: list[dict] = []
+        routed_stale: list[dict] = []
+        routed_withheld: list[dict] = []   # [INV-PRIVATE-FANOUT]
+        frontier: list[tuple[str, int]] = [(start_node, 0)]
 
         # [LEC-FRESHNESS] #2: walk the CACHED incidence maps (rebuilt only on a real
         # content change) instead of rescanning every edge for every frontier node.
@@ -2249,7 +2971,7 @@ class LtsEngine:
             if depth >= max_depth:
                 continue
             # Edges incident to `nid` only — deduped so a self-loop is seen once.
-            incident: List[Tuple[str, dict]] = []
+            incident: list[tuple[str, dict]] = []
             seen_edge_ids: set = set()
             for layer, edge in fwd_adj.get(nid, ()):
                 if id(edge) not in seen_edge_ids:
@@ -2259,6 +2981,7 @@ class LtsEngine:
                 if id(edge) not in seen_edge_ids:
                     seen_edge_ids.add(id(edge))
                     incident.append((layer, edge))
+            look = self.store.snapshot_all()               # ONE look for every hop of this step
             for layer, edge in incident:
                 if layer_sel is not None and layer not in layer_sel:
                     continue
@@ -2271,7 +2994,7 @@ class LtsEngine:
                 td = edge.get("target_domain")
                 if fwd and td and td != part.domain_suffix:
                     used_edges.append(edge)
-                    kind, payload = self._route(edge, origin_corpus=corpus)
+                    kind, payload = self._route(edge, corpus, look)
                     if kind == "node":
                         routed_nodes.append(payload)
                     elif kind == "stale":
@@ -2414,8 +3137,8 @@ class LtsEngine:
         if err is not None:
             return err
         budget = self._budget(token_budget)
-        anchors: List[str] = []
-        # [ISSUE-ANCHOR-TRUNCATION] the topic->anchor match set was
+        anchors: list[str] = []
+        # [DEFECT-LTS-CAPABILITIES-ANCHOR-TRUNCATION] the topic->anchor match set was
         # capped at `[:5]` with NO signal that a 6th+ match existed — a silent bound the
         # rest of this response's own `truncated`/`cursor` machinery does not cover,
         # because it only ever sees the 5 that survived the slice. `anchor_matches_total`
@@ -2437,31 +3160,35 @@ class LtsEngine:
         anchors_truncated = len(anchors) < anchor_matches_total
 
         anchor_set = set(anchors)
-        edges: List[dict] = []
-        caps: List[dict] = []
-        routed_capabilities: List[dict] = []
-        routed_withheld: List[dict] = []   # [INV-PRIVATE-FANOUT]
+        edges: list[dict] = []
+        caps: list[dict] = []
+        routed_capabilities: list[dict] = []
+        routed_root_stale: list[dict] = []
+        routed_withheld: list[dict] = []   # [INV-PRIVATE-FANOUT]
         seen: set = set()
         # [LEC-FRESHNESS] #2: gather only ANCHOR-incident edges from the cached maps
         # (deduped: an edge joining two anchors must be considered exactly once).
         fwd_adj, rev_adj = part.adjacency()
-        incident: List[dict] = []
+        incident: list[dict] = []
         seen_edge_ids: set = set()
         for anchor in anchors:
             for _layer, edge in list(fwd_adj.get(anchor, ())) + list(rev_adj.get(anchor, ())):
                 if id(edge) not in seen_edge_ids:
                     seen_edge_ids.add(id(edge))
                     incident.append(edge)
+        look = self.store.snapshot_all()                  # ONE look for every hop of this reply
         for edge in incident:
             if not (edge["source"] in anchor_set or edge["target"] in anchor_set):
                 continue
             if self._is_cross(part, edge) and edge["source"] in anchor_set:
-                kind, payload = self._route(edge, origin_corpus=corpus)
+                kind, payload = self._route(edge, corpus, look)
                 if kind == "node":
                     edges.append(edge)
                     routed_capabilities.append(payload)
                 elif kind == "withheld":
                     routed_withheld.append(payload)
+                elif kind == "stale" and (payload.get("unserved") or payload.get("reason") in _rs.SKIP_REASON.values()):
+                    routed_root_stale.append(payload)
                 continue
             edges.append(edge)
             nb = edge["target"] if edge["source"] in anchor_set else edge["source"]
@@ -2485,6 +3212,7 @@ class LtsEngine:
                 "anchors_truncated": anchors_truncated,
                 "capabilities": emitted,
                 "routed_capabilities": routed_capabilities, "edges": edges_emitted,
+                **({"routed_stale": routed_root_stale} if routed_root_stale else {}),
                 **({"routed_withheld": routed_withheld} if routed_withheld else {}),
                 "summary": summary,
                 **declare(emitted, truncated, cursor, total),
@@ -2501,7 +3229,7 @@ class LtsEngine:
     # --- lts_flow ([LEC-RENDER] the RENDER layer's corpus-facing entry) ------
     def flow(self, corpus: str, start_node: str, edge_types=None, max_depth: int = 8,
              direction: str = "forward", membership: bool = True,
-             group_by: Optional[str] = "actor", layout: str = "TD",
+             group_by: str | None = "actor", layout: str = "TD",
              include_container: bool = False, title=None,
              token_budget=None, offset: int = 0) -> dict:
         """Walk a flow subgraph and return BOTH the Mermaid text AND the structured walk.
@@ -2580,9 +3308,9 @@ class LtsEngine:
     # a transport affordance. It reads no partition and needs no freshness gate — a
     # draft is not corpus state — but it accepts the store so `corpus="<loaded id>"`
     # can resolve to that corpus's root the same way a query would.
-    def preview(self, content: Optional[str] = None, *, path: Optional[str] = None,
-                corpus: Optional[str] = None, replaces: Optional[str] = None,
-                virtual_path: Optional[str] = None, profile=None,
+    def preview(self, content: str | None = None, *, path: str | None = None,
+                corpus: str | None = None, replaces: str | None = None,
+                virtual_path: str | None = None, profile=None,
                 verbose: bool = False) -> dict:
         from .preview import preview as _preview
         return _preview(content, path=path, corpus=corpus, replaces=replaces,
@@ -2604,7 +3332,54 @@ class LtsEngine:
     # a second, divergent code path. `unregister_corpus` is the exact inverse: it
     # unseats the kernel state and forgets the healer's per-corpus memory BEFORE
     # dropping the partition, so nothing is left half-tracked.
-    def register_corpus(self, corpus_id: str, spec: Optional[dict] = None) -> dict:
+    @staticmethod
+    def _entry_shape_refusal(corpus_id: str, spec) -> dict | None:
+        """The refusal for a malformed entry SHAPE at runtime registration, from the one judge (`config.check_entry_shape`): a fixed code, the class
+        names the judge gives, never a raw exception. Nothing is registered."""
+        from . import config as _config
+        try:
+            _config.check_entry_shape(spec)
+        except TypeError as exc:
+            return {"success": False, "corpus_id": corpus_id, "reason": _rs.CODE_CORPUS_ENTRY_SHAPE, "error_class": "CorpusEntryShape",
+                    "error": f"CorpusEntryShape: the entry for corpus {corpus_id!r} is malformed ({exc}). Nothing was registered. "
+                             "Fix the entry (see the registry shape rules) and register again."}
+        return None
+
+    def _retain_untrusted(self, specs, failed) -> None:
+        """After a register or an unregister: the kernel keeps probing only the strings of entries that are STILL failed on a key (P3-2). `specs` is the registry
+        just read (register from the registry), else the registry is read again here; a registry that cannot be read leaves the probes as they are. `failed` is
+        the failed table of the look the CALLER took (this helper takes none: [STORE-TABLES-ONE-SNAPSHOT-ONE-STEP])."""
+        kernel = getattr(self.store, "kernel", None)
+        if kernel is None or not hasattr(kernel, "retain_untrusted"):
+            return
+        try:
+            if specs is None:
+                from . import config as _c
+                specs = _c.default_corpora() or {}
+            from . import config as _config
+            active = [x for cid in failed for x in (_config.untrusted_path_strings(specs[cid]) if isinstance(specs.get(cid), dict) else [])]
+        except Exception:  # noqa: BLE001 -- leave the probes as they are
+            return
+        kernel.retain_untrusted(active)
+
+    @staticmethod
+    def _entry_raised_refusal(corpus_id: str, exc: BaseException) -> dict:
+        """A fixed-code refusal for an entry that raised while it was read: the class name only (the text may carry a path)."""
+        return {"success": False, "corpus_id": corpus_id, "reason": _rs.CODE_CORPUS_ENTRY_SHAPE, "error_class": "CorpusEntryShape",
+                "error": f"CorpusEntryShape: the entry for corpus {corpus_id!r} could not be read ({type(exc).__name__}). Nothing was registered. "
+                         "Fix the entry (see the registry shape rules) and register again."}
+
+    @staticmethod
+    def _already_here_refusal(corpus_id: str, state: str) -> dict:
+        if state == "served":
+            return {"success": False, "corpus_id": corpus_id,
+                    "error": f"corpus_id already loaded (would clobber): {corpus_id!r}; "
+                             "call unregister_corpus first if you mean to replace it"}
+        return {"success": False, "corpus_id": corpus_id,
+                "error": f"corpus_id is registered and is still being read (or its root has not answered yet): {corpus_id!r}; "
+                         "wait for it to load, or call unregister_corpus first if you mean to replace it"}
+
+    def register_corpus(self, corpus_id: str, spec: dict | None = None) -> dict:
         """Register + build + seat ONE corpus at runtime. No restart, no reconnect.
 
         `spec` is optional: when omitted, the corpus registry is RE-READ from disk
@@ -2634,11 +3409,25 @@ class LtsEngine:
         content-hash self-heal exactly like a corpus loaded at boot — `kernel_seated` and
         `self_heal_ready` say so explicitly rather than leaving it to be assumed.
         """
-        if corpus_id in self.store.corpus_ids():
-            return {"success": False, "corpus_id": corpus_id,
-                    "error": f"corpus_id already loaded (would clobber): {corpus_id!r}; "
-                             "call unregister_corpus first if you mean to replace it"}
+        _served, _pending, _f, _n = self.store.snapshot_all()               # a first look, to refuse before a build; the seat checks again, under the lock
+        _held = next((p for p in _served if p.corpus_id == corpus_id), None)
+        _pend = _pending.get(corpus_id)
+        if _held is not None:
+            return self._already_here_refusal(corpus_id, "served")
+        if _pend is not None and _pend.get("verdict"):
+            # held for the registry's verdict: it is not being read (its read ended and its root answered) and will never "load"; the true cause, as the read and write doors say it
+            return {**_verdict_pending_refusal(corpus_id, self._pending_mark(corpus_id, _pend)), "corpus_id": corpus_id}
+        if _pend is not None:
+            # [MECH-BR-BOOT] x-server: the boot loader is reading this corpus (or waiting for its root to answer). A second read of it here would
+            # race the loader on the same files and, if the root is hung, stop this request thread on it.
+            return self._already_here_refusal(corpus_id, "loading")
         from . import config as _config
+        if spec is not None:
+            _bad = self._entry_shape_refusal(corpus_id, spec)      # [ENTRY-SHAPE-ONE-JUDGE]: the SAME judge as the boot, on the raw entry, before anything reads it
+            if _bad is not None:
+                return _bad
+            spec = _registry.expand_adhoc_entry(spec)   # the same forms as a registry entry, through the same function
+        from_registry = spec is None
         if spec is None:
             try:
                 choice = _registry.resolve_registry()   # THE lookup, re-read from disk, not the boot-time copy
@@ -2653,12 +3442,41 @@ class LtsEngine:
                     f"no config entry for corpus_id {corpus_id!r} in the corpus registry "
                     f"(the {choice.source} registry); pass "
                     "`spec` explicitly to register an ad hoc corpus")}
+        if from_registry and getattr(choice, "path", None):
+            # the entry AS WRITTEN: `expand_entry` has turned a blank root (" ") into an absolute path by now, so the judge would never see it
+            try:
+                _raw = _registry.raw_entry(choice.path, corpus_id)
+            except RegistryError as exc:
+                return {**_registry.refusal(exc), "corpus_id": corpus_id}
+            _bad = self._entry_shape_refusal(corpus_id, _raw if _raw is not None else spec)
+            if _bad is not None:
+                return _bad
+        _bad = self._entry_shape_refusal(corpus_id, spec)             # an entry from the registry file too (it is the judge's entry, whichever route it came by)
+        if _bad is not None:
+            return _bad
+        try:
+            key_failure = _config.registry_key_failure(corpus_id, spec)      # an unknown entry/root key: refuse, register NOTHING
+        except (ValueError, TypeError, KeyError, AttributeError) as exc:
+            return self._entry_raised_refusal(corpus_id, exc)
+        if key_failure is not None:
+            return _corpus_file_refusal(corpus_id, key_failure)
+        # [MECH-BR-CALLS] x-gate: registering a corpus that names a root already marked (this process's workers know it is not
+        # answering) is refused from memory. Building it would list and parse that root on this thread, with nothing to stop it.
+        _k = getattr(self.store, "kernel", None)
+        if _k is not None and hasattr(_k, "root_mark_paths"):
+            try:
+                _paths = [r.get("path") for r in _config.declared_root_entries(spec) if isinstance(r.get("path"), str)]
+            except (ValueError, TypeError, KeyError, AttributeError) as exc:
+                return self._entry_raised_refusal(corpus_id, exc)
+            _mark = _k.root_mark_paths(_paths)
+            if _mark is not None:
+                return {**_root_refusal(corpus_id, _mark), "registered": False}
         profile = _config.engine_profile_config()
         part = None
         try:
             if "roots" in spec:
                 part = _config.build_merged_partition(
-                    corpus_id, spec["roots"], spec.get("domain_suffix", f"proj.{corpus_id}"),
+                    corpus_id, spec["roots"] or [], spec.get("domain_suffix", f"proj.{corpus_id}"),
                     profile=profile, spec=spec)
             else:
                 root = spec.get("root")
@@ -2667,9 +3485,18 @@ class LtsEngine:
                         corpus_id, root, spec.get("domain_suffix", f"proj.{corpus_id}"),
                         profile=profile, spec=spec)
         except CorpusFileError as exc:
-            # [ISSUE-NONREGULAR-MEMBER] a member .lts that is not a readable regular file:
+            # [DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS] a member .lts that is not a readable regular file:
             # a refusal with the precise code (nothing registered), exactly as the boot path reports it.
             return _corpus_file_refusal(corpus_id, {"code": exc.code, "path": exc.rel_path})
+        except ProfileCollisionError as exc:
+            # spec 39 REQ-NS-TRACE x-profile-guard: the SAME answer as boot for a refused profile (a NAME the engine reserves or owns, or a malformed profile),
+            # not an entry-shape refusal: the entry is fine, its profile is not. Nothing is registered; no path, no message.
+            return {**_load_error_refusal(corpus_id, {"error": type(exc).__name__, **_config.profile_failure_fields(exc)}),
+                    "corpus_id": corpus_id, "registered": False}
+        except (ValueError, TypeError, KeyError, AttributeError) as exc:
+            # [MECH-BR-BOOT] x-codes: a string (or other value) inside `roots` that the judge accepts but the build cannot read: the stable code, the
+            # exception's CLASS, never its text (it may carry a path) and never a traceback. Nothing is registered.
+            return self._entry_raised_refusal(corpus_id, exc)
         if part is None or not part.nodes:
             return {"success": False, "corpus_id": corpus_id, "spec": spec, "error": (
                 "corpus root(s) resolved to zero nodes (missing directory, or no "
@@ -2677,25 +3504,45 @@ class LtsEngine:
         part.private_reason = private_reason(corpus_id, spec)   # [INV-PRIVATE-FANOUT]
         # NOTE: a boot-failed corpus's `failed_corpora` entry is NOT popped here. It is dropped only after the SEAT succeeds
         # (below): a refused re-register must leave the corpus listed as failed, with its code ([Opus Diamond P2-A]).
-        self.store.add_partition(part)
+        try:
+            dropped_failed, dropped_no_roots = self.store.add_partition_clearing(part)    # ONE locked step: the check that it is neither served nor pending, the seat, and the failed / no-roots records dropped
+        except CorpusPresent as exc:
+            return self._already_here_refusal(corpus_id, exc.state)           # it was taken while this build ran: the build is discarded, nothing was changed
+        except StoreSealed:
+            # registry-error mode began after the gate and before the seat: the seat refused INSIDE its locked step, the build is discarded, nothing was registered
+            err = self.registry_error
+            return {**(_registry.refusal(err, restart_note=True) if err is not None else {"success": False, "error": "registry-error mode"}), "corpus_id": corpus_id, "registered": False}
         kernel = getattr(self.store, "kernel", None)
         try:
             seeded_root = kernel.seat_partition(part) if kernel is not None else None
+        except KernelSealed:
+            # registry-error mode began BETWEEN the store's seat and the kernel's: the kernel refused inside its step. Undo the store's seat (a sealed store restores no record)
+            self.store.remove_partition_restoring(corpus_id, dropped_failed, dropped_no_roots)
+            self._reverse_slot = None
+            err = self.registry_error
+            return {**(_registry.refusal(err, restart_note=True) if err is not None else {"success": False, "error": "registry-error mode"}), "corpus_id": corpus_id, "registered": False}
+        except _rs.RootNotAnswering:
+            # [MECH-BR-BOOT] a root did not answer while the corpus was being seated: ROLL BACK completely, with the build-root refusal (no path)
+            self.store.remove_partition_restoring(corpus_id, dropped_failed, dropped_no_roots)
+            if kernel is not None:
+                kernel.unseat_partition(corpus_id)
+            self._reverse_slot = None
+            return {**_build_root_refusal(corpus_id, {"code": _rs.CODE_CORPUS_ROOT_UNRESPONSIVE}), "registered": False}
         except CorpusFileError as exc:
             # [Opus Diamond P1-A] the seat failed: ROLL BACK completely (not loaded, not seated, not half-registered), with a
             # coded refusal; a retry after the cause clears starts from nothing and succeeds.
-            self.store.remove_partition(corpus_id)
+            self.store.remove_partition_restoring(corpus_id, dropped_failed, dropped_no_roots)
             if kernel is not None:
                 kernel.unseat_partition(corpus_id)
-            self._reverse_index = None
-            self._reverse_index_key = None
+            self._reverse_slot = None
             return _corpus_file_refusal(corpus_id, {"code": exc.code, "path": exc.rel_path})
-        self.store.failed_corpora.pop(corpus_id, None)          # seated: no longer a failed corpus
+        if hasattr(self.store, "clear_unlocated"):
+            self.store.clear_unlocated(corpus_id)       # the corpus is served now, so its location is stated (the judge accepted the entry above)
+        self._retain_untrusted(choice.corpora if from_registry else None, self.store.snapshot_all()[2])
         # A newly-registered corpus is a SURFACE CHANGE — invalidate any cached
         # reverse-lookup snapshot so `lts_reverse` sees the new partition's edges on its
         # very next call rather than answering from a stale pre-registration snapshot.
-        self._reverse_index = None
-        self._reverse_index_key = None
+        self._reverse_slot = None
         from factlattice import ledger as _ledger
         eph = [r for r in (part.root_paths or ())
                if _ledger.is_ephemeral(r, _ledger.default_ephemeral_roots())]
@@ -2723,24 +3570,45 @@ class LtsEngine:
         Refuses (`success: False`, changes nothing) only when `corpus_id` was never
         loaded; there is no other failure mode — unregistering never touches disk.
         """
-        if corpus_id not in self.store.corpus_ids():
+        look = self.store.snapshot_all()           # one look at the tables
+        served, pending = look[0], look[1]
+        if corpus_id in pending and self.store.forget_pending(corpus_id):         # the forget checks, under the lock, that it is still pending
+            # [MECH-BR-BOOT] a corpus registered but not read yet: forgetting it stops its read from being published (the loader finds it gone)
+            _rec = pending.get(corpus_id) or {}
+            kernel = getattr(self.store, "kernel", None)
+            if kernel is not None:
+                kernel.unseat_partition(corpus_id)
+                kernel.release_roots(_rec.get("paths") or [], {p for c, r in pending.items() if c != corpus_id for p in r["paths"]})
+            if self.healer is not None:
+                self.healer.forget(corpus_id)
+            self._reverse_slot = None
+            return {"success": True, "corpus_id": corpus_id, "domain_suffix": None, "was_kernel_seated": False, "was_pending": True}
+        if corpus_id in pending:                  # it ended its read while this call looked: take the look again, it is served (or failed) now
+            look = self.store.snapshot_all()
+            served = look[0]
+        if corpus_id not in {p.corpus_id for p in served} and hasattr(self.store, "forget_unlocated") and self.store.forget_unlocated(corpus_id):
+            # [MECH-BR-BOOT] x-load-error (1): an entry the registry could not place is registered but not served; unregistering it ends the flag it set on
+            # every write (and drops its failed / no-roots record, so a listing no longer names it)
+            self._reverse_slot = None
+            self._retain_untrusted(None, self.store.snapshot_all()[2])
+            return {"success": True, "corpus_id": corpus_id, "domain_suffix": None, "was_kernel_seated": False, "was_unlocated": True}
+        if corpus_id not in {p.corpus_id for p in served}:
             return {"success": False, "corpus_id": corpus_id,
                     "error": f"no such loaded corpus: {corpus_id!r}",
-                    "available": self._public_corpus_ids(),
+                    "available": self._public_corpus_ids(look),
                     "note": PRIVATE_NOTE}
         kernel = getattr(self.store, "kernel", None)
         was_seated = kernel.unseat_partition(corpus_id) if kernel is not None else False
         if self.healer is not None:
             self.healer.forget(corpus_id)
         removed = self.store.remove_partition(corpus_id)
-        self._reverse_index = None
-        self._reverse_index_key = None
+        self._reverse_slot = None
         return {"success": True, "corpus_id": corpus_id,
                 "domain_suffix": getattr(removed, "domain_suffix", None),
                 "was_kernel_seated": was_seated}
 
     # --- lts_list_corpora (net-new; enumerates registered partitions) -------
-    def _heal_for_listing(self, part: Partition) -> Optional[str]:
+    def _heal_for_listing(self, part: Partition) -> str | None:
         """[LIST-CORPORA-SELF-HEAL] route ONE stale partition through the query path's
         own choke point (`_gate`: heal, then re-verify with the ordinary freshness gate)
         and return `None` if it is now fresh, else the `heal_error` string.
@@ -2771,6 +3639,36 @@ class LtsEngine:
         error = heal.get("error")
         return f"{reason}: {error}" if error else reason
 
+    def _marked_entry(self, p: Partition, mark: dict) -> dict:
+        """[MECH-BR-REPORT] x-list: the `lts_list_corpora` entry of a corpus with a marked root. The shape of any entry, with
+        the node counts NULL (not 0: not read is never empty, [INV-BR-NOT-EMPTY]) and `root_health` {status, roots, since}.
+        The counts withheld include the edge counts, which would otherwise be last-read numbers dressed as current. A private
+        corpus's root paths are not given."""
+        sc = (p.index.get("source_corpus") or {}) if isinstance(p.index, dict) else {}
+        return {
+            "corpus_id": p.corpus_id, "domain_suffix": p.domain_suffix,
+            "total_nodes": None, "total_nodes_live": None, "counts_agree": None,
+            "total_edges": None, "resolved_edge_count": None,
+            "root_paths": [] if is_private_partition(p) else p.root_paths, "fresh": False,
+            "built_at": sc.get("built_at") or (p.index.get("generated_at") if isinstance(p.index, dict) else None),
+            "counts_are_as_of": ("nothing is read: a registered root of this corpus is "
+                                 f"{mark['status']}, so no count is given (null is not zero)"),
+            "root_health": dict(mark)}
+
+    def _pending_entry(self, cid: str, rec: dict, mark: dict) -> dict:
+        """[MECH-BR-REPORT] x-list: the `lts_list_corpora` entry of a corpus that is registered but not read yet (or whose root did not answer when it was
+        read). The shape of any entry with every count NULL, never 0 (not read is never empty, [INV-BR-NOT-EMPTY]), and `root_health` {status, roots,
+        since}: `pending` while it waits, `unresponsive` once a root of it has gone a deadline with no answer. No disk, no wait. A private corpus's root
+        paths are not given (and a private corpus is not listed by name at all: it is counted)."""
+        return {
+            "corpus_id": cid, "domain_suffix": (rec["spec"].get("domain_suffix") if isinstance(rec.get("spec"), dict) else None) or f"proj.{cid}",
+            "total_nodes": None, "total_nodes_live": None, "counts_agree": None,
+            "total_edges": None, "resolved_edge_count": None,
+            "root_paths": [], "fresh": False, "built_at": None,
+            "counts_are_as_of": ("nothing is read: this corpus is registered and its roots are "
+                                 f"{mark['status']}, so no count is given (null is not zero)"),
+            "root_health": dict(mark)}
+
     def list_corpora(self, heal: bool = True) -> dict:
         """The registry, with EVERY count carrying its own freshness inline.
 
@@ -2798,10 +3696,31 @@ class LtsEngine:
         staleness, e.g. in a corpus-liveness sweep.
         """
         corpora = []
-        healed_corpora: List[str] = []
-        for p in self.store.partitions():
+        healed_corpora: list[str] = []
+        marked_ids: set = set()
+        with self.store.consistent():             # the tables and the registry-error state in ONE step: registry-error mode empties the one and seats the other together
+            snap = self.store.snapshot_all()      # all four tables at once, for the verify, the body and the extent: a corpus that moves while this runs is in exactly one
+            reg_state = (self.registry_error, self.registry_boot)
+        with self._verified(snap[0]):
+            return self._list_corpora_body(heal, corpora, healed_corpora, marked_ids, snap, reg_state)
+
+    def _list_corpora_body(self, heal, corpora, healed_corpora, marked_ids, snap, reg_state=None) -> dict:
+        snap_parts, snap_pending, snap_failed, snap_no_roots = snap
+        unserved = (snap_pending, snap_failed, snap_no_roots)
+        for p in snap_parts:
+            # [MECH-BR-REPORT] x-list: a marked root is reported from memory and never waited on, before any read below
+            mark = self._root_mark(p)
+            if mark is not None:
+                corpora.append(self._marked_entry(p, mark))
+                marked_ids.add(p.corpus_id)
+                continue
             fr = self._freshness_eval(p)
-            heal_error: Optional[str] = None
+            mark = self._root_mark(p)          # the verify above is what can mark a root that had not been marked yet
+            if mark is not None:
+                corpora.append(self._marked_entry(p, mark))
+                marked_ids.add(p.corpus_id)
+                continue
+            heal_error: str | None = None
             if heal and not fr.fresh:
                 heal_error = self._heal_for_listing(p)
                 try:
@@ -2833,28 +3752,57 @@ class LtsEngine:
             }
             if heal_error is not None:
                 entry["heal_error"] = heal_error
+            mark = self._root_mark(p)          # a heal re-reads the roots; if one stopped answering meanwhile, say so
+            if mark is not None:
+                entry = self._marked_entry(p, mark)
+                marked_ids.add(p.corpus_id)
             corpora.append(entry)
+        # [MECH-BR-BOOT] x-server: corpora registered but not read yet are listed pending (or unresponsive), with null totals, and NEVER waited on
+        for pcid, prec in sorted(snap_pending.items()):
+            if prec.get("private"):
+                continue                                  # counted in `private_failed`, never named
+            pmark = self._pending_mark(pcid, prec)
+            if pmark is not None:
+                corpora.append(self._pending_entry(pcid, prec, pmark))
+                marked_ids.add(pcid)
+        health = self._root_health_view(snap)        # AFTER the heals above: it describes what is served now
+        for entry in corpora:
+            if entry["corpus_id"] in health:
+                entry["root_health"] = health[entry["corpus_id"]]
         corpora.sort(key=lambda c: c["corpus_id"])
         stale = sorted(c["corpus_id"] for c in corpora if not c["fresh"])
         # corpora that FAILED to build on a non-regular/broken/unreadable member: listed with the code, never served
-        failed, private_failed = self._failed_view()
+        failed, private_failed = self._failed_view(unserved)
+        served = [c for c in corpora if c["corpus_id"] not in marked_ids]   # the extent below speaks of what is served
+        no_roots, private_no_roots = self._no_roots_view(unserved)
+        corpora = sorted(corpora + no_roots, key=lambda c: c["corpus_id"])
+        private_unbuilt = private_failed           # a failed build; no-roots, like a public one, does not touch index freshness
+        private_failed += private_no_roots
         failed_fields = ({"failed_corpora": failed} if failed else {})
         if private_failed:
             failed_fields["private_failed"] = private_failed      # a COUNT: a failed private corpus is never named
         heal_fields = {"healed_corpora": sorted(healed_corpora)} if heal else {}
-        choice = self._registry_choice()
+        choice = self._registry_choice(reg_state)
         choice_field = {"registry_choice": choice} if choice is not None else {}
+        stuck = getattr(getattr(self.store, "kernel", None), "stuck_workers", None)
+        stuck_n = stuck() if stuck is not None else 0
+        stuck_field = {"stuck_workers": stuck_n} if stuck_n else {}
+        fpe = getattr(getattr(self, "boot_loader", None), "first_pass_error", None)
+        stuck_field = {**stuck_field, **({"first_pass_error": fpe, "first_pass_error_note": FIRST_PASS_ERROR_NOTE} if isinstance(fpe, str) and fpe else {})}      # ABSENT unless the first-pass hook raised: its class name only, and a FIXED sentence saying what it means
+        # [MECH-BR-WRITES] which resolver the engine's root reads run on: ABSENT when it is the CPython copy (per-component progress); present, as
+        # `os.path.realpath`, on an interpreter whose own algorithm differs from the copy (progress is then an elapsed budget, with the limits of spec 38 x-progress)
+        impl_field = {"realpath_impl": _rs.REALPATH_IMPL} if _rs.REALPATH_IMPL != _rs.REALPATH_COPY else {}
         return {"success": True, "count": len(corpora), "corpora": corpora,
-                "stale_corpora": stale, **failed_fields, **heal_fields, **choice_field,
+                "stale_corpora": stale, **failed_fields, **heal_fields, **choice_field, **stuck_field, **impl_field,
                 **declare_extent(
-                    corpora_consulted=[c["corpus_id"] for c in corpora],
-                    corpora_available=[c["corpus_id"] for c in corpora],
-                    corpora_skipped=([{"corpus": c, "reason": "stale"} for c in stale] + self._failed_skips()),
-                    nodes_in_scope=sum(len(p.nodes) for p in self.store.partitions()),
+                    corpora_consulted=[c["corpus_id"] for c in served],
+                    corpora_available=[c["corpus_id"] for c in served],
+                    corpora_skipped=(self._stale_skip_entries(stale, snap) + self._failed_skips(unserved)),
+                    nodes_in_scope=sum(len(p.nodes) for p in snap_parts if p.corpus_id not in marked_ids),
                     keys_consulted=["corpus_id"],
-                    index_fresh=not stale and not failed and not private_failed,
-                    built_at={c["corpus_id"]: c["built_at"] for c in corpora},
-                    root_paths={c["corpus_id"]: c["root_paths"] for c in corpora},
+                    index_fresh=not stale and not failed and not private_unbuilt,
+                    built_at={c["corpus_id"]: c["built_at"] for c in served},
+                    root_paths={c["corpus_id"]: c["root_paths"] for c in served},
                     scope={"tool": "lts_list_corpora", "corpus": "ALL LOADED"},
                     **self._registry_extent_kw(True))}
 
@@ -2961,7 +3909,7 @@ _AGG_FILTER_KEYS = ("prefix", "domain", "status", "area", "text",
 # [S5 review F5] at most this many corpora keep a BM25 index in memory (LRU).
 LEXRANK_CACHE_MAX = 8
 
-_SERVER_TOOLS: Optional[LtsEngine] = None
+_SERVER_TOOLS: LtsEngine | None = None
 
 
 def reset_server_tools() -> None:
@@ -3049,7 +3997,7 @@ REGISTRY_ERROR_EXEMPT_TOOLS = (
 )
 
 
-def _registry_gate(t: object, name: str, a: dict) -> Optional[dict]:
+def _registry_gate(t: object, name: str, a: dict) -> dict | None:
     """The registry's two refusals, applied to every tool that reads the corpus set ([ERROR-CODE-REGISTRY-NOT-FOUND]).
 
     1. REGISTRY-ERROR MODE (the server booted with a broken registry): every tool except `lts_list_corpora`
@@ -3060,6 +4008,16 @@ def _registry_gate(t: object, name: str, a: dict) -> Optional[dict]:
        an example answer for a corpus the caller meant to find in THEIR registry must be a stop.
     An engine seated by hand (no registry seated) is exempt: it never resolved a registry.
     """
+    bl = getattr(t, "boot_loader", None)
+    if (bl is not None and name not in REGISTRY_ERROR_EXEMPT_TOOLS and not bl.first_pass_done.is_set()
+            and not t.store.partitions()):
+        # [MECH-BR-BOOT] x-build-traps 1: a server that has not served one corpus yet may still turn out to have NOTHING loadable, which is the
+        # registry-error mode the old boot decided before the handshake. A tool that reads the corpus set waits (once, up to the root deadline) for the
+        # first pass to end, so it never answers 'no-roots' or 'not found' on a verdict that is not made. Once any corpus is served, the verdict 'NOTHING loadable' can no longer be; a registry error that is known only after a root has been read (a pinned file that is not a string, a suffix that cannot be a key) can still follow in x-boot-window's window, and every registry error that needs no disk was reached in `declare()`, before anything was served.
+        # A tool that names no corpus store (lint, preview, writers, selfcheck) and lts_list_corpora do not wait.
+        end = time.monotonic() + t._root_deadline()
+        while not bl.first_pass_done.is_set() and not t.store.partitions() and time.monotonic() < end:
+            bl.first_pass_done.wait(0.02)          # ends as soon as ANY corpus is served: a healthy one must not wait for another's hang
     err = getattr(t, "registry_error", None)
     if err is not None:
         return None if name in REGISTRY_ERROR_EXEMPT_TOOLS else _registry.refusal(err, restart_note=True)
@@ -3072,7 +4030,81 @@ def _registry_gate(t: object, name: str, a: dict) -> Optional[dict]:
     return None
 
 
-def dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> dict:
+def _declared_arguments(name: str) -> frozenset | None:
+    """The argument names tool `name` ADVERTISES: the property names of its `server.TOOLS` inputSchema, the one source
+    of truth (a lazy import: `server` imports this module). None for a name that is not a served tool."""
+    from . import server as _srv
+    for spec in _srv.TOOLS:
+        if spec.get("name") == name:
+            return frozenset((spec.get("inputSchema") or {}).get("properties") or {})
+    return None
+
+
+def _refuse_unknown_arguments(name: str, arguments) -> dict | None:
+    """[UNKNOWN-ARGUMENT-REFUSED] THE ONE CHOKE POINT for argument names. A call carrying a name the tool's advertised
+    inputSchema does not declare is REFUSED before anything is evaluated: a misspelt filter (`prefixx`) used to be
+    dropped silently and the answer WIDENED to a wrong answer that looked right. `dispatch` is the door every transport
+    uses (the MCP server, the `call` CLI, the reviewer helpers, in-process library callers), so the rule lives here.
+    Returns None when every name is declared (or the call is not checkable: unknown tool name, non-dict arguments, left
+    to the existing paths), else the refusal: `reason` repeats the code (the query log persists `reason` as `error_code`), `unknown` lists every undeclared name (sorted), `nearest` maps each to its
+    closest declared name or None. Names are echoed; values never are."""
+    if not isinstance(arguments, dict):
+        return None
+    declared = _declared_arguments(name)
+    if declared is None:
+        return None
+    unknown = sorted(str(k) for k in arguments if k not in declared)
+    if not unknown:
+        return None
+    import difflib
+    pool = sorted(declared)
+    nearest = {k: (next(iter(difflib.get_close_matches(k, pool, n=1, cutoff=0.6)), None)) for k in unknown}
+    declared_txt = ("Declared: " + ", ".join(pool)) if pool else "The tool takes no arguments"
+    return {"success": False, "refused": True, "code": "unknown_argument", "reason": "unknown_argument", "tool": name,
+            "unknown": unknown, "nearest": nearest,
+            "error": f"{name} does not declare the argument(s) {', '.join(unknown)}; nothing was evaluated. {declared_txt}."}
+
+
+def name_minted_keys(obj):
+    """[x-minted-keys] THE ONE PLACE a reply names the keys the engine minted. Returns `obj` with `minted_keys` (the
+    sorted keys of that `properties` that `core_keys.ENGINE_MINTED_KEYS` holds) put beside the `properties` of EVERY
+    reply object that carries a node's property bag: a dict with a string `id` and a dict `properties`. It walks the
+    whole reply, so a tool that starts to carry node properties is covered without being listed, and the minted key
+    STAYS in `properties` (a `where` condition filters on it). Nothing is mutated: the node dicts are the store's own
+    and are shared, so a changed container is a copy and an unchanged one is returned as it came (identity). A
+    dict whose `properties` is not a node's bag (the profile audit's vocabulary report has no `id`) is left alone;
+    a digest row carries no `properties` and needs no field. A `minted_keys` already on the object is replaced by
+    the computed value. `tests/test_minted_keys.py` calls every served tool in `server.TOOLS` that can answer in
+    its fixture (the others are named in a short list with a reason each, and a tool in neither group fails the
+    test) and fails on a reply object with a `properties` key that this function did not name."""
+    if isinstance(obj, dict):
+        changed = False
+        out = {}
+        for k, v in obj.items():
+            if k == "properties":
+                out[k] = v
+                continue
+            nv = name_minted_keys(v)
+            changed = changed or nv is not v
+            out[k] = nv
+        props = obj.get("properties")
+        if isinstance(props, dict) and isinstance(obj.get("id"), str):
+            new = {}
+            for k, v in out.items():
+                if k == "minted_keys":
+                    continue                       # the computed value wins over one already on the object
+                new[k] = v
+                if k == "properties":
+                    new["minted_keys"] = minted_keys_in(props)
+            return new
+        return out if changed else obj
+    if isinstance(obj, list):
+        new_list = [name_minted_keys(v) for v in obj]
+        return new_list if any(a is not b for a, b in zip(new_list, obj)) else obj
+    return obj
+
+
+def dispatch(name: str, arguments: dict, tools: LtsEngine | None = None) -> dict:
     """Single entry point for the lts_* tools, WITH the query log around it.
 
     ⛔ THE LOG SEAM IS HERE, NOT IN `server.py`. `Server.handle` is the MCP transport's
@@ -3091,8 +4123,38 @@ def dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> d
     log directory produces one warning per process and the query is served regardless.
     """
     with querylog.timed() as t:
-        result = _dispatch(name, arguments, tools)
+        result = _refuse_unknown_arguments(name, arguments)
+        if result is None:
+            result = _dispatch(name, arguments, tools)
+            result = _mode_began_meanwhile(name, tools, result, arguments)
+            result = name_minted_keys(result)
     querylog.record_call(name, arguments or {}, result, t.ms)
+    return result
+
+
+# THE ONE STATED SET of tools whose answer the post-call check may replace: the tools on the CLI door's fail-closed READ-ONLY allow-list (a tool that is not on it is a
+# writer until proven otherwise, so a NEW tool never joins this check by being added) minus the tools registry-error mode exempts, `lts_selfcheck`, and
+# `lts_semantic_find` (it persists a derived vector index). A tool that writes or records anything (`lts_report_miss`, `lts_register_corpus`, `lts_unregister_corpus`,
+# every typed writer) returns what actually happened: telling a caller "refused" after the record was made would misstate it. A test checks the set against the tool
+# registry (`server.TOOLS`) and against `LTS_WRITE_TOOL_NAMES`.
+LTS_POST_CALL_RECHECK_TOOL_NAMES = tuple(n for n in LTS_READ_ONLY_TOOL_NAMES
+                                         if n not in REGISTRY_ERROR_EXEMPT_TOOLS and n not in ("lts_selfcheck", "lts_semantic_find"))
+
+
+def _mode_began_meanwhile(name: str, tools, result, arguments=None):
+    """A call that passed the lock-free registry gate just BEFORE registry-error mode began may have read the store the mode then emptied (a corpus-omitted find
+    answers `success` with 0 nodes: an empty answer from a store that was emptied, the shape [INV-BR-NOT-EMPTY] names). The mode was seated in the same locked step that
+    emptied the store, so a check AFTER the call always sees it: the answer is the mode's refusal. Only the tools of `LTS_POST_CALL_RECHECK_TOOL_NAMES` (read-only, no
+    record made) are re-checked; a writer or recorder returns what actually happened, and a call that already failed is left alone. A `lts_find` that COULD HAVE
+    PERSISTED a derived vector index (`could_persist_derived_index`: effective mode `on_miss`, a named corpus, text, no `path=`, zero matches; the function `lts_find` itself asks)
+    is left alone too, so "refused" does not misstate it. A corpus-omitted find, a named find with matches and a `path=` find are re-checked."""
+    if name == "lts_find" and isinstance(arguments, dict) and could_persist_derived_index(arguments.get("semantic"), arguments.get("corpus"), arguments.get("path"),
+                                                                                          arguments.get("text"), result):
+        return result
+    t = tools if tools is not None else _SERVER_TOOLS
+    err = getattr(t, "registry_error", None) if t is not None else None
+    if err is not None and name in LTS_POST_CALL_RECHECK_TOOL_NAMES and isinstance(result, dict) and result.get("success") is not False:
+        return _registry.refusal(err, restart_note=True)
     return result
 
 
@@ -3101,27 +4163,27 @@ def _ledger_args(a: dict) -> dict:
     return {k: a.get(k) for k in ("proposer", "approver", "reason", "via")}
 
 
-def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> dict:
+def _dispatch(name: str, arguments: dict, tools: LtsEngine | None = None) -> dict:
     """The dispatch body. Pure dict-in/dict-out; no transport, no logging.
 
     `tools` may be injected (tests); otherwise the process-wide singleton set via
     `set_server_tools` is used. No `_caller_identity` is read — there is no ACL.
     """
     a = arguments or {}
-    # --- REGISTRY-ERROR MODE, for the tools that are exempt because they take a PATH: an exempt tool that is given a
-    # `corpus` is asking for registry data (`lts_lint(corpus=...)` resolves a corpus root through the registry), so it is
-    # refused like every corpus-scoped tool. MEASURED (round 4): in error mode only `lts_selfcheck` and `lts_list_corpora`
-    # answer; `lts_lint` and `lts_preview` refuse even without a corpus, because they resolve their profile THROUGH the
-    # registry. (Round 3, P2-3.)
+    # --- REGISTRY-ERROR MODE, for the exempt tools that can be asked for registry data. A call can name a corpus only
+    # where the tool's schema declares `corpus` (any other tool is refused `unknown_argument` before this point), and of
+    # the exempt tools that is `lts_preview` alone: `lts_preview(corpus=...)` resolves a corpus root through the
+    # registry, so it is refused like every corpus-scoped tool. MEASURED (round 4): in error mode only `lts_selfcheck`
+    # and `lts_list_corpora` answer; `lts_lint` and `lts_preview` refuse even without a corpus, because they resolve
+    # their profile THROUGH the registry. (Round 3, P2-3; the narrowing to `lts_preview` follows the unknown-argument rule.)
     _t0 = tools if tools is not None else _SERVER_TOOLS
-    if name in REGISTRY_ERROR_EXEMPT_TOOLS and a.get("corpus") and getattr(_t0, "registry_error", None) is not None \
-            and name != "lts_list_corpora":
+    if name == "lts_preview" and a.get("corpus") and getattr(_t0, "registry_error", None) is not None:
         return _registry.refusal(_t0.registry_error, restart_note=True)
     # --- LINT layer: needs only the parser + a path, no loaded store ---
     if name == "lts_lint":
         try:
             from .lint import lint as _lint
-            res = _lint(a.get("source") or a.get("path"), paths=a.get("paths"),
+            res = _lint(a.get("source"), paths=a.get("paths"),
                         profile=a.get("profile"),
                         structure=a.get("structure", True),
                         dangle=a.get("dangle", False))
@@ -3156,11 +4218,23 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
     # given as a directory path needs nothing loaded at all.
     if name == "lts_preview":
         try:
-            from .preview import PreviewRefusal, preview as _preview
+            from .preview import PreviewRefusal
+            from .preview import preview as _preview
             t0 = tools if tools is not None else _SERVER_TOOLS
-            _failed = getattr(getattr(t0, "store", None), "failed_corpora", None) or {}
-            if isinstance(a.get("corpus"), str) and a["corpus"] in _failed:     # registered, but it failed to build
-                return _corpus_file_refusal(a["corpus"], _failed[a["corpus"]])
+            _pv_store = getattr(t0, "store", None)
+            if isinstance(a.get("corpus"), str) and _pv_store is not None:
+                # one look at all four tables: a corpus the watcher moves failed -> pending meanwhile is never read as unknown
+                _part, _pend, _fail, _nor = _pv_store.lookup_all(a["corpus"])
+                if _pend is not None:
+                    # [MECH-BR-BOOT] x-server: a corpus not read yet is waited for (up to the root deadline), then previewed against, or refused
+                    t0._await_loaded([a["corpus"]])
+                    _part, _pend, _fail, _nor = _pv_store.lookup_all(a["corpus"])
+                    if _pend is not None:
+                        return t0._pending_refusal(a["corpus"], _pend)      # from the record already held: not read again
+                if _fail is not None:                      # registered, but it failed to build
+                    return _corpus_file_refusal(a["corpus"], _fail)
+                if _nor is not None:
+                    return LtsEngine._no_roots_refusal(a["corpus"], _nor)
             try:
                 return _preview(
                     a.get("content"), path=a.get("path"), corpus=a.get("corpus"),
@@ -3188,6 +4262,7 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
     # would go back to the raw text edit.
     if name in ("lts_add_property", "lts_add_node", "lts_property_loss",
                 "lts_repair_property", "lts_rename_property", "lts_remove_property"):
+        _prev_view = _NO_VIEW = object()
         try:
             from . import authoring as _auth
             # The store, WHEN one is seated, purely so the receipt can answer "is this
@@ -3197,6 +4272,20 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
             # registry and SAYS which source it used.
             _t = tools if tools is not None else _SERVER_TOOLS
             _store = getattr(_t, "store", None)
+            if name != "lts_property_loss":
+                # [MECH-BR-WRITES] x-inside-marked: ONE reading of the registered roots for this call (each root's last answered probe, no
+                # disk), and the refusal of a file under a root that is not answering BEFORE anything below touches the path: the pre-check
+                # that follows stats it, and the writers' serialising wrapper resolves it and takes the per-file lock.
+                _view = _membership.snapshot(_store)
+                _view.typed = a.get("path") if isinstance(a.get("path"), str) else None
+                _view = _membership.await_pending(_view, a.get("path"), _store)     # a file under a root not yet read waits for it (boot window)
+                _gone = _auth.verdict_pending_refusal(_view, a.get("path")) or _auth.marked_refusal(_view, a.get("path"))
+                if _gone is not None:
+                    return _gone
+                _prev_view = _rootview.install(_view)
+                _gone = _auth.unconfirmed_refusal(_view, a.get("path"), _store)      # membership is evaluated once, here, for the whole write
+                if _gone is not None:
+                    return _gone
             # ⛔ NO oracle is injected and `lts_preview` is NOT consulted. The gate is a
             # direct `factlattice.parser.parse_text` round-trip inside the writer.
             # Preview runs that same core, so it is not an independent second opinion,
@@ -3224,7 +4313,7 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
                         evidence={"refusal": "create_argument_invalid"}), path=None)
                 return _auth.add_node(
                     a["path"], a["node_id"], a.get("title") or a["node_id"],
-                    a.get("properties") or {}, section=a.get("section"),
+                    a.get("properties"), section=a.get("section"),
                     level=a.get("level"), store=_store, receipt=a.get("receipt"),
                     create=bool(a.get("create", False)),
                     create_parent=bool(a.get("create_parent", False)),
@@ -3252,7 +4341,7 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
                     expect_value=a.get("expect_value"),
                     allow_edge_change=a.get("allow_edge_change", False), store=_store,
                     receipt=a.get("receipt"), **_ledger_args(a))
-            roots = a.get("roots") or a.get("root") or a.get("path")
+            roots = a.get("roots")
             if not roots:
                 return {"success": False, "error": "lts_property_loss needs `roots`"}
             return _auth.property_loss(roots, by_month=bool(a.get("by_month", False)),
@@ -3266,6 +4355,9 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
         except Exception as exc:  # noqa: BLE001
             logger.exception("[lts-engine] error dispatching %s", name)
             return {"success": False, "error": f"{type(exc).__name__}: {exc}"}
+        finally:
+            if _prev_view is not _NO_VIEW:
+                _rootview.restore(_prev_view)
 
     # --- SELFCHECK layer: parser only, no loaded store (same shape as lts_lint) ---
     if name == "lts_selfcheck":
@@ -3298,11 +4390,14 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
                 required_property=a.get("required_property"),
                 required_scope=a.get("required_scope"),
                 tail_threshold=int(a.get("tail_threshold", 5)), **filters), agg), a)
+        if name in ("lts_find", "lts_find_in_prose"):
+            # specs/37-default-scope.lts: only here, so an internal read of find stays over every public corpus.
+            _scope, _scope_refusal = (tools if tools is not None else _SERVER_TOOLS)._search_scope(a)
+            if _scope_refusal is not None:
+                return _scope_refusal
         if name == "lts_find":
-            if a.get("path") is not None and "word_fallback" in a:
-                return {"success": False, "error": "`word_fallback` is not available with `path`: "
-                        "the word fallback needs a registered corpus"}
-            return t.find(corpus=a.get("corpus"), domain=a.get("domain"),
+            _unread: dict = {}                                  # the extent's private-unread decision comes back through this, from the producer to the flag: an argument, not state
+            return t._flag_root_skips(t._declare_search_scope(t.find(corpus=a.get("corpus"), domain=a.get("domain"),
                           function=a.get("function"), service=a.get("service"),
                           prefix=a.get("prefix"), status=a.get("status"),
                           text=a.get("text"), since=a.get("since"), until=a.get("until"),
@@ -3313,9 +4408,10 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
                           include_reverse_digest=bool(a.get("include_reverse_digest", False)),
                           semantic=a.get("semantic"), rank=a.get("rank"),
                           **({"path": a["path"]} if a.get("path") is not None else {}),
-                          **{k: a[k] for k in _qs.NEW_PARAMS if k in a})
+                          _scope=_scope, _unread=_unread, **{k: a[k] for k in _qs.NEW_PARAMS if k in a}), _scope), _unread.get("private_unread", False))
         if name == "lts_find_in_prose":
-            return t.find_in_prose(
+            _unread = {}
+            return t._flag_root_skips(t._declare_search_scope(t.find_in_prose(
                 text=a.get("text"), corpus=a.get("corpus"), domain=a.get("domain"),
                 function=a.get("function"), service=a.get("service"),
                 prefix=a.get("prefix"), status=a.get("status"), area=a.get("area"),
@@ -3325,7 +4421,7 @@ def _dispatch(name: str, arguments: dict, tools: Optional[LtsEngine] = None) -> 
                 context=int(a.get("context") or 0),
                 token_budget=a.get("token_budget"), offset=a.get("offset", 0),
                 tier=a.get("tier"),
-                **{k: a[k] for k in _qs.NEW_PARAMS if k in a})
+                _scope=_scope, _unread=_unread, **{k: a[k] for k in _qs.NEW_PARAMS if k in a}), _scope), _unread.get("private_unread", False))
         if name == "lts_node":
             return t.node(corpus=a["corpus"], node_id=a["node_id"],
                           token_budget=a.get("token_budget"), tier=a.get("tier"),

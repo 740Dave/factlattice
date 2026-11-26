@@ -33,7 +33,8 @@ token; `decided-in-session` buckets to a date granularity via the engine's own
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from ..budget import declare
 from ..privacy import is_private_partition
@@ -51,7 +52,7 @@ NONE_KEY = "(none)"
 # native engine imports — ANALYTICS is an lts-engine layer, so it imports the
 # QUERY layer (tools) and the corpus config directly. No path shim.
 # --------------------------------------------------------------------------- #
-def _normalize_date(value: object) -> Optional[str]:
+def _normalize_date(value: object) -> str | None:
     """The engine's OWN date normalizer (YYYY-MM-DD | None), reused verbatim so the
     aggregator's date bucketing matches `find`'s since/until semantics exactly."""
     from ..tools import normalize_date
@@ -72,7 +73,7 @@ def build_default_tools():
 # `find` returns each node as `{corpus, id, type_prefix, title, domain, status,
 # area, document_tag, properties: {...}, ...}`. An attribute may be a top-level
 # field, a friendly alias, or a key inside `properties`.
-_TOPLEVEL_ALIASES: Dict[str, str] = {
+_TOPLEVEL_ALIASES: dict[str, str] = {
     "prefix": "type_prefix",              # group "by prefix" == the [PREFIX-...] class
     "type-prefix": "type_prefix",
     "doctype": "document_tag",
@@ -115,7 +116,7 @@ _CANONICAL_TOKEN_ATTRS = {"lifecycle-position", "lifecycle", "status"}
 _DATE_ATTRS = {"decided-in-session", "session", "date"}
 
 
-def canonical_token(value: object) -> Optional[str]:
+def canonical_token(value: object) -> str | None:
     """The leading status token of a possibly-annotated value.
     "committed # ..." / "committed (…)" / "spec-authored" -> "committed" / "committed"
     / "spec-authored". None / empty -> None."""
@@ -128,7 +129,7 @@ def canonical_token(value: object) -> Optional[str]:
     return m.group(1) if m else None
 
 
-def date_bucket(value: object, granularity: str = "month") -> Optional[str]:
+def date_bucket(value: object, granularity: str = "month") -> str | None:
     """Bucket a corpus date value to `day` (YYYY-MM-DD) / `month` (YYYY-MM) /
     `year` (YYYY), via the engine's `normalize_date`. Unparseable -> None."""
     d = _normalize_date(value)
@@ -142,12 +143,12 @@ def date_bucket(value: object, granularity: str = "month") -> Optional[str]:
 
 
 def make_key_fn(attr: str, *, canonical: bool = True,
-                date_granularity: str = "month") -> Callable[[dict], Optional[str]]:
+                date_granularity: str = "month") -> Callable[[dict], str | None]:
     """Build the node -> bucket-key function for `attr`, applying the right
     normalizer. `canonical=False` disables status-token collapsing (raw values)."""
     key = _TOPLEVEL_ALIASES.get(attr, attr)
 
-    def key_fn(node: dict) -> Optional[str]:
+    def key_fn(node: dict) -> str | None:
         raw = resolve_attr(node, attr)
         if key in _DATE_ATTRS:
             return date_bucket(raw, date_granularity)
@@ -211,7 +212,7 @@ def strip_inline_commentary(value: str) -> str:
 _NUMERIC_OPS = ("sum", "avg", "min", "max")
 
 
-def coerce_number(value: object) -> Optional[float]:
+def coerce_number(value: object) -> float | None:
     """Best-effort numeric coercion. `int`/`float` pass through (but a `bool` is a flag,
     not a metric -> None). A string is parsed directly, then as its leading token
     (so `"5 # measured"` -> 5.0). Anything else / unparseable -> None (skip)."""
@@ -235,7 +236,7 @@ def coerce_number(value: object) -> Optional[float]:
     return None
 
 
-def numeric_summary(values: List[float]) -> Dict[str, Any]:
+def numeric_summary(values: list[float]) -> dict[str, Any]:
     """sum/avg/min/max over already-coerced numeric values. Empty -> all-None except
     count=0 / sum=0.0 (an empty sum is honestly 0; an empty avg/min/max is undefined)."""
     n = len(values)
@@ -252,8 +253,12 @@ def numeric_summary(values: List[float]) -> Dict[str, Any]:
 # recognized find() filter kwargs the aggregator forwards to narrow the node set.
 # [FIND-QUERY-SURFACE §7] + the new terms/where/document filters, forwarded to `find`'s one shared predicate.
 from ..query_surface import NEW_PARAMS as _QS_PARAMS
+
 _FIND_FILTER_KEYS = ("domain", "function", "service", "prefix", "status",
                      "text", "since", "until", "date_property", "area") + _QS_PARAMS
+
+
+_ANALYTICS_UNBOUNDED_BUDGET = 10 ** 15   # a complete fold, never a context-window page
 
 
 class LtsAggregator:
@@ -273,19 +278,28 @@ class LtsAggregator:
         return self._tools
 
     # -- the complete-match fetch (drives find across the token-budget cursor) --
-    def _find_all(self, corpus: Optional[str], filters: dict):
+    def _find_all(self, corpus: str | None, filters: dict):
         """Return (nodes, error). On a find failure (not-found / STALE) `nodes` is
         None and `error` is the engine's response dict, propagated verbatim."""
         tools = self._get_tools()
         args = {k: filters.get(k) for k in _FIND_FILTER_KEYS if filters.get(k) is not None}
-        nodes: List[dict] = []
+        nodes: list[dict] = []
         offset = 0
         seen_cursor = -1
         while True:
             # [SEM-ON-MISS] analytics is a deterministic fold: never suggestions, whatever the env
-            res = tools.find(corpus=corpus, offset=offset, semantic="off", word_fallback=False, **args)
+            # [ENGINE-BUDGET] skip-and-report: `find` now skips a match larger than the budget and
+            # REPORTS it instead of carrying it. Analytics is a complete fold and has no context window to
+            # protect, so it asks for an unbounded budget; and it fails loud rather than ever counting
+            # around a skipped node (a silently short count is the defect [LAYER-ANALYTICS] exists to prevent).
+            res = tools.find(corpus=corpus, offset=offset, semantic="off", word_fallback=False,
+                             token_budget=_ANALYTICS_UNBOUNDED_BUDGET, **args)
             if not res.get("success"):
                 return None, res
+            if res.get("oversize_skipped"):
+                return None, {"success": False, "reason": "analytics-incomplete-oversize",
+                              "error": "a match was skipped as oversize, so a complete fold is not possible",
+                              "oversize_skipped": res["oversize_skipped"]}
             if "query_interpreted" in res:
                 self.query_extras.setdefault("query_interpreted", res["query_interpreted"])
             if "warnings" in res:      # several fetches (profile_audit's scope) may each warn
@@ -301,7 +315,7 @@ class LtsAggregator:
             offset = cursor
 
     # -- public: group-by ------------------------------------------------------
-    def group_by(self, attr: str, *, corpus: Optional[str] = None,
+    def group_by(self, attr: str, *, corpus: str | None = None,
                  canonical: bool = True, raw: bool = False,
                  date_granularity: str = "month", **filters) -> dict:
         """Histogram the matching node set by `attr`. `raw=True` is an alias for
@@ -319,7 +333,7 @@ class LtsAggregator:
             return res  # verbatim not-found / STALE
         key_fn = make_key_fn(attr, canonical=canonical,
                              date_granularity=date_granularity)
-        groups: Dict[str, int] = {}
+        groups: dict[str, int] = {}
         for nd in nodes:
             k = key_fn(nd)
             bucket = NONE_KEY if k is None else str(k)
@@ -345,8 +359,8 @@ class LtsAggregator:
         return out
 
     # -- public: count ---------------------------------------------------------
-    def count(self, *, corpus: Optional[str] = None,
-              group_by: Optional[str] = None, canonical: bool = True,
+    def count(self, *, corpus: str | None = None,
+              group_by: str | None = None, canonical: bool = True,
               raw: bool = False, date_granularity: str = "month",
               **filters) -> dict:
         """Count matching nodes. With `group_by` set, delegate to `group_by()` (the
@@ -373,8 +387,8 @@ class LtsAggregator:
     # ===================================================================== #
 
     # -- public: numeric aggregate (sum/avg/min/max), optionally grouped ---------
-    def numeric(self, attr: str, *, op: str = "sum", corpus: Optional[str] = None,
-                group_by: Optional[str] = None, canonical: bool = True,
+    def numeric(self, attr: str, *, op: str = "sum", corpus: str | None = None,
+                group_by: str | None = None, canonical: bool = True,
                 raw: bool = False, date_granularity: str = "month",
                 **filters) -> dict:
         """sum/avg/min/max of the NUMERIC node attribute `attr` (tokens, commits,
@@ -398,7 +412,7 @@ class LtsAggregator:
         if group_by:
             key_fn = make_key_fn(group_by, canonical=canonical,
                                  date_granularity=date_granularity)
-            per: Dict[str, List[float]] = {}
+            per: dict[str, list[float]] = {}
             skipped = 0
             for nd in nodes:
                 num = coerce_number(resolve_attr(nd, attr))
@@ -409,7 +423,7 @@ class LtsAggregator:
                 bucket = NONE_KEY if k is None else str(k)
                 per.setdefault(bucket, []).append(num)
             buckets = []
-            groups: Dict[str, Any] = {}
+            groups: dict[str, Any] = {}
             for bkt, vals in per.items():
                 s = numeric_summary(vals)
                 row = {"value": bkt, "count": s["count"], "sum": s["sum"],
@@ -463,7 +477,7 @@ class LtsAggregator:
         return self.numeric(attr, op="max", **kw)
 
     # -- public: distinct (cardinality of an attribute's values) -----------------
-    def distinct(self, attr: str, *, corpus: Optional[str] = None,
+    def distinct(self, attr: str, *, corpus: str | None = None,
                  canonical: bool = True, raw: bool = False,
                  date_granularity: str = "month", **filters) -> dict:
         """Cardinality of `attr`'s distinct (canonicalized unless raw) values over the
@@ -477,7 +491,7 @@ class LtsAggregator:
             return res
         key_fn = make_key_fn(attr, canonical=canonical,
                              date_granularity=date_granularity)
-        seen: Dict[str, int] = {}
+        seen: dict[str, int] = {}
         counted = 0
         for nd in nodes:
             k = key_fn(nd)
@@ -494,7 +508,7 @@ class LtsAggregator:
         return out
 
     # -- public: 2-D cross-tab (pivot / matrix) ----------------------------------
-    def cross_tab(self, attr1: str, attr2: str, *, corpus: Optional[str] = None,
+    def cross_tab(self, attr1: str, attr2: str, *, corpus: str | None = None,
                   canonical: bool = True, raw: bool = False,
                   date_granularity: str = "month", **filters) -> dict:
         """Pivot the match set by `attr1` (rows) x `attr2` (cols) — e.g. decisions by
@@ -509,9 +523,9 @@ class LtsAggregator:
             return res
         k1 = make_key_fn(attr1, canonical=canonical, date_granularity=date_granularity)
         k2 = make_key_fn(attr2, canonical=canonical, date_granularity=date_granularity)
-        cells: Dict[Tuple[str, str], int] = {}
-        rows: Dict[str, int] = {}
-        cols: Dict[str, int] = {}
+        cells: dict[tuple[str, str], int] = {}
+        rows: dict[str, int] = {}
+        cols: dict[str, int] = {}
         for nd in nodes:
             a = k1(nd)
             b = k2(nd)
@@ -540,7 +554,7 @@ class LtsAggregator:
 
     # -- public: top_k (bounded slice of a sorted group-by) ----------------------
     def top_k(self, attr: str, k: int = 10, *, by: str = "count",
-              agg: str = "sum", corpus: Optional[str] = None,
+              agg: str = "sum", corpus: str | None = None,
               canonical: bool = True, raw: bool = False,
               date_granularity: str = "month", **filters) -> dict:
         """Top-`k` values of `attr`, by node COUNT (`by='count'`, default) or by a
@@ -598,7 +612,7 @@ class LtsAggregator:
     # the same resolution rule, the same freshness gate (a STALE partition never reaches
     # here because `_find_all` fails first).
 
-    def _adjacency(self, corpus: Optional[str], filters: dict):
+    def _adjacency(self, corpus: str | None, filters: dict):
         """Return (ctx, err). `ctx` = {found_nodes, found_ids, in_deg, out_deg,
         edge_types, total_edges, resolved_edges, stale_corpora}. On a find failure
         (not-found / STALE) `ctx` is None and `err` is the engine dict, verbatim."""
@@ -614,9 +628,9 @@ class LtsAggregator:
             stale = set(res.get("stale_corpora") or [])
             parts = [p for p in tools.store.partitions()
                      if p.corpus_id not in stale and not is_private_partition(p)]
-        in_deg: Dict[str, int] = {}
-        out_deg: Dict[str, int] = {}
-        edge_types: Dict[str, int] = {}
+        in_deg: dict[str, int] = {}
+        out_deg: dict[str, int] = {}
+        edge_types: dict[str, int] = {}
         total_edges = 0
         resolved = 0
         for p in parts:
@@ -644,7 +658,7 @@ class LtsAggregator:
         return ctx, None
 
     # -- public: degree of a single node -----------------------------------------
-    def degree(self, node: str, *, corpus: Optional[str] = None, **filters) -> dict:
+    def degree(self, node: str, *, corpus: str | None = None, **filters) -> dict:
         """Connectivity of one node: in / out / total resolved-edge degree, computed
         from the complete freshness-gated adjacency (consistent with `top_by_degree`).
         Returns `{success, corpus, node, in_degree, out_degree, degree, found}`."""
@@ -662,7 +676,7 @@ class LtsAggregator:
         return out
 
     # -- public: the k most-connected nodes --------------------------------------
-    def top_by_degree(self, k: int = 10, *, corpus: Optional[str] = None,
+    def top_by_degree(self, k: int = 10, *, corpus: str | None = None,
                       direction: str = "both", **filters) -> dict:
         """The k load-bearing nodes by degree over the found set. `direction` =
         `both` (in+out) | `in` | `out`. Deterministic: sorted (-degree, id). Returns
@@ -692,7 +706,7 @@ class LtsAggregator:
         return out
 
     # -- public: edge-type histogram ---------------------------------------------
-    def count_by_edge_type(self, *, corpus: Optional[str] = None, **filters) -> dict:
+    def count_by_edge_type(self, *, corpus: str | None = None, **filters) -> dict:
         """Histogram of relationship types (DEPENDS_ON / SUPERSEDES / RELATES_TO / ...)
         over the fresh corpus edges. `filters` gate freshness + choose the corpus/corpora
         (edge counts are whole-corpus, not filtered to a node subset — an edge type is a
@@ -713,8 +727,8 @@ class LtsAggregator:
         return out
 
     # -- public: profile audit (corpus vocabulary vs. declared profile) ----------
-    def profile_audit(self, *, corpus: Optional[str] = None, profile: object = None,
-                      required_property: Optional[str] = None,
+    def profile_audit(self, *, corpus: str | None = None, profile: object = None,
+                      required_property: str | None = None,
                       required_scope: object = None, tail_threshold: int = 5,
                       **filters) -> dict:
         """Measure the corpus's actual vocabulary (prefixes / properties / edge types)
@@ -729,7 +743,7 @@ class LtsAggregator:
                               tail_threshold=tail_threshold, **filters)
 
     # -- public: orphans / dangle-count ------------------------------------------
-    def orphans(self, *, corpus: Optional[str] = None, **filters) -> dict:
+    def orphans(self, *, corpus: str | None = None, **filters) -> dict:
         """Nodes in the found set with NO incoming resolved edge (in_degree == 0) —
         corpus health as a query (an un-referenced decision/spec). Returns `{success,
         corpus, total, orphan_count, orphan_ratio, orphans:[sorted node ids],
@@ -756,7 +770,7 @@ class LtsAggregator:
 
 
     # -- public: EXEMPLIFIES-coverage report (decisions with/without a principle edge) --
-    def exemplifies_coverage(self, *, corpus: Optional[str] = None, **kwargs) -> dict:
+    def exemplifies_coverage(self, *, corpus: str | None = None, **kwargs) -> dict:
         """Coverage of DECISION nodes by an EXEMPLIFIES->[PRINCIPLE-*] edge — which
         decisions embody a principle and which do NOT (the D5 backfill-signal report).
         A pure composition over this aggregator's gated machinery; inherits
@@ -768,7 +782,7 @@ class LtsAggregator:
 # --------------------------------------------------------------------------- #
 # module-level convenience (build tools once, reuse)
 # --------------------------------------------------------------------------- #
-_DEFAULT_AGG: Optional[LtsAggregator] = None
+_DEFAULT_AGG: LtsAggregator | None = None
 
 
 def _default_agg() -> LtsAggregator:
@@ -778,14 +792,14 @@ def _default_agg() -> LtsAggregator:
     return _DEFAULT_AGG
 
 
-def count(*, corpus: Optional[str] = None, group_by: Optional[str] = None,
+def count(*, corpus: str | None = None, group_by: str | None = None,
           tools: object = None, **kwargs) -> dict:
     """Module-level `count` over the default (or injected) lts-engine view."""
     agg = LtsAggregator(tools) if tools is not None else _default_agg()
     return agg.count(corpus=corpus, group_by=group_by, **kwargs)
 
 
-def group_by(attr: str, *, corpus: Optional[str] = None, tools: object = None,
+def group_by(attr: str, *, corpus: str | None = None, tools: object = None,
              **kwargs) -> dict:
     """Module-level `group_by` over the default (or injected) lts-engine view."""
     agg = LtsAggregator(tools) if tools is not None else _default_agg()

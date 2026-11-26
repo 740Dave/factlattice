@@ -19,7 +19,7 @@ from factlattice_engine.tools import LTS_ALL_TOOL_NAMES, LtsEngine, dispatch  # 
 from tests.semantic_helpers import _tiny_model  # noqa: E402
 from tests.test_semantic_find import _corpus  # noqa: E402
 
-Q = "tile map version"
+Q = "zero map version"
 HIT, MISSING = "XL-LEDGER-PROTOBUF", "N-HELLO"
 
 

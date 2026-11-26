@@ -63,11 +63,11 @@ CLI::
 """
 from __future__ import annotations
 
-from .core import Finding, LintResult, STRUCTURE_SEVERITY, DANGLE_SEVERITY, lint
+from .core import DANGLE_SEVERITY, STRUCTURE_SEVERITY, Finding, LintResult, lint
 from .corpus_files import CORPUS_FILE_SEVERITY, find_corpus_file_issues
 from .coverage import COVERAGE_SEVERITY, coverage_stats, find_unaccounted
+from .dangle import DIR_FORWARD, DIR_ORPHAN, DangleFinding, find_dangles
 from .key_loss import KEY_LOSS_SEVERITY, find_key_losses, key_loss_stats
-from .dangle import DangleFinding, DIR_FORWARD, DIR_ORPHAN, find_dangles
 from .profile_rules import (
     PROFILE_SEVERITY,
     VALIDATORS,

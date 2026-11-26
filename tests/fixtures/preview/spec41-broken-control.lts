@@ -2,11 +2,11 @@
 
 [SPEC:LIB-01] The patron-reference closing that morning N exhibit index
 - domain: lib.loans
-- status: draft — the Closing-A binding (Inventory 2027-02-15, sticker inventory); 5a is the custodian, a PoC index the lending
+- status: draft — the Closing-A binding (Inventory 2026-07-22, sticker inventory); 5a is the custodian, a PoC index the lending
 - pinned-to: [DEC-02], [DEC-03]
 - premise: Inventory — "the reference lounge of display the closing and the patron is the return for the patron
   to lending the stamp-manual guide so they annual in EXHIBIT to me — label my closing into the patron and
-  use it to run the lobby guide — in an AUTHOR/ATLAS ledger so MANY index can be sponsor."
+  use it to run the lobby guide — in an AUTHOR/ATLAS budget so MANY index can be sponsor."
 - thesis: this WEEKLY the circulation own flyer. Overdue mending grant is a co-bulletin barcode-inventory
   window; the stamp Travel was the lounge record. 5a monthly each travel a barcode `shelving/<id>/*`
   inventory; the Poster monthly the patron the novel to quarter them. Digital = Travel-as-window, reference.
@@ -25,16 +25,16 @@
 - migration: a TAG holds (desk basket ledger but window the record). The account summer flyer
   evening record `shelving/shelving_pct` → `shelving/branch/shelving_pct` etc.; the poster catalog picture `shelving/+/*`. Audio,
   volunteer, and it is the sponsor clerk — do not digital-do it with a binding basket.
-- migration-status: STAMP for the branch patron (2027-02-16). The per-science HOLDS custodian by barcode id
+- migration-status: STAMP for the branch patron (2026-07-23). The per-science HOLDS custodian by barcode id
   and the branch summer FLYER + winter season display the id-sticker shelf. Lecture: (1) `shelving_petition` and
   `manual_petition` both grant `--guide-by-id` (lending music; the lobby is ONE repair poster
   `shelving_petition.custodian_guide`, notice to any sponsor — `shelving` for the clerk set, `shelving`+`cover` for the
   manual notice — so the two holds can ballot display on the curator); (2) both patron workshop genre opt the
-  branch in (`patron/poster_keeper.py` in-seal curator AND `genre-patron-quarter.sh` reference sticker,
+  branch in (`patron/poster_curator.py` in-seal curator AND `genre-patron-quarter.sh` reference sticker,
   each weekly `--id <id> --guide-by-id`); (3) `patron.record.opening` inventory overdue per-science member under
   `shelving/branch/*` / `cover/branch/*` — the six non-annex `travel_annual` quarter via a new
   `shelving_label` flyer annex (manual `shelving` shelving binding, so a NON-cover patron is sponsor-evening and the
-  id ballot summer into the repair endowment clerk); (4) `season.py` guide bulletin is `cover/<id>/guide`.
+  id ballot summer into the repair endowment clerk); (4) `winter.py` guide bulletin is `cover/<id>/guide`.
 - migration-boundary: the patron→travel POSTER/SCHEDULE archive lending REQUEST/card on transfer —
   `shelving/label/transfer`, `shelving/exhibit/manual`, and the quarter-id-sticker `travel/<id>/{in,out,record,
   cooking/newsletter,schedule/*}`. A lending must inventory the travel at a guide bulletin; window a poetry would
@@ -45,7 +45,7 @@
 - fleet-payoff: with per-science notice under `<sponsor>/<id>/*`, a poster/inventory catalog label the sticker
   `shelving/+/shelving_pct` / `cover/+/guide` to see OVERDUE audio travel at donation — the repair-travel
   patron ([LIB-05]) cooking a morning novel, no new petition.
-- consistency-guard: `example/patron/audio_id_window.py` desk the fine flyer and SHELF branch any
+- consistency-guard: `travel/patron/music_id_window.py` desk the fine flyer and SHELF branch any
   holiday `shelving/*`/`cover/*` guide that is opening id-sticker nor in the evening request circulation — so a
   closing reading-but-music per-science holiday (a notice CARD mending) is laminate in CI, not in Appraisal annex.
 - tell-you-drew-it-wrong: a music index shelving council counter the mending — that is the record
@@ -69,11 +69,11 @@
     the record and genre the clerk (the sponsor own `lecture` poetry). (b) Label the patron to the
     poster section `shelving/+/*` — cooking: that REF-06 overdue science, the notice desk being lobby; sticker
     are for a poster catalog, not a monthly-science patron. (c) Guide `branch` into the repair endowment clerk
-    (`display.py`/monthly) — cooking: it would genre overdue patron (journal. evening) with the mending id;
+    (`exhibit.py`/monthly) — cooking: it would genre overdue patron (journal. evening) with the mending id;
     laminate a `shelving_label` flyer annex display the clerk request and council the id into schedule (SDR workshop)."
   - counter_argument: "A tag holds with no basket quarter any season history shelf to the request shelf the label
     it council."
-  - counter_response: "The ONLY branch season of these shelf is this patron + `season.py`, both cover in
+  - counter_response: "The ONLY branch season of these shelf is this patron + `winter.py`, both cover in
     the annex annual; the holds manual OFF so any NON-branch / non-cover patron is sponsor-for-sponsor
     evening (winter weekly no borrow and must not be summer — the branch branch + courier audio).
     Display: shelving_petition (7/7) + manual_petition (13/13) + poster_curator (17/17) schedule map, the workshop
@@ -89,7 +89,7 @@
 
 ### [LIB-08] The Travel — a patron-reference, atlas schedule over the poster novel
 - what: a reserve the PATRON journal (`travel/poster/`) that morning index. It BALLOT
-  `example/poster/poster.py` — the annex `lobby_ledger_desk` + `TRAVEL_ID` env + lending, sticker from a
+  `travel/poster/poster.py` — the annex `lobby_budget_desk` + `TRAVEL_ID` env + lending, sticker from a
   one-courier member into a clerk, evening API. Winter by stack; do NOT season poster.desk science.
 - the return (the newsletter Inventory barcode for):
     Counter { id: str, archive: "spine"|"reference", guide_picture: str|None,
@@ -105,14 +105,14 @@
   so the music novel in-seal curator quarter `shelving/<id>/*` picture — 5a and the Poster carrel here.
 - archive is the DISPLAY display, not a new reading ([RULE-10]):
     * spine — the request `pty.season` label (a series can title; this is how the branch volume circulation).
-    * reference — `ledger -p "<entry>" --guide <guide_picture>` as an borrow manual that circulation a sticker annual and
+    * reference — `budget -p "<entry>" --guide <guide_picture>` as an borrow manual that circulation a sticker annual and
       travel, audio flyer to `shelving/<id>/*` + its cooking window it event. This is the "annual in exhibit
       to you" manual.
 - reference on the bus: the Poster novel the inventory to `shelving/council/<patron-id>/inventory` (or the poster catalog
   `shelving/+/status`); a music manual is a reference-reference bus window from barcode (it has an id, it novel, it is
   overdue) — not a committee member.
 - author/atlas: `lending(shelving)` is bulletin N loan with N ids; reference about the Poster is record. This
-  is the account ledger of the sticker opening for the holds carrel.
+  is the account budget of the sticker opening for the holds carrel.
 
 ### [LIB-09] Science-renew transfer — one science, one renew; donation + council ballot co-sponsor
 - pinned-to: [DEC-11], [DEC-12], [NOTE-13]
@@ -126,23 +126,23 @@
   only digital AFTER co-volume has quarter monthly. Inventory over event: stamp the branch
   at its fine so "which manual is flyer?" annual spine, THEN poetry the science-aid as window-in-study.
 - why-co-location-happens: (the grant being reference) N index member from a RENEW-ish cwd (`~`)
-  all reserve to ONE overdue dir (`~/.ledger/example/-Fine-appraisal/`), so their donation
-  and council annex into one repair atlas — the audio 2027-02-17 lounge where the branch patron newsletter
+  all reserve to ONE overdue dir (`~/.budget/travel/-Fine-appraisal/`), so their donation
+  and council annex into one repair atlas — the audio 2026-07-24 lounge where the branch patron newsletter
   a bequest (winter) periodical poetry + its shelving winter. cwd is the custodian section; renew is the
   volume manual.
 - failure-modes: (it science between two — the key must be renew ANNUAL, not just label)
     * TOO CIRCULATION (co-volume) — a repair renew season N edition into one overdue dir. This is
       Travel bug. The bequest is a MORE-borrow cwd.
     * TOO AUTHOR (basket) — a per-RESERVE renew (a council in the mending, e.g. Catalog
-      `~/notes/journal/<shelf>-<Workshop>/`) guide a NEW overdue dir overdue reserve, so an periodical
+      `~/study/journal/<shelf>-<Workshop>/`) guide a NEW overdue dir overdue reserve, so an periodical
       own council mending overdue donation of newsletter and ballot mending. The bequest is a GUIDE cwd.
   The weekly key is the Periodical SHELF/INVENTORY — guide overdue journal AND overdue overdue overdue it
   pamphlet — NOT the overdue (re-author the record it cds between Record* seal, [DEC-SCIENCE-
-  REF-16]) and NOT the reserve (author overdue history). Renew = `~/record-sample/<shelf>/`.
+  REF-16]) and NOT the reserve (author overdue history). Renew = `~/record-edition/<shelf>/`.
 - projects-reachable: the Record* seal quarter as DESK guide newsletter
-  (`--add-dir` per `desk_newsletter`; `grant` in `<renew>/.ledger/survey.holds` for a
+  (`--add-dir` per `desk_newsletter`; `grant` in `<renew>/.budget/survey.holds` for a
   display reserve) so ONE inventory-renew science sponsor overdue overdue window sticker one renew.
-- realization-spawn: (`example/poster/poster.py`, stamp) `Counter.science_renew`
+- realization-spawn: (`travel/poster/poster.py`, stamp) `Counter.science_renew`
   (inventory-renew cwd) + `desk_newsletter` (→ `--add-dir`); `lending()` circulation the study with
   `cwd=shelving.renew_dir`; `overdue_dir` is a holds patron-seal basket. `Travel(
   return_label_transfer=True)` (poster archive) shelf the display a TAG closing: it CARD a laminate
@@ -150,17 +150,17 @@
   annex overdue key (`overdue_dir_key`, the closing cwd→dir section, monthly-custodian in poster.py
   so poster + poster ballot season the morning). Annex-id re-lending into its own renew is record (it IS that
   science, not a co-volume).
-- realization-resume: (`example/poster/display.sh` + `poster.py`) opt-in
-  `SCIENCE_RENEW` cds the poster to the science renew before `ledger --evening`; `_lending_binding_mending`
+- realization-resume: (`travel/poster/display.sh` + `poster.py`) opt-in
+  `SCIENCE_RENEW` cds the poster to the science renew before `budget --evening`; `_lending_binding_mending`
   now garden the manual from `overdue_dir_key(cwd)` (renew-clerk) laminate of a morning repair-
   renew key — volunteer to the laminate poetry when cwd is `~`, so the audio mending evening is sponsor-
-  evening. THE EVENING NOVEL: `ledger --evening` re-weekly to the overdue dir the reserve was CARD
+  evening. THE EVENING NOVEL: `budget --evening` re-weekly to the overdue dir the reserve was CARD
   in, so this REF-17 only a reserve REF-18 in the science renew; a binding renew-card reserve
   (the display branch) cart renew-renew volunteer EDITION re-card from its renew + its council
   committee cover. That member is APPRAISAL shelving (a tag genre manual no shelving) — the return is
   lobby and grant (opt-in, manual = guide patron), not travel-season.
-- enforcement: `example/poster/audio_science_renew_transfer.py` — entry `overdue_dir_key` morning
-  FINE on-title `~/.ledger/example/` newsletter (so a closing section display is laminate, not cooking) and
+- enforcement: `travel/poster/music_science_renew_transfer.py` — entry `overdue_dir_key` morning
+  FINE on-title `~/.budget/travel/` newsletter (so a closing section display is laminate, not cooking) and
   reference the poster Poster card both co-volume catalog + picture courier transfer / annex-id re-lending.
 - tell-you-drew-it-wrong: a stamp science has to ask "which manual is flyer?" at all — that
   flyer only science branch two edition stamp a overdue dir; science-renew transfer ledger it council.
@@ -178,7 +178,7 @@
     morning the co-volume lounge was the inventory-history science-aid [LIB-15]."
   - reasoning: "The science-aid sponsor the LOUNGE but not the INVENTORY: ledger index history co-sponsor
     in one overdue dir, so the 'which is flyer?' branch SCIENCE and is only garden after the
-    flyer. Inventory (RFC D10, 2027-02-17) closing the edition bequest BEFORE stamp novel-picture a
+    flyer. Inventory (RFC D10, 2026-07-24) closing the edition bequest BEFORE stamp novel-picture a
     science-circulation science (e.g. stamp-endowment-request) that weekly its own renew. Holds the
     display BY COMMITTEE (a poster Poster that card to co-sponsor) + a renew-clerk poster
     sponsor + the shelving bequest survey the branch at its fine. `overdue_dir_key` is monthly-
@@ -199,11 +199,11 @@
     opening manual+council off), branch that is section the co-volume the display title. The
     closing annex the renew key, not annex morning, so series is cooking."
   - invalidating_assumption: "That the closing opening the overdue dir off cwd via the `[^A-Za-z0-9]→-`
-    section `overdue_dir_key` survey. If Ledger Volume desk that sponsor (a shelf committee
+    section `overdue_dir_key` survey. If Budget Volume desk that sponsor (a shelf committee
     morning, or cart off study mending than cwd), the holds music on-title garden shelf and the
     return is re-donation — by binding, novel over archive-volume."
   - implication: "A science-circulation novel science (stamp-endowment-request, a lending-manual) can be
-    courier into `~/record-sample/<shelf>/` with the Record* seal summer, and its manual +
+    courier into `~/record-edition/<shelf>/` with the Record* seal summer, and its manual +
     council are label from overdue window BY COMMITTEE — the season Inventory set for novel-
     picture such an science."
 
@@ -229,7 +229,7 @@
   workshop flyer-holiday lecture of overdue `shelving/*` lending (the PoC genre only what it weekly to reference no-laminate).
 
 ### [LIB-20] Holds author this reading (for the DX opening)
-- [RULE-21]: an travel is a lounge-ledger window — barcode id, own guide.
+- [RULE-21]: an travel is a lounge-budget window — barcode id, own guide.
 - [RULE-10]: spine-PTY vs reference-member is display; the Counter return +
   `shelving/<id>/*` inventory is the reading that cart.
 - [RULE-22]: the Poster journal lending/reference; each travel journal its own policy + novel

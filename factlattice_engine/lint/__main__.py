@@ -16,7 +16,6 @@ import glob as glob_mod
 import json
 import os
 import sys
-from typing import List, Optional, Tuple
 
 from factlattice import CorpusFileError, list_lts_files
 
@@ -35,11 +34,11 @@ def _has_glob_chars(s: str) -> bool:
     return any(c in s for c in _GLOB_CHARS)
 
 
-def _expand_dir(d: str) -> List[str]:
+def _expand_dir(d: str) -> list[str]:
     return [os.path.join(d, rel) for rel in list_lts_files(d)]
 
 
-def resolve_targets(raw_paths: List[str]) -> Tuple[Optional[str], Optional[List[str]]]:
+def resolve_targets(raw_paths: list[str]) -> tuple[str | None, list[str] | None]:
     """Normalize CLI path/glob args into a `factlattice.parse()`-shaped call:
     `(source_dir, None)` for the single-bare-directory fast path (full recursive
     corpus, matching what `build_index`/lts-engine would ingest -- the RIGHT tool for
@@ -49,7 +48,7 @@ def resolve_targets(raw_paths: List[str]) -> Tuple[Optional[str], Optional[List[
     if len(raw_paths) == 1 and not _has_glob_chars(raw_paths[0]) and os.path.isdir(raw_paths[0]):
         return os.path.abspath(raw_paths[0]), None
 
-    files: List[str] = []
+    files: list[str] = []
     seen = set()
     for raw in raw_paths:
         matches = sorted(glob_mod.glob(raw, recursive=True)) if _has_glob_chars(raw) else [raw]
@@ -72,14 +71,14 @@ def resolve_targets(raw_paths: List[str]) -> Tuple[Optional[str], Optional[List[
     return None, files
 
 
-def _default_profile() -> Optional[str]:
+def _default_profile() -> str | None:
     hint = _DEFAULT_PROFILE_HINT
     return hint if hint and os.path.isfile(hint) else None
 
 
 def main(argv=None) -> int:
     """The CLI door. A corpus member that is a FIFO/socket/device, a broken link or unreadable
-    ([ISSUE-NONREGULAR-MEMBER]) is a PRECISE code and the root-relative path on stderr, exit 2 --
+    ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]) is a PRECISE code and the root-relative path on stderr, exit 2 --
     never a raw traceback."""
     try:
         return _main(argv)

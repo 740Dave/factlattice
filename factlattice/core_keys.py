@@ -24,24 +24,54 @@ mirror without trusting this comment.
 from __future__ import annotations
 
 import functools
-from typing import FrozenSet
 
 # --- SPEC §1.3 "Descriptive properties" -------------------------------------
-DESCRIPTIVE_KEYS: FrozenSet[str] = frozenset({
+DESCRIPTIVE_KEYS: frozenset[str] = frozenset({
     "definition", "role", "scope", "status", "rationale", "tags", "alias",
     "full-name", "problem-statement", "key-insight", "implication", "exception",
     "constraint",
+    # Spec 39 (normative content and source statements): a source statement's keys and a
+    # confirmation's keys. They carry text, not references; `restates`, `confirmation-of` and
+    # `checked-against` are relationship-bearing and live in parser.REL_PROPERTY_EDGES.
+    "source-text", "source-locator", "source-kind", "source-role", "source-option-author",
+    "confirmation-verdict", "confirmation-by", "confirmation-date", "confirmation-locator",
+    "revised-per",
     # Scenario nodes (§5.5), listed in the same §1.3 table
     "given", "when", "then", "and-when", "and-then",
 })
 
 # --- SPEC §1.3 "Classification properties" (document-level metadata) --------
-CLASSIFICATION_KEYS: FrozenSet[str] = frozenset({
+CLASSIFICATION_KEYS: frozenset[str] = frozenset({
     "artifact-readiness", "announcement-status", "product-type", "confidentiality",
+    # Spec 39: section-scoped, NOT a frontmatter key and never inherited file-wide (§1.5 excludes it)
+    "normative",
 })
 
+#: Keys the ENGINE mints on a node. An author never writes them: an authored line is a lint finding and
+#: the minted value is the one kept, and the typed writers refuse them (SDLC §7.6). They are core, so a strict
+#: document that carries one raises no `undeclared_key`; the authoring gate leaves them out of its
+#: parsed-property identity, because the minted value of a whole subtree moves when a section is marked.
+#: THE ONE DEFINITION of the keys the parser mints into a node's `properties` (spec 39 x-minted-keys; SPEC.md
+#: §1.3.4 states the same set, and a test pins the two equal). The parser mints from `EFFECTIVE_KEY`; the tool
+#: layer names the minted keys of every reply from `ENGINE_MINTED_KEYS` through `minted_keys_in`. A new minted key
+#: is added here and to SPEC.md §1.3.4 in the same commit.
+EFFECTIVE_KEY = "normative_effective"
+ENGINE_MINTED_KEYS: frozenset[str] = frozenset({EFFECTIVE_KEY})
+
+
+def minted_keys_in(properties) -> list:
+    """The sorted list of the keys of `properties` that the engine minted (empty when none, or when `properties`
+    is not a mapping). The value of `minted_keys` on every reply object that carries a node's `properties`."""
+    if not isinstance(properties, dict):
+        return []
+    return sorted(k for k in properties if k in ENGINE_MINTED_KEYS)
+
+#: Core keys that hold a bracketed id by design and mint NO edge, so the unminted-reference-list lint
+#: must not fire for them (spec 39 SCEN-NS-REVISED-PER-NO-UNMINTED).
+UNMINTED_EXEMPT_KEYS: frozenset[str] = frozenset({"revised-per"})
+
 # --- SPEC §1.3 "Structural properties" --------------------------------------
-STRUCTURAL_KEYS: FrozenSet[str] = frozenset({
+STRUCTURAL_KEYS: frozenset[str] = frozenset({
     "child-document", "source-file", "line-range",
     # read by the RENDER layer (§4.9); descriptive, mint no edge
     "actor", "condition",
@@ -51,7 +81,7 @@ STRUCTURAL_KEYS: FrozenSet[str] = frozenset({
 # Frontmatter keys are also legal as node properties (§1.5: "Classification properties
 # in frontmatter are inherited by all nodes in the document unless overridden inline" —
 # an override is a node property with the same key, so the key must be legal there).
-FRONTMATTER_KEYS: FrozenSet[str] = frozenset({
+FRONTMATTER_KEYS: frozenset[str] = frozenset({
     "scope", "audience", "boundary", "not-this", "parent", "depends-on",
     "confidentiality", "announcement-status", "product-type", "artifact-readiness",
     "version-scope", "supersedes-version", "breaking-changes", "domain",
@@ -60,7 +90,7 @@ FRONTMATTER_KEYS: FrozenSet[str] = frozenset({
 })
 
 # --- SPEC §5 Flow / Scenario extended fields (§5.2-§5.4) ---------------------
-FLOW_KEYS: FrozenSet[str] = frozenset({
+FLOW_KEYS: frozenset[str] = frozenset({
     "impl", "impl-stale", "actors", "preconditions", "postconditions",
 })
 
@@ -81,7 +111,7 @@ def is_private_key(key: str) -> bool:
     return key.startswith(PRIVATE_KEY_PREFIX) and len(key) > len(PRIVATE_KEY_PREFIX)
 
 
-def minting_keys() -> FrozenSet[str]:
+def minting_keys() -> frozenset[str]:
     """Every built-in edge-minting property key, READ FROM THE PARSER'S OWN TABLES."""
     from .parser import FLOW_PROPERTY_EDGES, REL_PROPERTY_EDGES
     return frozenset(REL_PROPERTY_EDGES) | frozenset(FLOW_PROPERTY_EDGES)
@@ -92,10 +122,10 @@ def minting_keys() -> FrozenSet[str]:
 #: APPLIES_RULE: measured on the registered corpora, adding `applies-rule` / `attaches-to-hook` rewrote the
 #: "Nearest minting alternative(s)" text of two UNRELATED findings (`preserves`, `relates-to-spec`) on
 #: acme-console, recommending a review-extension key for a decision-graph property.
-SUGGESTION_EXCLUDED_EDGE_TYPES: FrozenSet[str] = frozenset({"CANONICAL", "ATTACHES_TO_HOOK", "APPLIES_RULE"})
+SUGGESTION_EXCLUDED_EDGE_TYPES: frozenset[str] = frozenset({"CANONICAL", "ATTACHES_TO_HOOK", "APPLIES_RULE"})
 
 
-def suggestion_excluded_keys() -> FrozenSet[str]:
+def suggestion_excluded_keys() -> frozenset[str]:
     """Minting keys that must NEVER be offered as a fuzzy "did you mean" / "nearest minting
     alternative": those whose edge type is in `SUGGESTION_EXCLUDED_EDGE_TYPES` (CANONICAL: legacy -> canonical; the review-extension verbs). Following such a
     suggestion mints a semantically wrong edge, and adding the key must not rewrite the advice
@@ -106,10 +136,10 @@ def suggestion_excluded_keys() -> FrozenSet[str]:
                      if v[0] in SUGGESTION_EXCLUDED_EDGE_TYPES)
 
 
-def core_keys() -> FrozenSet[str]:
+def core_keys() -> frozenset[str]:
     """The full core key vocabulary — SPEC §1.3's four tables + §1.5 + §5."""
     return (minting_keys() | DESCRIPTIVE_KEYS | CLASSIFICATION_KEYS
-            | STRUCTURAL_KEYS | FRONTMATTER_KEYS | FLOW_KEYS)
+            | STRUCTURAL_KEYS | FRONTMATTER_KEYS | FLOW_KEYS | ENGINE_MINTED_KEYS)
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +176,7 @@ def _levenshtein(a: str, b: str, cap: int) -> int:
     return prev[-1]
 
 
-def suggest_keys(key: str, declared: FrozenSet[str],
+def suggest_keys(key: str, declared: frozenset[str],
                  max_distance: int = _MAX_SUGGEST_DISTANCE) -> list:
     """Declared keys within `max_distance` of `key`, nearest first then alphabetical.
 
@@ -160,7 +190,7 @@ def suggest_keys(key: str, declared: FrozenSet[str],
 
 
 @functools.lru_cache(maxsize=65536)
-def _suggest_keys_cached(key: str, declared: FrozenSet[str], max_distance: int) -> tuple:
+def _suggest_keys_cached(key: str, declared: frozenset[str], max_distance: int) -> tuple:
     return tuple(_suggest_keys_uncached(key, declared, max_distance))
 
 
@@ -172,7 +202,7 @@ def _cache_clear():
 suggest_keys.cache_clear = _cache_clear   # for tests / reloads
 
 
-def _suggest_keys_uncached(key: str, declared: FrozenSet[str],
+def _suggest_keys_uncached(key: str, declared: frozenset[str],
                            max_distance: int = _MAX_SUGGEST_DISTANCE) -> list:
     """Declared keys within `max_distance` of `key`, nearest first then alphabetical.
 
@@ -221,7 +251,7 @@ def _deletes(s: str, k: int) -> set:
 
 
 @functools.lru_cache(maxsize=64)
-def _delete_index(declared: FrozenSet[str], k: int) -> dict:
+def _delete_index(declared: frozenset[str], k: int) -> dict:
     index: dict = {}
     for cand in declared:
         for d in _deletes(cand, k):
@@ -232,6 +262,7 @@ def _delete_index(declared: FrozenSet[str], k: int) -> dict:
 __all__ = [
     "DESCRIPTIVE_KEYS", "CLASSIFICATION_KEYS", "STRUCTURAL_KEYS",
     "FRONTMATTER_KEYS", "FLOW_KEYS", "PRIVATE_KEY_PREFIX",
+    "ENGINE_MINTED_KEYS", "EFFECTIVE_KEY", "minted_keys_in", "UNMINTED_EXEMPT_KEYS",
     "is_private_key", "minting_keys", "core_keys", "suggest_keys",
     "suggestion_excluded_keys",
 ]

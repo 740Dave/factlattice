@@ -489,7 +489,7 @@ WRAPPED = """\
 
 
 def test_wrapped_scalar_value_is_joined_not_truncated():
-    """61 of 61 wrapped properties in `41-example-wrapped-values.lts`
+    """93 of 93 wrapped properties in `57-substrate-agnostic-subscription-filtering.lts`
     were truncated to their first physical line, and line accounting scored the tail as
     ignorable prose — so the instrument agreed with the defect."""
     pf = parse_text(WRAPPED, "wrap.lts")
@@ -601,18 +601,18 @@ def test_a_decorative_table_is_not_promoted():
     """Prefer UNDER-claiming: a decorative table wrongly promoted pollutes the graph,
     which is worse than a data table left out."""
     pf = parse_text(TABLES, "tbl.lts")
-    assert next(n for n in pf.nodes if n.id == "TBL-B").properties == {}
+    assert next(n for n in pf.nodes if n.id == "TBL-B").properties == {"normative_effective": "true"}   # only the minted state
 
 
 def test_a_repeated_first_cell_disqualifies_the_column():
     pf = parse_text(TABLES, "tbl.lts")
-    assert next(n for n in pf.nodes if n.id == "TBL-C").properties == {}
+    assert next(n for n in pf.nodes if n.id == "TBL-C").properties == {"normative_effective": "true"}   # only the minted state
 
 
 def test_an_orphan_id_table_lands_on_its_nearest_id_bearing_ancestor():
     """A node body ends at the NEXT heading of any level, so a table under an untagged
-    `## Compliance` sits in no node body. A real spec file authored a
-    12-row acceptance table exactly this way and it reached the graph as nothing."""
+    `## Compliance` sits in no node body. `29-embedded-reactive.lts` authors a
+    19-row acceptance table exactly this way and it reached the graph as nothing."""
     pf = parse_text(TABLES, "tbl.lts")
     root = next(n for n in pf.nodes if n.id == "TBL-DOC")
     assert root.properties["id_table"] == {

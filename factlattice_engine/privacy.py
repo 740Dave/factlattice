@@ -2,18 +2,16 @@
 
 A corpus is PRIVATE when its registry entry says `private: true`, or when its id ends in
 `-personality` and the entry does not say `private: false`. A private corpus is read only
-when a caller NAMES it; every corpus-omitted fan-out skips it and lists it under
-`extent.corpora_skipped` with `PRIVATE_REASON`.
+when a caller NAMES it; every corpus-omitted fan-out skips it and counts it, without naming
+it, in one anonymous `{reason: PRIVATE_REASON, count}` entry under `extent.corpora_skipped`.
 
 Why the id suffix is a default and not merely a convention: the personality corpora
 (`<agent>-personality`, one per Intelligence) are registered by many hands, and the defect
-this closes (acme-team ISSUE-FANOUT-LEAK) existed because
+this closes (acme-team LTS-FIND-PERSONALITY-FANOUT-LEAK) existed because
 privacy depended on every caller remembering an argument. A registry entry that forgets
 `private: true` must still be private.
 """
 from __future__ import annotations
-
-from typing import Optional
 
 PRIVATE_SUFFIX = "-personality"
 PRIVATE_REASON = "private: name it explicitly"
@@ -21,13 +19,15 @@ PRIVATE_REASON = "private: name it explicitly"
 PRIVATE_NOTE = "private corpora are searched only when named exactly"
 
 
-def private_reason(corpus_id: str, spec: Optional[dict] = None) -> Optional[str]:
+def private_reason(corpus_id: str, spec: dict | None = None) -> str | None:
     """Why `corpus_id` is private ("registry" | "id-suffix"), or None if it is not."""
     flag = spec.get("private") if isinstance(spec, dict) else None
     if flag is True:
         return "registry"
     if flag is False:
         return None
+    if flag is not None:
+        return "registry"             # `private` is set to something that is not a boolean (a typo, "yes", 1): a shape problem, and the corpus counts as PRIVATE
     if corpus_id.endswith(PRIVATE_SUFFIX):
         return "id-suffix"
     return None

@@ -26,7 +26,6 @@ exclude there yet -- revisit this set if/when the parser adds them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional
 
 import factlattice
 
@@ -34,7 +33,7 @@ import factlattice
 # Deliberately excludes "structural" (heading-nesting CONTAINS) -- see module
 # docstring. Keep in sync with factlattice.parser's inference vocabulary
 # (authored | property | structural; mention/computed deferred upstream).
-REFERENCING_INFERENCE: FrozenSet[str] = frozenset({"authored", "property"})
+REFERENCING_INFERENCE: frozenset[str] = frozenset({"authored", "property"})
 
 DIR_FORWARD = "forward"
 DIR_ORPHAN = "orphan"
@@ -47,9 +46,9 @@ class DangleFinding:
     direction: str  # DIR_FORWARD | DIR_ORPHAN
     node_id: str
     message: str
-    source_file: Optional[str] = None
-    source_line: Optional[int] = None
-    detail: Dict[str, object] = field(default_factory=dict)
+    source_file: str | None = None
+    source_line: int | None = None
+    detail: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -62,15 +61,15 @@ class DangleFinding:
         }
 
 
-def find_dangles(corpus: "factlattice.ParsedCorpus",
-                  *, exclude_orphan_ids: FrozenSet[str] = frozenset()) -> List[DangleFinding]:
+def find_dangles(corpus: factlattice.ParsedCorpus,
+                  *, exclude_orphan_ids: frozenset[str] = frozenset()) -> list[DangleFinding]:
     """Return every forward + orphan finding for an already-parsed corpus.
 
     `exclude_orphan_ids` lets a caller carve out known-legitimate unreferenced
     roots (e.g. a corpus's single top-level index/entry node) without touching
     forward-dangle detection.
     """
-    findings: List[DangleFinding] = []
+    findings: list[DangleFinding] = []
 
     # --- forward: reuse the parser's own whole-corpus dangling resolution -----
     # corpus.py sets Diagnostic.node_id = the MISSING target id for `dangling`;
@@ -87,8 +86,8 @@ def find_dangles(corpus: "factlattice.ParsedCorpus",
 
     # --- orphan: defined node, no authored/property edge targets it -----------
     index = corpus.to_graph_index()
-    alias_index: Dict[str, str] = index.get("alias_index", {}) or {}
-    nodes: Dict[str, dict] = index.get("nodes", {}) or {}
+    alias_index: dict[str, str] = index.get("alias_index", {}) or {}
+    nodes: dict[str, dict] = index.get("nodes", {}) or {}
 
     referenced: set = set()
     for layer in index.get("layers", {}).values():
@@ -138,8 +137,8 @@ def _bare_of(qualified_id: str) -> str:
     return qualified_id.rsplit(NS_SEP, 1)[-1]
 
 
-def classify_unqualified_references(corpus: "factlattice.ParsedCorpus",
-                                    *, source_file: Optional[str] = None) -> Dict[str, dict]:
+def classify_unqualified_references(corpus: factlattice.ParsedCorpus,
+                                    *, source_file: str | None = None) -> dict[str, dict]:
     """A BARE reference `[X]` that fails to resolve, for which a NAMESPACE-QUALIFIED
     definition `[NS:X]` exists (RULING C). STRICT identity is kept — bare and `NS:X` are
     NEVER auto-equated — and the engine only names the likely target so the author fixes
@@ -163,13 +162,13 @@ def classify_unqualified_references(corpus: "factlattice.ParsedCorpus",
     proven by unit tests over constructed namespaced-id inputs, so it is correct the day
     that decision lands; this function does not take it.
     """
-    by_bare: Dict[str, List[str]] = {}
+    by_bare: dict[str, list[str]] = {}
     for n in corpus.nodes:
         if NS_SEP in n.id:
             by_bare.setdefault(_bare_of(n.id), []).append(n.id)
     resolvable = {n.id for n in corpus.nodes}
-    unq: Dict[str, str] = {}
-    amb: Dict[str, List[str]] = {}
+    unq: dict[str, str] = {}
+    amb: dict[str, list[str]] = {}
     for d in corpus.diagnostics_of("dangling"):
         if source_file is not None and d.source_file != source_file:
             continue
@@ -187,14 +186,14 @@ def classify_unqualified_references(corpus: "factlattice.ParsedCorpus",
     }
 
 
-def unqualified_reference_targets(channels: Dict[str, dict]) -> FrozenSet[str]:
+def unqualified_reference_targets(channels: dict[str, dict]) -> frozenset[str]:
     """The bare targets claimed by this channel — used to keep them OUT of the plain
     forward-dangle stream (RULING C: 'MUST NOT be reported as a plain unresolved dangle')."""
     return frozenset(channels.get("unqualified_references", {})) | \
         frozenset(channels.get("ambiguous_references", {}))
 
 
-def unqualified_warn_line(channels: Dict[str, dict]) -> Optional[str]:
+def unqualified_warn_line(channels: dict[str, dict]) -> str | None:
     """`Unqualified-reference {ACME-VISION -> SPEC:ACME-VISION, …}` — or None when empty."""
     unq = channels.get("unqualified_references") or {}
     if not unq:
@@ -203,7 +202,7 @@ def unqualified_warn_line(channels: Dict[str, dict]) -> Optional[str]:
         f"{k} -> {v}" for k, v in unq.items()) + "}"
 
 
-def ambiguous_reference_warn_line(channels: Dict[str, dict]) -> Optional[str]:
+def ambiguous_reference_warn_line(channels: dict[str, dict]) -> str | None:
     """`Ambiguous-unqualified-reference {X -> [SPEC:X | DEC:X]}` — or None when empty."""
     amb = channels.get("ambiguous_references") or {}
     if not amb:

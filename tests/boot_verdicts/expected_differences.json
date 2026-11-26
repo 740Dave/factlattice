@@ -1,0 +1,2400 @@
+{
+ "blank root + unknown": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "entry int": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "entry list": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "entry null": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "entry string": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "entry true": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "int path + privat": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "named table malformed": {
+  "branch": {
+   "find_badc": "named-roots-malformed:NamedRootError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"named-roots-malformed\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "named-roots-malformed"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), named-root failure added after the whole-slice read of 4384356, F2): the registry holds an entry whose location it cannot state (a named-root reference it cannot resolve), so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "named unknown (root)": {
+  "branch": {
+   "find_badc": "named-root-unknown:NamedRootError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "named-root-unknown"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), named-root failure added after the whole-slice read of 4384356, F2): the registry holds an entry whose location it cannot state (a named-root reference it cannot resolve), so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "named unknown (roots path)": {
+  "branch": {
+   "find_badc": "named-root-unknown:NamedRootError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "named-root-unknown"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), named-root failure added after the whole-slice read of 4384356, F2): the registry holds an entry whose location it cannot state (a named-root reference it cannot resolve), so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "named unknown beside a table": {
+  "branch": {
+   "find_badc": "named-root-unknown:NamedRootError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"named-root-unknown\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "named-root-unknown"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), named-root failure added after the whole-slice read of 4384356, F2): the registry holds an entry whose location it cannot state (a named-root reference it cannot resolve), so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "named unknown, typo key": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-entry-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), named-root failure added after the whole-slice read of 4384356, F2): the registry holds an entry whose location it cannot state (a named-root reference it cannot resolve), so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path + stray key, path is the healthy folder": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path empty": {
+  "branch": {
+   "find_badc": "no-roots:NoRootsError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "badc",
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path int": {
+  "branch": {
+   "find_badc": "no-roots:NoRootsError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "badc",
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path list": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path null": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "path true": {
+  "branch": {
+   "find_badc": "no-roots:NoRootsError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "badc",
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "private yes + pth blank": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": false,
+    "outside": true,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "list"
+  ],
+  "why": "a non-boolean `private` counts as private on every surface that counts or names corpora (specs/38 x-load-error, e677542): the release names the failed corpus in failed_corpora and in the extent's skipped list, the branch counts it in private_failed. Served or failed is the same."
+ },
+ "pth + blank other": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "pth + only_file int": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a write whose file lies under a path-like string of a corpus that failed on a key is a candidate: it lands flagged and unattributed where the release called it outside every root. The boot verdict and the listing are the release's."
+ },
+ "pth abs ok": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a write whose file lies under a path-like string of a corpus that failed on a key is a candidate: it lands flagged and unattributed where the release called it outside every root. The boot verdict and the listing are the release's."
+ },
+ "pth bare word": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "pth covers the healthy folder": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": false,
+    "outside": true,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a failed entry's path-like string covers the HEALTHY corpus's folder, so a write to the healthy corpus is a candidate: it lands flagged and unattributed where the release attributed it. The boot verdict and the listing are the release's."
+ },
+ "pth dot": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "pth, root int": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "r000 (seed 12)": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "list",
+   "write_badc"
+  ],
+  "why": "BOTH: the private count (see the private rows) and a write under the failed entry's folder landing flagged (x-load-error (2))."
+ },
+ "r022 (seed 12)": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "list",
+   "write_badc"
+  ],
+  "why": "BOTH: the private count (see the private rows) and a write under the failed entry's folder landing flagged (x-load-error (2))."
+ },
+ "r026 (seed 12)": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "list",
+   "write_badc"
+  ],
+  "why": "BOTH: the private count (see the private rows) and a write under the failed entry's folder landing flagged (x-load-error (2))."
+ },
+ "rooot covers the healthy folder": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-entry-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root dict": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root elem empty str": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root elem int": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root elem list": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root elem null": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root empty": {
+  "branch": {
+   "find_badc": "refused",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root int": {
+  "branch": {
+   "find_badc": "refused",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root list": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root list, root ok": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root obj area only": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root obj empty": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root obj note only": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root true": {
+  "branch": {
+   "find_badc": "refused",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "root zero": {
+  "branch": {
+   "find_badc": "refused",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "roots dict": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "roots dict-of-path": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "roots str + int": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "roots string": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "roots two shapes": {
+  "branch": {
+   "find_badc": "registry-not-found",
+   "find_okc": "registry-not-found",
+   "list": {
+    "ids": [],
+    "private_failed": null,
+    "registry_error": true,
+    "skipped": [],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "string roots + privat": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "unknown entry key + path ok": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-entry-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc",
+   "write_okc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (1), 1233fee): the registry cannot state where this entry lives, so a write is never attributed and never called outside every root: it lands flagged (corpora_error, corpora null) where the release attributed it to the healthy corpus or called it outside every root. The boot verdict (served, failed, registry error) and the listing are the release's."
+ },
+ "unknown entry key rooots": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-entry-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-entry-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a write whose file lies under a path-like string of a corpus that failed on a key is a candidate: it lands flagged and unattributed where the release called it outside every root. The boot verdict and the listing are the release's."
+ },
+ "unknown key": {
+  "branch": {
+   "find_badc": "registry-entry-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": 1,
+    "registry_error": false,
+    "skipped": [
+     "{\"count\": 1, \"reason\": \"private-corpus-failed\"}"
+    ],
+    "tables": {}
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a write whose file lies under a path-like string of a corpus that failed on a key is a candidate: it lands flagged and unattributed where the release called it outside every root. The boot verdict and the listing are the release's."
+ },
+ "unknown root key pth": {
+  "branch": {
+   "find_badc": "registry-root-unknown-key:RegistryEntryKeyError",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"registry-root-unknown-key\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "registry-root-unknown-key"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [],
+    "flagged": true,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "write_badc"
+  ],
+  "why": "WRITE SIDE (specs/38 x-load-error (2)): a write whose file lies under a path-like string of a corpus that failed on a key is a candidate: it lands flagged and unattributed where the release called it outside every root. The boot verdict and the listing are the release's."
+ },
+ "profile collision: property key": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-collision",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-collision",
+       "names:see-also"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "find_okc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-collision:names=see-also",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard: a profile that declares a name the engine reserves or owns fails ONLY the corpora whose entry names it. The release stopped the whole registry here (the key check ran on first access, outside the loader's own handling). The branch records the corpus in failed_corpora (corpus-load-error, reason profile-collision, names) and serves the others."
+ },
+ "profile collision: edge type": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-collision",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-collision",
+       "names:PART_OF"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-collision:names=PART_OF",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard: the same rule for a bare core edge type. The release SERVED the corpus with the profile dropped silently (registered_profile swallowed the refusal). The branch fails that corpus loudly (profile-collision, names)."
+ },
+ "profile invalid: property_keys": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-invalid",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-invalid",
+       "detail:property-keys-not-a-list"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "find_okc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-invalid:detail=property-keys-not-a-list",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard: a MALFORMED profile fails ONLY its corpora, with reason profile-invalid and a short fixed detail (no names). The release stopped the whole registry for a property_keys that is not a list."
+ },
+ "profile invalid: layer": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-invalid",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-invalid",
+       "detail:layer-not-canonical"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-invalid:detail=layer-not-canonical",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard: a MALFORMED profile (a layer that is not canonical). The release SERVED the corpus with the profile dropped silently. The branch fails that corpus loudly (profile-invalid, detail)."
+ },
+ "profile collision: property key, roots list": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-collision",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-collision",
+       "names:see-also"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "find_okc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-collision:names=see-also",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard, the roots-list entry form (the form a real registry uses): the release and the trunk both stopped the whole registry here; the branch records the corpus in failed_corpora (corpus-load-error, reason profile-collision, names) and serves the others."
+ },
+ "profile invalid: layer, roots list": {
+  "branch": {
+   "find_badc": "corpus-load-error:CorpusLoadError:profile-invalid",
+   "find_okc": "ok",
+   "list": {
+    "ids": [
+     "okc"
+    ],
+    "private_failed": null,
+    "registry_error": false,
+    "skipped": [
+     "{\"corpus\": \"badc\", \"reason\": \"corpus-load-error\"}"
+    ],
+    "tables": {
+     "failed_corpora": [
+      [
+       "badc",
+       "corpus-load-error",
+       "profile-invalid",
+       "detail:layer-not-canonical"
+      ]
+     ]
+    }
+   },
+   "write_badc": {
+    "corpora": [
+     "badc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   },
+   "write_okc": {
+    "corpora": [
+     "okc"
+    ],
+    "flagged": false,
+    "outside": false,
+    "partial": false,
+    "refused": null,
+    "written": true
+   }
+  },
+  "differs": [
+   "find_badc",
+   "list"
+  ],
+  "library": "failed:corpus-load-error:profile-invalid:detail=layer-not-canonical",
+  "why": "SPEC 39 REQ-NS-TRACE x-profile-guard, the roots-list entry form: a MALFORMED profile (a layer that is not canonical). The release and the trunk served the corpus with the profile dropped silently; the branch fails that corpus loudly (profile-invalid, detail)."
+ }
+}

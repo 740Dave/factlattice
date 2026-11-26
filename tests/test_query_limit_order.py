@@ -33,8 +33,6 @@ it below the raw match count. `test_p0_*` below pin the two reproduced cases;
 
 from __future__ import annotations
 
-import pytest
-
 from factlattice_engine import LtsEngine, LtsStore, Partition
 from factlattice_engine.tiers import DIGEST_MAX_NODES
 

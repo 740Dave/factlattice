@@ -13,18 +13,23 @@ conclusion travels without its evidence, and an id travels furthest of any field
 from __future__ import annotations
 
 import json
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from factlattice_engine import querylog
 from factlattice_engine.lint import lint
 from factlattice_engine.lint.claim_id import (
-    CLAIM_GENRE_PREFIXES, census, classify, is_machine_minted,
+    classify,
+    is_machine_minted,
 )
 from factlattice_engine.readprofile import (
-    never_read, read_records, report, shape, storms, within,
+    never_read,
+    read_records,
+    report,
+    shape,
+    storms,
+    within,
 )
 from factlattice_engine.store import FreshnessResult, LtsStore, Partition
 from factlattice_engine.tools import LtsEngine, dispatch, reset_server_tools, set_server_tools
@@ -277,7 +282,7 @@ def test_a_storm_is_distinct_questions_that_ALL_came_back_empty():
     """⛔ THE CORRECTION THE FIRST LIVE RUN FORCED: counting distinctness across the whole
     window let two SUCCESSFUL calls inflate the storm to "5 distinct questions". A caller
     who asks four sharpening questions and gets four useful answers is WORKING."""
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     recs = [
         _rec(t0, count=3, text_sha="aaa"),                      # worked
         _rec(t0 + timedelta(seconds=5), count=2, text_sha="bbb"),  # worked
@@ -294,14 +299,14 @@ def test_a_storm_is_distinct_questions_that_ALL_came_back_empty():
 def test_productive_drilling_down_is_not_a_storm():
     """A rule that calls ordinary work a failure is a rule that gets ignored, which costs
     the cases that were real."""
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     recs = [_rec(t0 + timedelta(seconds=i * 5), count=2, text_sha=f"h{i}")
             for i in range(6)]
     assert storms(recs) == []
 
 
 def test_one_zero_among_many_is_not_a_storm():
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     recs = [_rec(t0, count=4, text_sha="a"),
             _rec(t0 + timedelta(seconds=5), count=0, text_sha="b"),
             _rec(t0 + timedelta(seconds=9), count=7, text_sha="c")]
@@ -311,7 +316,7 @@ def test_one_zero_among_many_is_not_a_storm():
 def test_the_same_question_asked_twice_is_not_three_phrasings():
     """Distinctness, not volume: a retry of the identical query is not a caller casting
     about, and counting it would inflate every paginating client into a storm."""
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     recs = [_rec(t0 + timedelta(seconds=i), text_sha="same") for i in range(6)]
     assert storms(recs) == []
 
@@ -319,7 +324,7 @@ def test_the_same_question_asked_twice_is_not_three_phrasings():
 def test_storms_do_not_span_sessions():
     """A storm is one CALLER casting about. Smearing two clients that shared a minute into
     one finding would invent a failure nobody had."""
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     recs = [_rec(t0, text_sha="a", session="s1"),
             _rec(t0 + timedelta(seconds=2), text_sha="b", session="s2"),
             _rec(t0 + timedelta(seconds=4), text_sha="c", session="s3")]
@@ -341,8 +346,8 @@ def test_an_empty_log_reports_zero_calls_and_no_finding(tmp_path):
 
 
 def test_the_window_filter_drops_old_records():
-    old = _rec(datetime.now(timezone.utc) - timedelta(days=90), count=1)
-    new = _rec(datetime.now(timezone.utc), count=1)
+    old = _rec(datetime.now(UTC) - timedelta(days=90), count=1)
+    new = _rec(datetime.now(UTC), count=1)
     assert len(within([old, new], 30)) == 1
     assert len(within([old, new], None)) == 2
 
@@ -362,23 +367,23 @@ def test_the_briefs_own_pair_classifies_the_way_the_brief_says():
 
 def test_a_claim_genre_family_is_licensed_to_argue():
     """⛔ A DECISION THAT DOES NOT STATE ITS DECISION IN ITS NAME IS HARDER TO CITE, NOT
-    EASIER. `DEC-1-4-LIMIT-IS-0-61` is the brief's own example of a legitimately
+    EASIER. `DEC-2-7-GATE-IS-0-48` is the brief's own example of a legitimately
     claim-shaped id whose whole value is answering in one call."""
-    assert classify("DEC-1-4-LIMIT-IS-0-61", "DEC") is None
+    assert classify("DEC-2-7-GATE-IS-0-48", "DEC") is None
     assert classify("PRINCIPLE-ASYMMETRY-IS-REAL", "PRINCIPLE") is None
     assert classify("INV-FILE-IS-TRUTH", "INV") is None
     # ...and the licence is per-corpus, not a permanent carve-out.
-    assert classify("DEC-LIMIT-IS-0-61", "DEC", claim_genre=set()) is not None
+    assert classify("DEC-GATE-IS-0-48", "DEC", claim_genre=set()) is not None
 
 
 def test_machine_minted_ids_are_skipped():
     """19 of the 96 naive hits were auto-generated slugs truncated mid-phrase. Nobody
     authored them as a claim and there is no naming decision available."""
-    assert is_machine_minted("DEFECT-WIDGET-REFRESH-OPTION-DOES-3A9B1D")
-    assert is_machine_minted("DEFECT-EXT-PANEL-STYLE-DOES-NOT-5D82E0-A1")
-    assert is_machine_minted("DELIV-0009-EDITOR-YOUR-SUMMARY-WAS-STALE-7C21A9F4")
+    assert is_machine_minted("DEFECT-CONSOLE-HEARTBEAT-SETTING-DOES-4F0F4C")
+    assert is_machine_minted("DEFECT-EXT-RADIO-MODE-DOES-NOT-17CE47-A1")
+    assert is_machine_minted("DELIV-0009-ARCHITECT-YOUR-RETRACTION-WAS-WRONG-EBFF2360")
     assert not is_machine_minted("ACME-TIER-TRUNCATION-IS-A-LIE")
-    assert classify("DEFECT-X-IS-BROKEN-3A9B1D", "OTHER") is None
+    assert classify("DEFECT-X-IS-BROKEN-4F0F4C", "OTHER") is None
 
 
 @pytest.mark.parametrize("node_id", [

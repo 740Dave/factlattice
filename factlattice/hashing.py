@@ -18,11 +18,10 @@ import errno
 import hashlib
 import os
 import stat as _stat
-from typing import Dict, List, Optional, Tuple
 
 LTS_SUFFIX = ".lts"
 
-# [ISSUE-NONREGULAR-MEMBER] the closed set of codes for a corpus member that cannot be hashed.
+# [DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS] the closed set of codes for a corpus member that cannot be hashed.
 CORPUS_FILE_NOT_REGULAR = "corpus-file-not-regular"      # FIFO, socket or device (also through a symlink): NEVER opened
 CORPUS_FILE_BROKEN_LINK = "corpus-file-broken-link"      # a symlink that does not resolve (dangling, or a loop)
 CORPUS_FILE_UNREADABLE = "corpus-file-unreadable"        # a regular file the process may not read
@@ -44,7 +43,7 @@ class CorpusFileError(OSError):
         self.rel_path = rel_path
         super().__init__(f"{code}: {rel_path}")
 
-    def set_rel(self, rel_path: str) -> "CorpusFileError":
+    def set_rel(self, rel_path: str) -> CorpusFileError:
         self.rel_path = rel_path
         self.args = (f"{self.code}: {rel_path}",)
         return self
@@ -62,7 +61,7 @@ def _io_error(exc: OSError, rel: str) -> OSError:
     return CorpusFileError(CORPUS_FILE_UNREADABLE, rel)
 
 
-def check_member(abs_path: str, rel: Optional[str] = None) -> None:
+def check_member(abs_path: str, rel: str | None = None) -> None:
     """Classify a `.lts` member WITHOUT opening it: lstat, and for a symlink the resolved target, must be a regular file.
 
     Raises `CorpusFileError` (not-regular / broken-link / unreadable-directory-component); returns None for a regular file
@@ -105,6 +104,7 @@ def _open_regular(path: str, rel: str) -> int:
     lstat/stat BEFORE the open (a FIFO, socket or device is refused, never opened), `O_NONBLOCK` (a FIFO swapped in between
     the check and the open returns at once), and an `fstat` of the OPENED descriptor. Raises `CorpusFileError(rel)`."""
     check_member(path, rel)
+    _progress()           # the lstat (and stat) returned: a read that goes call by call reports each one ([MECH-BR-PROBE] x-progress)
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0))
     except PermissionError:
@@ -116,6 +116,7 @@ def _open_regular(path: str, rel: str) -> int:
         if err is exc:
             raise
         raise err from None
+    _progress()           # the open returned
     try:
         if not _stat.S_ISREG(os.fstat(fd).st_mode):          # swapped after the check: refuse, do not read
             raise CorpusFileError(CORPUS_FILE_NOT_REGULAR, rel)
@@ -126,7 +127,20 @@ def _open_regular(path: str, rel: str) -> int:
             if err is not exc:
                 raise err from None
         raise
+    _progress()           # the fstat of the opened descriptor returned
     return fd
+
+
+#: called with no arguments each time a unit of disk work returns (a listed directory, a checked member, a 64 KiB chunk read). The
+#: engine's freshness workers set it to report PROGRESS to their deadline ([MECH-BR-PROBE] x-progress), so a large corpus that keeps
+#: moving is not mistaken for a stuck one. None (the default) costs one global read per unit. Library callers leave it alone.
+progress_hook = None
+
+
+def _progress() -> None:
+    hook = progress_hook
+    if hook is not None:
+        hook()
 
 
 def file_content_hash(path: str) -> str:
@@ -135,7 +149,7 @@ def file_content_hash(path: str) -> str:
     Reads bytes so line-ending or encoding quirks are hashed faithfully. Never
     consults mtime/size.
 
-    NEVER BLOCKS ON A NON-REGULAR FILE ([ISSUE-NONREGULAR-MEMBER]): see `_open_regular`. A
+    NEVER BLOCKS ON A NON-REGULAR FILE ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]): see `_open_regular`. A
     refusal is a `CorpusFileError` carrying the file's BASENAME (this function does not know the corpus root); a caller
     that does calls `set_rel` on it. Never the absolute path.
     """
@@ -146,6 +160,7 @@ def file_content_hash(path: str) -> str:
         with os.fdopen(fd, "rb", closefd=False) as fh:
             for chunk in iter(lambda: fh.read(65536), b""):
                 h.update(chunk)
+                _progress()
     except OSError as exc:
         err = _io_error(exc, rel)
         if err is exc:
@@ -156,7 +171,7 @@ def file_content_hash(path: str) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
-def safe_read_bytes(path: str, rel: Optional[str] = None) -> bytes:
+def safe_read_bytes(path: str, rel: str | None = None) -> bytes:
     """THE way to read a corpus file's bytes: never blocks on a FIFO/socket/device, refuses with a `CorpusFileError` that
     carries `rel` (default: the basename), never an absolute path. A missing file raises the original `FileNotFoundError`."""
     rel = rel if rel is not None else os.path.basename(path)
@@ -173,7 +188,7 @@ def safe_read_bytes(path: str, rel: Optional[str] = None) -> bytes:
         os.close(fd)
 
 
-def safe_read_text(path: str, rel: Optional[str] = None, encoding: str = "utf-8", errors: str = "strict") -> str:
+def safe_read_text(path: str, rel: str | None = None, encoding: str = "utf-8", errors: str = "strict") -> str:
     """`open(path, 'r', encoding=...).read()` for a corpus file, through `safe_read_bytes`: same decoding and the same
     universal-newline translation (`\r\n` and `\r` become `\n`), but it can never block on a non-regular file."""
     raw = safe_read_bytes(path, rel)
@@ -224,19 +239,19 @@ def _walk_onerror(corpus_root: str):
     return _cb
 
 
-def walk_lts_paths(corpus_root: str) -> List[str]:
+def walk_lts_paths(corpus_root: str) -> list[str]:
     """Sorted ABSOLUTE paths of every `*.lts` NAME under `corpus_root`, WITHOUT classifying or opening any of them. For the
     scanners that report a bad member as a ROW (key_loss, property_loss) instead of failing: the read that follows MUST use
     `safe_read_text`, which refuses a non-regular member with a `CorpusFileError`. An unreadable directory raises
     (`corpus-dir-unreadable`), never a silent partial list."""
-    out: List[str] = []
+    out: list[str] = []
     for dirpath, _dirs, files in os.walk(corpus_root, onerror=_walk_onerror(corpus_root)):
         out.extend(os.path.join(dirpath, n) for n in files if n.endswith(LTS_SUFFIX))
     out.sort()
     return out
 
 
-def list_lts_files(corpus_root: str) -> List[str]:
+def list_lts_files(corpus_root: str) -> list[str]:
     """Return sorted relative paths of every .lts file under corpus_root.
 
     Recursive. Sorting makes the ordered set deterministic across filesystems.
@@ -244,10 +259,11 @@ def list_lts_files(corpus_root: str) -> List[str]:
     An inaccessible subtree RAISES (never silently partial) — see _walk_reraise.
     A member-shaped name (`*.lts`) that is not a regular file (FIFO, socket, device, a broken or looping symlink, or a
     symlink to one of those) RAISES `CorpusFileError` with the root-relative path: it is never opened here and never
-    silently skipped ([ISSUE-NONREGULAR-MEMBER]).
+    silently skipped ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]).
     """
-    matches: List[str] = []
+    matches: list[str] = []
     for dirpath, _dirnames, filenames in os.walk(corpus_root, onerror=_walk_onerror(corpus_root)):
+        _progress()
         for name in filenames:
             if name.endswith(LTS_SUFFIX):
                 abs_path = os.path.join(dirpath, name)
@@ -255,20 +271,21 @@ def list_lts_files(corpus_root: str) -> List[str]:
                 # Normalize separators so the hash is stable across OSes.
                 rel = rel.replace(os.sep, "/")
                 check_member(abs_path, rel)
+                _progress()
                 matches.append(rel)
     matches.sort()
     return matches
 
 
-def file_hash_map(corpus_root: str) -> Dict[str, str]:
+def file_hash_map(corpus_root: str) -> dict[str, str]:
     """Map of {relative_path: file_content_hash} for every .lts in the corpus."""
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for rel in list_lts_files(corpus_root):
         out[rel] = hash_member(corpus_root, rel)
     return out
 
 
-def files_hash(corpus_root: str) -> Tuple[str, Dict[str, str]]:
+def files_hash(corpus_root: str) -> tuple[str, dict[str, str]]:
     """Deterministic corpus-level hash + the per-file map it is derived from.
 
     Returns (files_hash, file_hashes). The corpus hash is SHA-256 over the

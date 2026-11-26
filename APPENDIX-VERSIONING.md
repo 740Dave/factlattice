@@ -1,10 +1,8 @@
 # Appendix: Versioning, Change Tracking, and Impact Assessment
 
-**Parent document**: the FactLattice Architecture Review Dossier (not published)
+**Parent document**: [REVIEW-DOSSIER.md](REVIEW-DOSSIER.md) (FactLattice Architecture Review Dossier)
 **Date**: 2026-03-29
 **Status**: Draft — operational appendix for architect review
-
-> **Design, not shipped in this repository.** The corpus-proposals MCP service (`corpus_proposals_*` tools) and the change-record generator described below are a design. They are not implemented here, and the `corpus_proposals_*` tools do not exist in this repository's engine. Read the proposal-service workflow as the context the change-record mechanism was designed for.
 
 ---
 
@@ -12,7 +10,7 @@
 
 A single push to main may touch several parts of a corpus — a credential model, the step graph of a process flow, a glossary entry — affecting different audiences differently. Git tells you "47 lines across 3 files." That is a file-level diff. It tells you nothing about which concepts changed, whether those changes break downstream consumers, or who needs to care.
 
-The semantic diff should say: "one breaking change to `[CRED-TOKEN]` (affects mobile devs), one additive flow step in `[FLOW-TOKEN-REQ]` (affects QA), one cosmetic glossary fix to `[TERM-LEDGER]` (affects no one)."
+The semantic diff should say: "one breaking change to `[CRED-ADC]` (affects mobile devs), one additive flow step in `[FLOW-ADC-REQ]` (affects QA), one cosmetic glossary fix to `[TERM-LEDGER]` (affects no one)."
 
 This appendix defines the mechanisms for producing that semantic diff from a FactLattice corpus — capturing changes, classifying their impact, computing blast radius through the graph, and filtering the result by audience.
 
@@ -22,7 +20,7 @@ This appendix defines the mechanisms for producing that semantic diff from a Fac
 
 ### 1.1 Current State
 
-The corpus-proposals MCP service (a design; not shipped in this repository) manages the governance lifecycle of corpus changes: submit, review, approve/reject/defer, apply. This workflow handles the *intent* of a change but does not capture the *effect*. A proposal says "I want to add a flow step to `[FLOW-TOKEN-REQ]`." After approval and application, no structured record exists of what nodes, edges, and properties actually changed.
+The corpus-proposals MCP service manages the governance lifecycle of corpus changes: submit, review, approve/reject/defer, apply. This workflow handles the *intent* of a change but does not capture the *effect*. A proposal says "I want to add a flow step to `[FLOW-ADC-REQ]`." After approval and application, no structured record exists of what nodes, edges, and properties actually changed.
 
 The existing versioning mechanisms in the base document format are document-scoped:
 - **Frontmatter**: `version-scope`, `supersedes-version`, `breaking-changes` — major version lines only
@@ -68,7 +66,7 @@ A change record is a FactLattice file. It uses the same notation, the same front
 ```markdown
 ---
 scope: "Change record for commit abc1234 — 3 files, 2 nodes modified, 1 edge added"
-audience: "Stakeholders of [CRED-TOKEN], [FLOW-TOKEN-REQ], [TERM-LEDGER]"
+audience: "Stakeholders of [CRED-ADC], [FLOW-ADC-REQ], [TERM-LEDGER]"
 boundary: "Records what changed in this commit; does not explain why (see linked proposal)"
 parent: changelog/2026-03.lts
 depends-on: []
@@ -76,7 +74,7 @@ confidentiality: internal-only
 ---
 # Change Record 2026-03-29-001 [DELTA:CR-2026-03-29-001]
 
-> Breaking change to [CRED-TOKEN] signing flow; additive step in [FLOW-TOKEN-REQ]; cosmetic fix to [TERM-LEDGER].
+> Breaking change to [CRED-ADC] signing flow; additive step in [FLOW-ADC-REQ]; cosmetic fix to [TERM-LEDGER].
 
 ---
 
@@ -98,25 +96,25 @@ confidentiality: internal-only
 
 ## Node Changes
 
-### [CRED-TOKEN] Access Token Credential
+### [CRED-ADC] Agent Delegation Certificate
 
 - change-type: modified
 - impact: breaking
 - affected-roles: mobile-dev, backend-dev, security-reviewer
 - property-diffs:
-  - contains: ADDED "Scope policy version field (v2 format)"
-  - contains: REMOVED "Scope policy blob"
+  - contains: ADDED "Domain policy version field (v2 format)"
+  - contains: REMOVED "Domain policy blob"
 - content-hash-before: sha256:a1b2c3...
 - content-hash-after: sha256:d4e5f6...
-- rationale: Scope policy blob replaced with versioned format; all consumers must update parsing
+- rationale: Domain policy blob replaced with versioned format; all consumers must update parsing
 
-### [FLOW-TOKEN-REQ] Token Request Flow
+### [FLOW-ADC-REQ] ADC Request Flow
 
 - change-type: modified
 - impact: additive
 - affected-roles: qa-engineer, integration-tester
 - step-diffs:
-  - ADDED step 4b: "Validate scope policy version against minimum supported"
+  - ADDED step 4b: "Validate domain policy version against minimum supported"
 - content-hash-before: sha256:g7h8i9...
 - content-hash-after: sha256:j0k1l2...
 - rationale: New validation step; existing flow steps unchanged
@@ -136,11 +134,11 @@ confidentiality: internal-only
 
 ## Edge Changes
 
-### ADDED: [FLOW-TOKEN-REQ] --DEPENDS_ON--> [CRED-TOKEN]
+### ADDED: [FLOW-ADC-REQ] --DEPENDS_ON--> [CRED-ADC]
 
 - layer: semantic
 - impact: additive
-- rationale: New validation step creates explicit dependency on token structure
+- rationale: New validation step creates explicit dependency on ADC structure
 
 ---
 
@@ -148,24 +146,24 @@ confidentiality: internal-only
 
 Scenario changes are tracked separately from general node changes because they encode the acceptance contract, route automatically to verification roles, and follow a finer-grained impact-classification table (Section 3.2). The auto-generator detects Scenario nodes via the `node_kind: scenario` marker emitted by the parser (SPEC.md §5.5.5).
 
-### [SCEN-TOKEN-V2-PARSE-REJECTS-V1] v2 parser rejects v1 payload (parent: [CRED-TOKEN])
+### [SCEN-ADC-V2-PARSE-REJECTS-V1] v2 parser rejects v1 payload (parent: [CRED-ADC])
 
 - change-type: added
 - impact: additive
 - affected-roles: qa-engineer, test-author, mobile-dev
 - scenario-content:
-  - when: a v1-formatted scope policy blob is submitted to the v2 parser
-  - then: the parser returns 400 with detail indicating "scope policy version unsupported"
-- rationale: Acceptance criterion paired with the breaking [CRED-TOKEN] format change; provides verifiable test wiring for downstream consumers
+  - when: a v1-formatted domain policy blob is submitted to the v2 parser
+  - then: the parser returns 400 with detail indicating "domain policy version unsupported"
+- rationale: Acceptance criterion paired with the breaking [CRED-ADC] format change; provides verifiable test wiring for downstream consumers
 
-### [SCEN-TOKEN-V1-PARSE-LEGACY] v1 parser path preserved for legacy clients (parent: [CRED-TOKEN])
+### [SCEN-ADC-V1-PARSE-LEGACY] v1 parser path preserved for legacy clients (parent: [CRED-ADC])
 
 - change-type: removed
 - impact: breaking
 - affected-roles: qa-engineer, test-author, mobile-dev, integration-tester
 - prior-scenario-content:
-  - when: a v1-formatted scope policy blob is submitted to the legacy v1 parser
-  - then: the parser accepts the blob and emits the structured token
+  - when: a v1-formatted domain policy blob is submitted to the legacy v1 parser
+  - then: the parser accepts the blob and emits the structured ADC
 - rationale: v1 parser path is being removed alongside the v2 cutover; downstream tests that exercised this path must be retired or re-pointed at v2
 
 ---
@@ -174,11 +172,11 @@ Scenario changes are tracked separately from general node changes because they e
 
 | Role | Changes Visible | Highest Impact | Action Required |
 |------|----------------|----------------|-----------------|
-| mobile-dev | [CRED-TOKEN] | breaking | Update token parsing for v2 scope policy format |
-| backend-dev | [CRED-TOKEN] | breaking | Update token parsing for v2 scope policy format |
-| security-reviewer | [CRED-TOKEN] | breaking | Review scope policy version field security implications |
-| qa-engineer | [FLOW-TOKEN-REQ] | additive | Add test case for scope policy version validation step |
-| integration-tester | [FLOW-TOKEN-REQ] | additive | Update integration test fixtures |
+| mobile-dev | [CRED-ADC] | breaking | Update ADC parsing for v2 domain policy format |
+| backend-dev | [CRED-ADC] | breaking | Update ADC parsing for v2 domain policy format |
+| security-reviewer | [CRED-ADC] | breaking | Review domain policy version field security implications |
+| qa-engineer | [FLOW-ADC-REQ] | additive | Add test case for domain policy version validation step |
+| integration-tester | [FLOW-ADC-REQ] | additive | Update integration test fixtures |
 
 ---
 
@@ -186,9 +184,9 @@ Scenario changes are tracked separately from general node changes because they e
 
 Nodes reachable from changed nodes via DEPENDS_ON (reverse) and CASCADES_TO (forward):
 
-- [CRED-TOKEN] <--DEPENDS_ON-- [FLOW-TOKEN-REQ], [FLOW-REVOKE], [SVC-VAULT]
-- [CRED-TOKEN] --CASCADES_TO--> [CRED-TOKEN-ISSUER-AUD] (via revocation cascade)
-- [FLOW-TOKEN-REQ] <--DEPENDS_ON-- [TEST-TOKEN-ISSUING]
+- [CRED-ADC] <--DEPENDS_ON-- [FLOW-ADC-REQ], [FLOW-REVOKE], [SVC-WALLET]
+- [CRED-ADC] --CASCADES_TO--> [CRED-HDIC-AUD] (via revocation cascade)
+- [FLOW-ADC-REQ] <--DEPENDS_ON-- [TEST-ADC-SIGNING]
 
 ---
 
@@ -231,7 +229,7 @@ Not every change matters to every person. A mobile developer does not need to kn
 Role-based filtering uses two inputs:
 
 1. **Document `audience` frontmatter**: Every FactLattice file declares its audience. A change to a document with `audience: "Mobile SDK developers"` is relevant to mobile developers.
-2. **Edge analysis**: A change to `[CRED-TOKEN]` is relevant to anyone whose work DEPENDS_ON or IMPLEMENTS that node, even if they never read the CRED-TOKEN document directly. The graph tells you who is downstream.
+2. **Edge analysis**: A change to `[CRED-ADC]` is relevant to anyone whose work DEPENDS_ON or IMPLEMENTS that node, even if they never read the CRED-ADC document directly. The graph tells you who is downstream.
 
 The change record's "Impact by Audience" table is computed, not authored. The process:
 
@@ -283,9 +281,9 @@ blast_radius(changed_node) =
 
 The blast radius is included in the change record as a flat list of reachable nodes with the edge path that connects them. This lets a reader see not just "these nodes are affected" but "this is *why* they are affected" — the chain of dependencies.
 
-For a breaking change to `[CRED-TOKEN]`:
-- Reverse DEPENDS_ON finds `[FLOW-TOKEN-REQ]`, `[FLOW-REVOKE]`, `[SVC-VAULT]`, `[TEST-TOKEN-ISSUING]`
-- Forward CASCADES_TO finds `[CRED-TOKEN-ISSUER-AUD]` (revocation cascade)
+For a breaking change to `[CRED-ADC]`:
+- Reverse DEPENDS_ON finds `[FLOW-ADC-REQ]`, `[FLOW-REVOKE]`, `[SVC-WALLET]`, `[TEST-ADC-SIGNING]`
+- Forward CASCADES_TO finds `[CRED-HDIC-AUD]` (revocation cascade)
 - These nodes collectively span audiences: mobile-dev, backend-dev, security-reviewer, qa-engineer, integration-tester
 
 The blast radius computation reuses the existing lts-engine traversal engine. No new algorithm is needed — the impact analysis traversal policy is already specified. The change record tooling invokes lts-engine with the changed nodes as entry points and the impact analysis policy.
@@ -477,9 +475,9 @@ The SDLC lifecycle (spec -> lint -> review -> build -> test -> deploy) gains cha
 
 **Session handoff**: Change records generated during a session are included in the handoff artifacts. The next session's Intelligence reads them to understand what changed since the last session without re-reading every modified file. The change record is a compressed representation of "what happened" — denser than a git log, more structured than a prose summary.
 
-**Gap analyzer input**: The spec-gap-analyzer currently compares a spec against its implementation. With change records, it can also compare the *current* spec against the *previous* spec and flag gaps between the spec's evolution and the implementation's evolution. If the spec gained a new flow step but the implementation did not gain the corresponding code path, that is a drift signal.
+**Gap analyzer input**: The gap analyzer currently compares a spec against its implementation. With change records, it can also compare the *current* spec against the *previous* spec and flag gaps between the spec's evolution and the implementation's evolution. If the spec gained a new flow step but the implementation did not gain the corresponding code path, that is a drift signal.
 
-**Release quality gate**: The release-quality-gate agent (SDLC Section 9.3) currently runs all quality dimensions. With change records, it can scope its analysis: only run security review on changes classified as `breaking` that touch security-prefixed nodes (CRED-*, SC-*, CW-*). Only run spec-gap analysis on changes classified as `additive` or `breaking`. Skip cosmetic changes entirely. This reduces quality gate cost proportional to change scope.
+**Release quality gate**: The release quality gate agent (SDLC Section 9.3) currently runs all quality dimensions. With change records, it can scope its analysis: only run security review on changes classified as `breaking` that touch security-prefixed nodes (CRED-*, SC-*, CW-*). Only run spec-gap analysis on changes classified as `additive` or `breaking`. Skip cosmetic changes entirely. This reduces quality gate cost proportional to change scope.
 
 ### 5.3 JSONL Event Streams
 
@@ -495,10 +493,10 @@ Change events are a natural fit for the JSONL event stream pattern defined in Do
   "proposal": "PROP-047",
   "session": "session-2026-03-29a",
   "highest_impact": "breaking",
-  "nodes_modified": ["CRED-TOKEN", "FLOW-TOKEN-REQ", "TERM-LEDGER"],
+  "nodes_modified": ["CRED-ADC", "FLOW-ADC-REQ", "TERM-LEDGER"],
   "nodes_added": [],
   "nodes_removed": [],
-  "edges_added": [{"source": "FLOW-TOKEN-REQ", "target": "CRED-TOKEN", "type": "DEPENDS_ON"}],
+  "edges_added": [{"source": "FLOW-ADC-REQ", "target": "CRED-ADC", "type": "DEPENDS_ON"}],
   "edges_removed": [],
   "affected_roles": ["mobile-dev", "backend-dev", "security-reviewer", "qa-engineer", "integration-tester"],
   "change_record_path": "changelog/CR-2026-03-29-001.lts"
@@ -534,7 +532,7 @@ From friction identified to stakeholders seeing what changed:
 
 ### Step 1: Friction Identified
 
-A developer, Intelligence, or automated analysis identifies a problem — a gap in a spec, an incorrect definition, a missing flow step, a stale edge. The friction may surface during a build (spec-gap-analyzer finding), a session (practitioner observation), or a quality gate (security reviewer finding).
+A developer, Intelligence, or automated analysis identifies a problem — a gap in a spec, an incorrect definition, a missing flow step, a stale edge. The friction may surface during a build (gap analyzer finding), a session (practitioner observation), or a quality gate (security reviewer finding).
 
 ### Step 2: Proposal Submitted
 
@@ -566,7 +564,7 @@ The post-commit hook invokes `factlattice-delta-gen` (Section 8), which:
 The DELTA document lives in the repo at `deltas/` (queryable by Intelligences, accumulates history). It is also surfaced via:
 - **MkDocs site**: "Recent Changes" section renders DELTAs as pages with linked bracketed IDs and per-audience filtering
 - **JSONL event stream**: Summary event for temporal queries and dashboards
-- **Notification system** (if configured): Role-filtered alerts ("mobile-dev: breaking change to [CRED-TOKEN]")
+- **Notification system** (if configured): Role-filtered alerts ("mobile-dev: breaking change to [CRED-ADC]")
 
 ### Step 7: Stakeholder Query
 
@@ -813,21 +811,21 @@ A developer pushes changes to three corpus files. The post-merge hook fires (or 
 ```markdown
 ## Change Summary — 2026-03-29T14:30:00Z
 
-**Commit**: abc1234 — "Update token issuing flow for new signing transport"
+**Commit**: abc1234 — "Update ADC signing flow for new ceremony transport"
 **Files changed**: 3 (.lts)
 **Concepts changed**: 7 nodes, 4 edges
 
 ### Breaking (1)
-- **[FLOW-TOKEN-SIGN-3]** Step modified: signing transport now requires
+- **[FLOW-ADC-SIGN-3]** Step modified: ceremony transport now requires
   mutual TLS. Affects: mobile developers, integration testers.
   Blast radius: 4 downstream nodes via DEPENDS_ON.
 
 ### Additive (2)
-- **[SYS-SIGNING-TRANSPORT]** New property: `mtls_required: true`
-- **[TERM-SIGNING-CHANNEL]** New node added to glossary
+- **[SYS-CEREMONY-TRANSPORT]** New property: `mtls_required: true`
+- **[TERM-CEREMONY-CHANNEL]** New node added to glossary
 
 ### Cosmetic (4)
-- **[TERM-TOKEN]** Definition wording tightened (no semantic change)
+- **[TERM-ADC]** Definition wording tightened (no semantic change)
 - 3 property reformattings (whitespace only)
 ```
 
@@ -890,7 +888,7 @@ fi
 | Query | How |
 |-------|-----|
 | "What changed since last Tuesday?" | Read DELTAs with dates after Tuesday |
-| "Did anything break the token issuing flow?" | Grep DELTAs for `[FLOW-TOKEN-SIGN]` + `impact: breaking` |
+| "Did anything break the ADC signing flow?" | Grep DELTAs for `[FLOW-ADC-SIGN]` + `impact: breaking` |
 | "What should I care about as a mobile developer?" | Filter DELTAs by `audience: mobile` |
 | "Summarize corpus changes over the last 6 months" | Read all DELTAs, aggregate by impact level and domain area |
 | "What's different from when Sam last pulled?" | Compare Sam's cached snapshot against current HEAD |

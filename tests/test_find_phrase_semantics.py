@@ -45,7 +45,7 @@ def _engine(tmp_path):
     (root / "00-c.lts").write_text(
         "# C [DOC-C]\n\n"
         "## Init [XL-M1]\n\n- input: Borrower card CONTENTS (required)\n\n"
-        "## Aliased [N-AL]\n\n- alias: tile map container\n- alias: encrypted envelope\n", encoding="utf-8")
+        "## Aliased [N-AL]\n\n- alias: zero map container\n- alias: encrypted envelope\n", encoding="utf-8")
     return LtsEngine(config.build_store({"c": {"roots": [{"path": str(root)}]}}))
 
 

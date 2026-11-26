@@ -6,7 +6,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -282,7 +281,7 @@ def test_p2_1_guard_catches_each_planted_form(tmp_path, form):
     assert got and all(r[0] == "factlattice_engine/planted.py" for r in got), (form, got)
 
 
-@pytest.mark.parametrize("sub", ["tools", "scripts", "widgetkit", "."])
+@pytest.mark.parametrize("sub", ["tools", "scripts", "example-product", "."])
 def test_p2_1_guard_reaches_every_directory_not_only_the_package_roots(tmp_path, sub):
     root = _plant(tmp_path, PLANTED["fstring"], sub=sub) if sub != "." else _plant(tmp_path, PLANTED["fstring"], sub="")
     assert G.scan_ast_tree(root), sub
@@ -342,7 +341,13 @@ def test_p2_3_error_mode_gates_every_exempt_tool_that_names_a_corpus(w, monkeypa
     for name in tools.REGISTRY_ERROR_EXEMPT_TOOLS:
         if name == "lts_list_corpora":
             continue
-        res = tools.dispatch(name, {"corpus": "zz-planted-a", "source": str(w.tmp / "x"), "content": "# T [T-1]\n"}, tools=eng)
+        decl = tools._declared_arguments(name)
+        bag = {"corpus": "zz-planted-a", "source": str(w.tmp / "x"), "content": "# T [T-1]\n"}
+        res = tools.dispatch(name, {k: v for k, v in bag.items() if k in decl}, tools=eng)     # only declared names: an undeclared one is refused `unknown_argument` first
+        if "corpus" not in decl:
+            # `corpus` is not an argument of this tool, so the corpus gate cannot be asked of it; the bag is refused instead
+            assert tools.dispatch(name, bag, tools=eng)["code"] == "unknown_argument", name
+            continue
         assert res["success"] is False and res.get("reason") == "registry-not-found", (name, res)
         assert "ValueError" not in json.dumps(res)
     # no corpus named: the parser-only tools answer. (`lts_lint` over a directory resolves its profile THROUGH the registry,

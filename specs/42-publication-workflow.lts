@@ -1,0 +1,499 @@
+---
+lts: "1.1"
+title: The publication workflow: a gated snapshot with a fail-closed private-term scan, pushed publicly only on the maintainer's word
+domain: MET.FACTLATTICE
+doctype: SPEC
+---
+
+# The publication workflow: a gated snapshot with a fail-closed private-term scan, pushed publicly only on the maintainer's word [FL-PUBLICATION]
+
+- status: draft
+- x-created: 2026-11-19
+- scope: A release-prep workflow (a script first, run where the private files are; later also a job in the private repository, [DD-PUB-SCRIPT-FIRST]) takes one named trunk revision, builds the snapshot that would ship, runs the private-term scanner and the test suite on that snapshot, and stops at a ready-to-push state: a one-commit clone of the public main branch, a report, and the exact fast-forward push command, printed and not run. The same snapshot carries a small public workflow file that makes the public repository run its own test suite on hosted Ubuntu runners. The scanner has a publication mode that refuses to run unless both of its private vocabulary files are present, non-empty and pass their own planted controls. Every run states what it scanned. Nothing is written to the public repository by any tool or workflow; a delegate named in the maintainer's public-push grant (a person or an agent) runs the printed command on the maintainer's word.
+- boundary: This file defines the workflow's steps and outputs, the scanner's publication mode and its fail-closed rule, the scope line and the finding format, how the vocabulary reaches a runner, and the checks that show each of these red before green. It does not define the scanner's rules or the vocabulary's contents, the release-notes tooling, or the private repository's per-change checks.
+- not-this: Not a new scanner: the existing disclosure guard is reused and its fail-closed rule widened. Not a per-commit or per-pull-request scan on the private repository. Not a vocabulary editor and not a sync job. Not an adversarial grading of the scanner beyond the checks below. Not a guarantee that nothing private ships: the scan is a lexical tripwire over the named vocabulary and says so.
+- rationale: A scanner that quietly runs without its vocabulary reports a clean result over nothing, and that result is indistinguishable from a real one. A publication gate is only worth having if running it unconfigured is a failure, if every run states what it covered, and if the tree it covers is the tree that ships.
+- x-authority: Requirement: the development model of 2026-11-17, whose release line and principles are its owner's design, written under the maintainer's delegation (G1, G2), the maintainer's public-push grant of 2026-11-12 and his statement recorded 2026-11-17 (G3), and rulings of 2026-11-19 by the owner of the development model, who is not the maintainer (G4, the G3 correction, O2, O3). G5 rests on three typed statements of the maintainer (two of 2026-11-20 and one of 2026-11-22), and G3's no-push clause and D3 on a class ruling of the development-model owner of 2026-11-21 (a script or workflow that prepares a public release never pushes to a public repository and never opens a pull request there). D5 rests on a ruling of the development-model owner of 2026-11-20, which named the minimum first build. The rails stated under G5 are the development-model owner's statement of 2026-11-20 to the maintainer, not the maintainer's words, and are cited without quotation. G1, G2, G3 and G5 have source statements here, in [SRC-PUB-STATEMENTS]; for G1 and G2 the statement is the maintainer's delegation of the model, not a selection of their wording. G4, and G3 beyond its source statements, rest on the grant and the rulings, which are cited without quotation. The requirement keys, the decisions, the finding format, the test shapes and G2's clause about strangers who clone the public repository are the authors' design and are not the maintainer's words.
+- x-not-built: Partly built. The scanner's publication mode exists, with its tests (T1a, T1b, T2, T3, T6). The snapshot builder with its folder map and the release-prep script are built and under review, not yet merged. The public test set, the public workflow file and the later private-repository job with its secret do not exist yet ([PLAN-PUB]).
+- x-applies-itself: This file follows spec 39's rule. Quoted wording appears only in the nodes under [SRC-PUB-STATEMENTS], a section marked non-normative, each with a locator. It names no person, agent, host, account, private corpus or private node, because the file is public.
+- see-also: [TRACE-PUB], [ACC-PUB], [NOT-THIS-PUB]
+
+## Goal: publication runs as a workflow that includes the private-term scanner [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: G1
+- x-goal: Putting the project in public view is a defined workflow, not a manual act. The workflow includes the private-term scanner as a step it cannot skip, and it works on the content that would ship.
+- x-whose: The goal restates a rule of the development model, which names a publishing workflow that runs the private-term scanner. The rule was written by the model's owner under the maintainer's delegation ([SRC-PUB-MODEL-OWNER-LINE]); it is not the maintainer's selection. The shape of the steps is the authors' design.
+- see-also: [SRC-PUB-MODEL-OWNER-LINE]
+
+## Goal: publication rules apply at publication and not on every private build [GOAL-PUB-RULES-AT-PUBLICATION]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: G2
+- x-goal: The checks that decide what may go public run when something is published. Ordinary private development and a stranger who clones the public repository are not blocked by them.
+- x-whose: The development model's principle that publication rules apply at publication, written by the model's owner under the maintainer's delegation ([SRC-PUB-MODEL-OWNER-LINE]) and not selected by the maintainer; the first sentence of the goal restates it, without quotation. The second sentence, about ordinary private development and strangers who clone the public repository, is the authors' design ([DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE]), not the principle's wording.
+- see-also: [SRC-PUB-MODEL-OWNER-LINE]
+
+## Goal: every public push is the maintainer's decision, and who runs it is wider [GOAL-PUB-PUSH-MAINTAINER-DECISION]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: G3
+- x-goal: A public push happens on the maintainer's word, for a named repository and release, after all readiness steps are complete, among them this workflow's gates. Every push to the public repository is a fast-forward and never a force push. The maintainer runs it, or a delegate named in his public-push grant runs it on the maintainer's word. No tool, script or workflow ever pushes to the public repository or opens a pull request there: the tooling stops at a ready-to-push state and a delegate named in the maintainer's public-push grant (a person or an agent) runs the printed command.
+- x-whose: The maintainer's public-push grant of 2026-11-12 and his own statement of 2026-11-17, in [SRC-PUB-DELEGATE-LINE], that pushes to public typically happen on his word after all readiness steps are complete; and the development-model owner's ruling of 2026-11-19, which corrected an earlier reading in which only the maintainer could run the push. The decision is the maintainer's and the act may be run by a delegate. The no-push clause rests on the development-model owner's class ruling of 2026-11-21, without quotation: a script or workflow that prepares a public release never pushes to a public repository and never opens a pull request there, because a pull-request branch on a public repository is already a publication. The maintainer's approved question on push scope is in [SRC-PUB-PUSH-SCOPE-LINE]. Apart from those two lines, no quotation is kept.
+- restates: [SRC-PUB-PUSH-SCOPE-LINE], [SRC-PUB-DELEGATE-LINE]
+
+## Goal: a run without its vocabulary never looks clean, and fails as the publication gate [GOAL-PUB-NO-SILENT-UNCONFIGURED]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: G4
+- x-goal: A run with no vocabulary is never reported as a clean result. When the scanner runs as the publication gate (its publication mode, called by the workflow as a required check) and cannot read what it is meant to look for, the run fails. Outside publication mode such a run may exit 0, but it says which private file was not loaded and never looks like a clean run ([REQ-PUB-UNCONFIGURED-SAYS-SO]).
+- x-whose: Rulings of 2026-11-19 by the owner of the development model, who is not the maintainer: a scanner that runs without its vocabulary must fail as a required check, which binds the publication gate; the lenient modes stay lenient, but an unconfigured run and a clean run must never look the same. No quotation is kept.
+
+## Goal: the public repository runs its own Ubuntu test suite, shipped only through this workflow [GOAL-PUB-PUBLIC-UBUNTU-CI]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: G5
+- x-goal: The public repository runs its own test suite on hosted Ubuntu runners, nightly and on every push to it, with no secrets and no self-hosted runner. That workflow file reaches the public repository only through this publication workflow, scanned like every other shipped file. Ubuntu failures are found at release time and are accepted as such until the project has a sizable number of third-party users (the maintainer's condition); a private Ubuntu CI is a separate decision, not taken here.
+- x-whose: The maintainer's two typed statements of 2026-11-20, in [SRC-PUB-PUBLIC-REPOS-LINE] and [SRC-PUB-UBUNTU-CI-LINE], and his typed statement of 2026-11-22, in [SRC-PUB-UBUNTU-CI-BOTH-LINE], in which the maintainer confirmed that the decision covers this project. The wording is the authors'. The rails (hosted Ubuntu runner only, nightly plus on push, no self-hosted runner, no secrets, public only through this workflow and its scan, which must cover the workflow file, and the push needing the maintainer's release gates) are the development-model owner's statement of 2026-11-20 to the maintainer, not the maintainer's words, and are cited without quotation.
+- restates: [SRC-PUB-UBUNTU-CI-LINE], [SRC-PUB-PUBLIC-REPOS-LINE], [SRC-PUB-UBUNTU-CI-BOTH-LINE]
+- x-invalidating-assumption: That the project does not yet have a sizable number of third-party users. When it has a sizable number, the maintainer's acceptance of release-time Ubuntu failures lapses and x-cut-7, the private internal Ubuntu CI, is reopened.
+
+## Requirement: in publication mode the scanner fails closed when either private file is unusable [REQ-PUB-FAIL-CLOSED]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R1
+- implements: [GOAL-PUB-NO-SILENT-UNCONFIGURED], [GOAL-PUB-RULES-AT-PUBLICATION]
+- verified-by: [SCEN-PUB-MISSING-OR-EMPTY], [SCEN-PUB-CONTROL-FAILS]
+- see-also: [DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE]
+- x-rule: In publication mode the scanner exits non-zero, and the workflow's required check is red, if the private vocabulary file or the denylist file is missing, is empty, or contains a planted control row that its own scan does not detect. Either file alone failing is enough. Each file's path comes from its environment variable: FACTLATTICE_PUBLISH_VOCAB for the vocabulary file and FACTLATTICE_DISCLOSURE_RULES for the denylist file. When the variable is unset or empty, the scanner's default location under the scanned tree applies; a snapshot has none, so publication mode then refuses.
+- x-rule-unreadable-or-empty: Publication mode also refuses a tree it cannot read, or one that yields zero files shipped or zero files scanned, so a clean result over nothing is a refusal.
+- x-rule-same-file: Publication mode refuses the two private files when they are the same file or have the same bytes.
+- x-present-gap: Before this requirement, the tree-scan mode refuses only a missing vocabulary file and passes when the denylist file is missing. That gap is the defect this requirement closes.
+- x-default-unchanged: The other modes are not a publication gate and do not fail closed; what they print when unconfigured is set by [REQ-PUB-UNCONFIGURED-SAYS-SO]. This requirement binds publication mode only.
+
+## Requirement: every run prints a scope line that states what it covered [REQ-PUB-SCOPE-LINE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R2
+- implements: [GOAL-PUB-NO-SILENT-UNCONFIGURED]
+- verified-by: [SCEN-PUB-CLEAN-SNAPSHOT]
+- see-also: [REQ-PUB-DRIFT-VISIBLE]
+- x-rule: Each run prints one scope line holding: the number of files scanned, the number of exclude entries applied, the rule count read from each private file, and the sha256 and row count of each private file, the number of files shipped, the number of those that came from the folder map ([REQ-PUB-FOLDER-MAP]), and each file that is shipped but not scanned, named by path (the scanner's own exemptions). The entries' text is not printed, because the excluded paths themselves must not reach the log. The scanner exempts two of its own files today, and the scope line states them rather than hiding them. The result line names the scan as a lexical tripwire over the named vocabulary and never states that nothing private is present.
+- x-lint: A run that prints no scope line, or a result line that claims nothing private remains, fails the check that reads the log.
+
+## Requirement: the scanned tree is the tree that ships [REQ-PUB-SCAN-THE-SNAPSHOT]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R3
+- implements: [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+- verified-by: [SCEN-PUB-CLEAN-SNAPSHOT], [SCEN-PUB-PLANTED-TERM]
+- x-rule: The snapshot is the export of one named trunk revision with the paths listed in PUBLISH-EXCLUDE removed and the folder map of [REQ-PUB-FOLDER-MAP] applied. The scanner and the test suite both run on that snapshot. Neither runs on the trunk checkout, and neither runs on a diff.
+- x-count: The test computes two equations independently, from git ls-tree of the named revision. Files shipped = files in the export, minus files under excluded paths, minus files under the map's source folder, plus files placed at the map's targets. Files scanned = files shipped, minus the files the scanner exempts, each named in the scope line. The scope line's figures must equal them. The earlier rule (export minus excluded) is wrong once a folder map exists, and was already off by the scanner's exemptions.
+
+## Requirement: nothing reaches the public repository by tool or workflow; a delegate runs the printed push [REQ-PUB-NO-PUBLIC-WRITE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R4
+- implements: [GOAL-PUB-WORKFLOW-WITH-SCANNER], [GOAL-PUB-PUSH-MAINTAINER-DECISION]
+- verified-by: [SCEN-PUB-TOKEN-CANNOT-PUSH], [SCEN-PUB-PUSH-FAST-FORWARD-ONLY]
+- see-also: [DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD], [DD-PUB-SCRIPT-FIRST], [REQ-PUB-NO-PUSH-CODE]
+- x-rule: The release-prep tooling (the snapshot builder and the script that wraps it) works in a temporary clone of the public repository's main branch. It replaces that clone's tree with the snapshot as ONE commit whose parent is the public main it cloned, runs the gates there, and stops. It prints the gate results and the exact fast-forward push command. It never pushes, never creates a branch or a pull request in the public repository, and the clone it leaves has its push URL disabled, so an accidental push from it fails.
+- x-push-rule: A delegate named in the maintainer's public-push grant (a person or an agent) runs the printed command, on the maintainer's word, for a named repository and release, after all readiness steps are complete. A CI job that runs the tooling ([DD-PUB-VOCAB-AS-CI-SECRET], [DD-PUB-SCRIPT-FIRST]) holds a credential that cannot write to the public repository (T4, unchanged).
+
+## Requirement: a finding names a place and a rule and never the matched text [REQ-PUB-FINDING-FORMAT]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R5
+- implements: [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+- verified-by: [SCEN-PUB-PLANTED-TERM]
+- x-rule: A finding prints the file path, the line number and the name of the rule that fired. It never prints the matched text, so the workflow log is not itself a copy of what the scanner guards. When a rule matches part of any printed path (a file or directory name, in a finding, the scope line or the report), the matched span is masked and the rest of the path is printed.
+- x-known-limits: A rule that matches zero-width cannot be masked. The rule name is printed by design.
+- x-whose-note: Placed under G1 as a property of a scanner step that runs in a shared log.
+
+## Requirement: a stale copy of the vocabulary is visible [REQ-PUB-DRIFT-VISIBLE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R6
+- implements: [GOAL-PUB-NO-SILENT-UNCONFIGURED]
+- verified-by: [SCEN-PUB-DRIFT]
+- see-also: [REQ-PUB-SCOPE-LINE], [DD-PUB-VOCAB-AS-CI-SECRET]
+- x-rule: The report carries the sha256 and row count of each private file as the workflow used it, so that a person can compare them with the source copy kept by the maintainer. A difference is how a stale copy shows. Reconciling the two is done by hand.
+- x-whose-note: Placed under G4 because an unnoticed stale vocabulary is a quiet form of running without the vocabulary.
+
+## Requirement: one fixed folder map places the public workflow files in the snapshot [REQ-PUB-FOLDER-MAP]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R8
+- implements: [GOAL-PUB-PUBLIC-UBUNTU-CI], [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+- verified-by: [SCEN-PUB-MAPPED-FILE-SCANNED]
+- see-also: [DD-PUB-FOLDER-MAP], [REQ-PUB-SCAN-THE-SNAPSHOT]
+- x-rule: The snapshot builder has exactly one folder map: publish/github/workflows/ in the private tree becomes .github/workflows/ in the snapshot. The map runs after the exclusions and before the scan and the suite, so mapped files are scanned and tested at their target paths. The source folder never ships at its own path. A map target that already exists in the snapshot refuses the build, with no silent overwrite. The map is fixed in the builder and is not configurable per run. Every mapped file is listed in the report with its target and its source, the target masked and the source withheld where a rule matches them. A finding in a mapped file names the target path and its source path, unless a rule matches the source path, in which case the source is printed as withheld.
+
+## Requirement: each public workflow file obeys fixed rules and the tooling checks them [REQ-PUB-PUBLIC-WORKFLOW-RULES]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R9
+- implements: [GOAL-PUB-PUBLIC-UBUNTU-CI]
+- verified-by: [SCEN-PUB-PUBLIC-WORKFLOW-RULES]
+- see-also: [DD-PUB-PUBLIC-WORKFLOW-SELF-CONTAINED]
+- x-rule: Each workflow file shipped through the map runs only on the ubuntu-latest hosted runner; triggers on push and on a schedule (manual dispatch is also allowed); references no secret; names no self-hosted runner; sets read-only repository permissions; and uses nothing that does not ship, so no script from an excluded path. The release-prep tooling checks these on the snapshot and fails if any is broken.
+
+## Requirement: the public test set is the suite that ships, run against the snapshot's own package [REQ-PUB-PUBLIC-TEST-SET]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R10
+- implements: [GOAL-PUB-PUBLIC-UBUNTU-CI], [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+- verified-by: [SCEN-PUB-TEST-SET]
+- see-also: [REQ-PUB-SCAN-THE-SNAPSHOT]
+- x-rule: The suite run on the snapshot is the suite that ships, and it runs against the snapshot's own package. The run prints the imported package's path, which must be inside the snapshot; an editable install of the private trunk must not be what is imported, shown by a negative control. The gate is no collection error and no failure. A test that needs a path absent from the snapshot either skips with a reason that names that path, or is itself excluded from the snapshot. The report gives the counts of passed, failed, skipped and errors, and lists each skip reason with its count, so that a green made of skips is visible.
+
+## Requirement: the report lists what the snapshot commit changes in the public tree [REQ-PUB-DIFF-AGAINST-PUBLIC]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R11
+- implements: [GOAL-PUB-WORKFLOW-WITH-SCANNER]
+- verified-by: [SCEN-PUB-DIFF-REPORT]
+- x-rule: Because the snapshot commit replaces the public tree, the report lists every path the commit adds, changes and removes relative to the public main branch it was built on. A non-empty removal list is not a failure; it is shown at the maintainer's gate.
+- x-open: Whether the public repository's existing files outside the snapshot (the removal list) should be kept is decided at the first release gate.
+
+## Requirement: the release-prep tooling contains no push code path [REQ-PUB-NO-PUSH-CODE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R12
+- implements: [GOAL-PUB-PUSH-MAINTAINER-DECISION]
+- verified-by: [SCEN-PUB-PUSH-FAST-FORWARD-ONLY]
+- see-also: [REQ-PUB-NO-PUBLIC-WRITE]
+- x-rule: The release-prep tooling contains no code path that pushes or forces. It is shown two ways. Running it against a scratch bare repository that stands in for the public one leaves that repository's refs unchanged. Running the printed command there fast-forwards it, while the same command after that repository's main branch has moved is refused, because it carries no force.
+
+## Decision: the vocabulary reaches the workflow as an encrypted secret of the private repository [DD-PUB-VOCAB-AS-CI-SECRET]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D1
+- x-decision: The two private files are stored together, base64-encoded, as one GitHub Actions secret of the private repository. At job start the workflow decodes them to a temporary directory and points FACTLATTICE_DISCLOSURE_RULES and FACTLATTICE_PUBLISH_VOCAB at the two files, which are the variables the scanner already reads. The source of truth stays the files kept by the maintainer outside the repository; the secret is a copy.
+- rationale: It works on whichever runner the workflow is assigned to. Whether the files stay within a secret's size limit is one of the questions in [ACC-PUB].
+- x-rejected: A file kept on one runner: it ties publication to that host and drifts from the source. Committing the private directory: it undoes an ignore rule that was chosen on purpose.
+- x-invalidating-assumption: That the two files stay small enough for one secret, and that a stale copy is caught by [REQ-PUB-DRIFT-VISIBLE] before it matters.
+- see-also: [REQ-PUB-DRIFT-VISIBLE]
+
+## Decision: fail-closed applies in publication mode only [DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D2
+- x-decision: The scanner gains an explicit publication mode, either a new flag or the existing tree mode with its refusal widened to the denylist file, and the workflow calls that mode. The other modes stay lenient: they may exit 0 when unconfigured, but they never print a clean result ([REQ-PUB-UNCONFIGURED-SAYS-SO]).
+- rationale: Those lenient modes exist so that a stranger who clones the public repository, with no private files, is not blocked. Making the strict behaviour a mode the workflow selects keeps that, which is what [GOAL-PUB-RULES-AT-PUBLICATION] asks.
+- x-rejected: Making every mode fail closed. It would block every cloner and every private build.
+- x-invalidating-assumption: That the lenient modes are not relied on as a publication gate by anything else.
+- see-also: [REQ-PUB-FAIL-CLOSED]
+
+## Decision: the public push is a printed command, run by a delegate on the maintainer's word [DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D3
+- x-decision: As [REQ-PUB-NO-PUBLIC-WRITE]: the release-prep tooling builds one snapshot commit on a clone of the public main branch, runs the gates, and stops, printing the gate results and the exact fast-forward push command. A delegate named in the grant runs that command on the maintainer's word, for a named repository and release, after all readiness steps are complete. Every push to the public repository is a fast-forward and never a force push. No tool, script or workflow pushes or opens a pull request in the public repository.
+- rationale: It keeps the decision with the maintainer ([GOAL-PUB-PUSH-MAINTAINER-DECISION]) while letting a delegate perform the act. It follows the development-model owner's class ruling of 2026-11-21: a script or workflow that prepares a public release never pushes to a public repository and never opens a pull request there, because a pull-request branch on a public repository is already a publication; it stops at a ready-to-push state and prints the exact fast-forward command with the gate results.
+- x-rejected: The earlier draft, in which the script pushed a branch of the public repository and opened a pull request, merged later on the maintainer's word. That draft cited a pull-request flow from a tooling document as approved wording; that wording was the document author's proposal and was never selected by the maintainer. The approved text is [SRC-PUB-PUSH-SCOPE-LINE]. Also rejected: a repository environment with the maintainer as a required reviewer, which was tried and is not available (see [DD-PUB-NO-REQUIRED-REVIEWER-AVAILABLE]).
+- x-invalidating-assumption: That the maintainer does not choose a public pull-request flow, and that no release script is found that writes to a public repository. Either would reopen this decision.
+- x-open: The flow, stopping at ready-to-push or a pull request that he merges, is shown to the maintainer at the first release gate. Stopping short is the default meanwhile, because it publishes nothing and either flow can follow from it. The approved text is the push-scope question in [SRC-PUB-PUSH-SCOPE-LINE].
+- see-also: [REQ-PUB-NO-PUBLIC-WRITE]
+
+## Decision: a required-reviewer environment is not available, so the push stays a delegate's command (closed) [DD-PUB-NO-REQUIRED-REVIEWER-AVAILABLE]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: O1
+- x-closed: true
+- x-decision: Measured on 2026-11-19: creating a repository environment with a required reviewer on the private repository was refused with HTTP 422, the message saying the billing plan does not support the required-reviewers protection rule. The environment was still created, with no protection rule, and the probe environments were then deleted; the list read zero afterwards. The push therefore stays a command run by a delegate on the maintainer's word.
+- rationale: A measured result, recorded so the option is not proposed again without a change of plan.
+- see-also: [DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD]
+
+## Decision: release-notes tooling is a later, separate piece of work (closed) [DD-PUB-RELEASE-TOOLING-LATER]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: O2
+- x-closed: true
+- x-decision: The development-model owner's ruling of 2026-11-19: the tool that writes release notes and version numbers, named in the development model, is a later follow-on change and is not part of this spec. This spec defines the publication workflow only.
+- rationale: Publication gating does not depend on how release numbers are produced.
+- see-also: [GOAL-PUB-WORKFLOW-WITH-SCANNER], [NOT-THIS-PUB]
+
+## Decision: the per-change neutrality test is dropped once the publication scan is live and green (closed) [DD-PUB-DROP-PER-CHANGE-TEST]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: O3
+- x-closed: true
+- x-decision: The development-model owner's ruling of 2026-11-19: this project's per-change neutrality test is removed once this publication scan is live and green. Until then it stays. The earlier tooling document, which the development model replaces, also listed a lint rule beside the publication scan; it is cut ([NOT-THIS-PUB]).
+- rationale: It is what [GOAL-PUB-RULES-AT-PUBLICATION] asks: the check moves from every change to publication, and is dropped only when its replacement is proven.
+- x-invalidating-assumption: That the publication scan covers every case the per-change test covered. The first release through the workflow is the evidence.
+
+## Decision: one fixed folder map, and not a shipped .github folder [DD-PUB-FOLDER-MAP]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D4
+- x-decision: The private repository's .github folder stays excluded from the snapshot. Public workflow files are written in the private tree under publish/github/workflows/ and the builder's one fixed map ([REQ-PUB-FOLDER-MAP]) places them at .github/workflows/ in the snapshot.
+- rationale: The private repository's workflows, scripts and code-owner file name internal paths and people, so .github cannot ship as it is; only a folder written to be public maps there. There is one fixed entry because each extra entry is a path the reviewer of a release must reason about; widening the map is a spec change.
+- x-rejected: Shipping .github with the other files: it would publish internal paths and people. A configurable map: it moves the reasoning from the spec to each run.
+- x-invalidating-assumption: That one folder of workflow files is all the public repository needs from the private tree's hidden folders.
+- x-open: The code-owner boundary for the new publish/ folder, which ships a workflow, is the maintainer's call and is outside this file.
+- see-also: [REQ-PUB-FOLDER-MAP]
+
+## Decision: the release-prep script is the first unit and the private CI job comes later [DD-PUB-SCRIPT-FIRST]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D5
+- x-decision: The release-prep script is the unit. The first releases run it where the maintainer's private files are. The private-repository CI job that runs the same script with the secret of [DD-PUB-VOCAB-AS-CI-SECRET] comes later and is not needed for the first release. D1 and T4 stay, and bind that later job.
+- rationale: The development-model owner's ruling of 2026-11-20 named the minimum as the snapshot builder, the fail-closed scan and the release script, with the folder map as a small amendment.
+- x-rejected: Building the CI job first: it adds the secret and the credential before anything has been released by hand.
+- x-invalidating-assumption: That a release run by hand where the private files are is acceptable for the first releases.
+- see-also: [DD-PUB-VOCAB-AS-CI-SECRET], [REQ-PUB-NO-PUBLIC-WRITE]
+
+## Decision: the public workflow is self-contained [DD-PUB-PUBLIC-WORKFLOW-SELF-CONTAINED]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: D6
+- x-decision: The public workflow installs with the locked dependencies and runs the test suite directly. It does not call the private repository's CI step runner, which lives under the excluded .github folder. The Python version is the one the repository pins; a version matrix is a later choice.
+- rationale: [REQ-PUB-PUBLIC-WORKFLOW-RULES] forbids using anything that does not ship.
+- x-invalidating-assumption: That the locked install and a direct test run are enough to reproduce a release-time Ubuntu result.
+- see-also: [REQ-PUB-PUBLIC-WORKFLOW-RULES]
+
+## Out of scope: what this spec does not add [NOT-THIS-PUB]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: CUT
+- x-cut-1: No new scanner. The existing disclosure guard (tools/disclosure_guard.py) is reused and its fail-closed rule is widened.
+- x-cut-2: No per-commit and no per-pull-request scanning on the private repository ([GOAL-PUB-RULES-AT-PUBLICATION]).
+- x-cut-3: No vocabulary editing interface and no sync job. Drift is made visible by [REQ-PUB-DRIFT-VISIBLE] and corrected by hand.
+- x-cut-4: No adversarial grading of the scanner beyond the checks of [ACC-PUB], per the development model's security posture (rule: no adversarial grading).
+- x-cut-5: No per-commit lint rule beside the publication scan. The scan of the shipping snapshot is the gate. A per-commit lint becomes a separate change only if a release scan ever catches something a lint would have caught earlier (development-model owner's ruling of 2026-11-19).
+- x-cut-6: No pull-request flow on the public repository in this revision; whether to offer one is the open item of [DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD].
+- x-cut-7: No private internal Ubuntu CI. The maintainer called it a separate and severable decision; it is not taken here ([GOAL-PUB-PUBLIC-UBUNTU-CI]).
+- x-cut-8: What the private repository does with its own Linux test leg once the public CI is green is a private-repository matter, not this spec.
+- x-cut-9: The private-term findings in today's trunk and the classification of agent files are content and owner decisions that the first release must clear. This spec defines the gate, not those decisions.
+
+## Source statements (non-normative) [SRC-PUB-STATEMENTS]
+
+- part-of: [FL-PUBLICATION]
+- normative: false
+- x-note: Everything in this section is non-normative. It holds only the maintainer's typed words and his selections of options that were put to him. The push-scope statement is a selection: the question was put to him and he answered it. The others are typed: he wrote them. No statement is ever read as a requirement, an acceptance criterion or a test target. Each statement has a locator.
+
+### Source statement: the maintainer's delegation of the development model [SRC-PUB-MODEL-OWNER-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: You own the model.
+- source-locator: the maintainer's message of 2026-11-17, 16:11:47Z (the message continues on other subjects; excerpt)
+- source-kind: typed
+- source-role: maintainer
+
+### Source statement: the approved question on push scope [SRC-PUB-PUSH-SCOPE-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: Confirm the push scope: agents push working branches to the private repos; `main` and anything public stay yours.
+- source-locator: the questions section of the tooling document of 2026-11-17, question 1, and the same question as put in the chat the same day; the maintainer answered "Approved 1" at 16:35:14Z (the document as a whole was not approved)
+- source-kind: selected
+- source-option-author: the author of the development model documents
+- source-role: maintainer, answering a question put to him
+
+### Source statement: pushes to public on the maintainer's word [SRC-PUB-DELEGATE-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: pushes to public on my word after all readiness steps are complete
+- source-locator: the maintainer's message of 2026-11-17, 02:54:10Z (excerpt); the sentence opens with a hedge and names the delegates, both left out of the excerpt
+- source-kind: typed
+- source-role: maintainer
+
+### Source statement: the maintainer's message that framed the public repositories [SRC-PUB-PUBLIC-REPOS-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: You mentioned private repos - is there a difference in minutes for a public repo?  I ask because we in fact do have public repos for gnomon and FactLattice. We could shift our Ubuntu compatibility work there.
+- source-locator: the maintainer's message of 2026-11-20, 19:00:23Z, received by remote control and copied by program by the development-model owner
+- source-kind: typed
+- source-role: maintainer
+
+### Source statement: turn the Ubuntu test run on regardless; an internal Ubuntu CI is separable [SRC-PUB-UBUNTU-CI-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: Practically speaking, I am only running gnomon on MacOS. I am willing to invest so that Gnomon is Ubuntu-compatible, but until we have a sizable number of third party users, I don't have an objection to Ubuntu bugs surfacing at release time. We should turn it on regardless, because it validates Ubuntu compatibility at no cost. Whether we build out an Ubuntu ci/cd separately internally to validate builds first is a separate/severable decision.
+- source-locator: the maintainer's message of 2026-11-20, 19:08:28Z, received by remote control and copied by program by the development-model owner
+- source-kind: typed
+- source-role: maintainer
+
+### Source statement: the Ubuntu decision covers both products [SRC-PUB-UBUNTU-CI-BOTH-LINE]
+
+- part-of: [SRC-PUB-STATEMENTS]
+- source-text: My 11-20 comment does in fact mean turning on ubuntu compatibility testing for both Gnomon and Factlattice.
+- source-locator: the maintainer's message of 2026-11-22, 19:55:50Z (excerpt; the message also covers other subjects)
+- source-kind: typed
+- source-role: maintainer
+
+## Acceptance [ACC-PUB]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-setup: A small scratch repository with a planted vocabulary file and denylist file, a clean snapshot and a snapshot with one planted term, run through the scanner's publication mode and through the release-prep script against a scratch bare repository that stands in for the public one. The setup also holds a fixture with a mapped workflow file and a scanner-exempt file, and a scratch public main branch with one path the snapshot does not carry.
+- x-red-first: Each check is first shown failing on the state before the feature exists, for the reason it names, and the failing line is quoted in the land record.
+- x-not-run: T1a, T1b, T2, T3 and T6 run, against fixtures, for the scanner's publication mode. T7, T8 and T11 are written with the release-prep script, which is not yet merged. T4, T5, T9, T10 and T12 do not run yet: their pieces do not exist, or need a real release. No check has run against a real release.
+- x-evidence-slot: EMPTY. Filled when the first release has gone through the workflow and its scope line and report have been read. It also holds the result and runner label of the first push-triggered run of the shipped workflow on the public repository ([SCEN-PUB-PUBLIC-RUN-OBSERVED]); G5 is not marked met until that is recorded.
+- x-pre-integration-questions: Does the secret's size stay under the platform limit as the vocabulary grows? Does the runner's log ever contain matched text that the finding format is meant to keep out? Does the shipped-files figure of the scope line agree with the equations of [REQ-PUB-SCAN-THE-SNAPSHOT] on a real release? Does the public suite, run on the snapshot, pass on a hosted Ubuntu runner? Each is open until a real run answers it.
+- x-open-1: A scheduled workflow on a hosted runner fires on a best-effort basis. A nightly run counts as evidence only when its run has been read. The private repository's own schedule fired once in two days, measured there and not on the public repository.
+- x-open-2: The push flow (stop at ready-to-push, or a pull request he merges) is shown to the maintainer at the first release gate ([DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD]).
+- x-open-3: The hosting platform may disable scheduled workflows in a public repository after a period without repository activity. Verify this in the platform's documentation before relying on the nightly run between releases.
+
+### Scenario: a missing, absent or empty private file makes publication mode red [SCEN-PUB-MISSING-OR-EMPTY]
+
+- part-of: [ACC-PUB]
+- x-label: T1a
+- given: three runs in publication mode: vocabulary file missing, denylist file missing, and one of them present but empty
+- when: the scanner runs
+- then: each exits non-zero and the required check is red; the denylist-missing run is red, which is the case the present tree mode passes
+
+### Scenario: a private file whose planted control does not fire makes publication mode red [SCEN-PUB-CONTROL-FAILS]
+
+- part-of: [ACC-PUB]
+- x-label: T1b
+- given: a private file that is present and non-empty but whose planted control row is not detected by its own scan
+- when: the scanner runs in publication mode
+- then: it exits non-zero and the required check is red
+
+### Scenario: a planted term in a kept file is red and unnamed in the log, and green under an excluded path [SCEN-PUB-PLANTED-TERM]
+
+- part-of: [ACC-PUB]
+- x-label: T2
+- given: a snapshot with one vocabulary term planted in a kept file, and a second snapshot with the same term only under a path in PUBLISH-EXCLUDE
+- when: publication mode scans each
+- then: the first is red and its log shows the path, the line and the rule name but not the term; the second is green
+
+### Scenario: a clean snapshot is green and its scope line is present and exact [SCEN-PUB-CLEAN-SNAPSHOT]
+
+- part-of: [ACC-PUB]
+- x-label: T3
+- given: a clean snapshot built from a named trunk revision, in a fixture that has a mapped file and an exempt file
+- when: publication mode scans it
+- then: the result is green; the scope line is present with every field of [REQ-PUB-SCOPE-LINE]; its shipped and scanned file counts equal the two equations of [REQ-PUB-SCAN-THE-SNAPSHOT], computed independently from git ls-tree of the named revision, on a fixture that has a mapped file and an exempt file, with the exempt file named in the scope line; and the result line does not claim that nothing private remains
+
+### Scenario: the workflow's credential cannot write to the public repository [SCEN-PUB-TOKEN-CANNOT-PUSH]
+
+- part-of: [ACC-PUB]
+- x-label: T4
+- given: the workflow's credential
+- when: a deliberate push to the public repository is attempted with it
+- then: the push is refused, and a run of the whole workflow leaves the public repository with no new branch and no new pull request
+
+### Scenario: a changed row in the secret copy shows in the report [SCEN-PUB-DRIFT]
+
+- part-of: [ACC-PUB]
+- x-label: T5
+- given: the secret copy of a private file with one row changed
+- when: the workflow runs
+- then: the report's sha256 for that file differs from the sha256 of the maintainer's source copy
+
+### Scenario: an unconfigured lenient-mode run is distinguishable from a clean configured run [SCEN-PUB-UNCONFIGURED-NOT-CLEAN]
+
+- part-of: [ACC-PUB]
+- x-label: T6
+- given: two staged-mode runs over the same clean change: one with both private files absent, one with both present and valid
+- when: the scanner runs in each
+- then: the unconfigured run says which private files were not loaded and prints no zero-findings result; the configured run prints its zero-findings result; the two outputs differ; both may exit 0
+
+### Scenario: the release-prep script pushes nothing and its printed command is fast-forward only [SCEN-PUB-PUSH-FAST-FORWARD-ONLY]
+
+- part-of: [ACC-PUB]
+- x-label: T7
+- given: a scratch bare repository standing in for the public one
+- when: the release-prep script runs
+- then: that repository's refs are unchanged, the leftover clone's push fails, and the printed command fast-forwards the bare repository; after the bare repository's main branch is moved, the same command is refused
+- x-note: Written with the build, as the release-prep script's own test (development-model owner's ruling of 2026-11-19).
+
+### Scenario: a term planted in a mapped file is red and a colliding target refuses the build [SCEN-PUB-MAPPED-FILE-SCANNED]
+
+- part-of: [ACC-PUB]
+- x-label: T8
+- given: a vocabulary term planted in a file under publish/github/workflows/, and a second run in which a map target collides with a shipped path
+- when: the snapshot is built and publication mode scans it
+- then: the first is red and the finding names the target path and the source path; the second refuses the build
+
+### Scenario: each broken public-workflow rule is red and the clean workflow is green [SCEN-PUB-PUBLIC-WORKFLOW-RULES]
+
+- part-of: [ACC-PUB]
+- x-label: T9
+- given: a mapped workflow with, in turn, a secret reference, a self-hosted runner, a runner other than ubuntu-latest, write permissions, and a step that calls a script under an excluded path; and the clean workflow
+- when: the release-prep tooling checks the snapshot
+- then: each of the five is red and the clean workflow is green
+
+### Scenario: the test set runs against the snapshot's own package and its skips are visible [SCEN-PUB-TEST-SET]
+
+- part-of: [ACC-PUB]
+- x-label: T10
+- given: a test that reads an excluded file with no skip, the same test with a skip that names the path, and a run pointed at the private trunk's editable install
+- when: the suite runs on the snapshot
+- then: the first is red; the second is skipped and its reason is in the report; the run's printed package path is inside the snapshot, and the run pointed at the trunk's editable install is caught
+
+### Scenario: a path dropped by the snapshot is listed as removed [SCEN-PUB-DIFF-REPORT]
+
+- part-of: [ACC-PUB]
+- x-label: T11
+- given: a snapshot that drops a path present on the scratch public main branch
+- when: the report is produced
+- then: the dropped path is listed under removed
+
+### Scenario: the shipped workflow's first run on the public repository is read [SCEN-PUB-PUBLIC-RUN-OBSERVED]
+
+- part-of: [ACC-PUB]
+- x-label: T12
+- given: the first push to the public repository after a release, run by the maintainer or a delegate from the printed command
+- when: the first push-triggered run of the shipped workflow on the public repository has finished and is read
+- then: its result and its runner label are recorded in the evidence slot of [ACC-PUB], and the label is a hosted Ubuntu runner
+- x-note: A post-release check, not a pre-release gate. G5 is not marked met until it is recorded.
+
+## Trace (goals to requirements, decisions and tests) [TRACE-PUB]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-g1: G1 [GOAL-PUB-WORKFLOW-WITH-SCANNER] is carried by [REQ-PUB-SCAN-THE-SNAPSHOT], [REQ-PUB-NO-PUBLIC-WRITE], [REQ-PUB-FINDING-FORMAT], [REQ-PUB-FOLDER-MAP], [REQ-PUB-PUBLIC-TEST-SET] and [REQ-PUB-DIFF-AGAINST-PUBLIC], and tested by [SCEN-PUB-PLANTED-TERM], [SCEN-PUB-CLEAN-SNAPSHOT], [SCEN-PUB-TOKEN-CANNOT-PUSH], [SCEN-PUB-MAPPED-FILE-SCANNED], [SCEN-PUB-TEST-SET] and [SCEN-PUB-DIFF-REPORT].
+- x-g2: G2 [GOAL-PUB-RULES-AT-PUBLICATION] is carried by [DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE] and [REQ-PUB-FAIL-CLOSED], and tested by [SCEN-PUB-MISSING-OR-EMPTY] and [SCEN-PUB-CONTROL-FAILS], which bind publication mode only. [DD-PUB-DROP-PER-CHANGE-TEST] records when the per-change test goes.
+- x-g3: G3 [GOAL-PUB-PUSH-MAINTAINER-DECISION] is carried by [REQ-PUB-NO-PUBLIC-WRITE], [REQ-PUB-NO-PUSH-CODE] and [DD-PUB-PUSH-SCRIPT-ON-MAINTAINER-WORD], and tested by [SCEN-PUB-TOKEN-CANNOT-PUSH] and [SCEN-PUB-PUSH-FAST-FORWARD-ONLY]. [DD-PUB-NO-REQUIRED-REVIEWER-AVAILABLE] records why the push is a delegate's command and not a gated workflow step.
+- x-g4: G4 [GOAL-PUB-NO-SILENT-UNCONFIGURED] is carried by [REQ-PUB-FAIL-CLOSED], [REQ-PUB-SCOPE-LINE], [REQ-PUB-DRIFT-VISIBLE], [REQ-PUB-UNCONFIGURED-SAYS-SO] and [DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE], and tested by [SCEN-PUB-MISSING-OR-EMPTY], [SCEN-PUB-CONTROL-FAILS], [SCEN-PUB-CLEAN-SNAPSHOT], [SCEN-PUB-DRIFT] and [SCEN-PUB-UNCONFIGURED-NOT-CLEAN].
+- x-g5: G5 [GOAL-PUB-PUBLIC-UBUNTU-CI] is carried by [REQ-PUB-FOLDER-MAP], [REQ-PUB-PUBLIC-WORKFLOW-RULES], [REQ-PUB-PUBLIC-TEST-SET], [DD-PUB-FOLDER-MAP] and [DD-PUB-PUBLIC-WORKFLOW-SELF-CONTAINED], and tested by [SCEN-PUB-MAPPED-FILE-SCANNED], [SCEN-PUB-PUBLIC-WORKFLOW-RULES] and [SCEN-PUB-TEST-SET], and by the post-release check [SCEN-PUB-PUBLIC-RUN-OBSERVED], without which G5 is not marked met. Its source statements are [SRC-PUB-PUBLIC-REPOS-LINE], [SRC-PUB-UBUNTU-CI-LINE] and [SRC-PUB-UBUNTU-CI-BOTH-LINE].
+- x-d1: D1 [DD-PUB-VOCAB-AS-CI-SECRET] serves G4 through R6; [DD-PUB-SCRIPT-FIRST] bounds when D1 and T4 apply, which is the later private-repository job.
+- x-trace-rule: Every requirement here traces to a goal and every goal to at least one test; nothing in this file traces to no goal.
+- x-other: [DD-PUB-RELEASE-TOOLING-LATER] bounds G1's scope and carries no requirement.
+
+## Plan: steps 1 and 2a are built; the rest follows [PLAN-PUB]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-state: Steps 1 and 2a are built: (1) the scanner's publication mode (R1, R2, R6, R7), merged; (2a) the snapshot builder with the folder map and the release-prep script, dry-run against a scratch bare repository only (R3, R4, R8, R11, R12; T7, T8, T11), both in review, not yet merged. Still to build: (2b) the public test set (R10; T10); (3) the public workflow file under the map (R9; T9), which no longer waits on the maintainer's answer, because he confirmed on 2026-11-22 that the Ubuntu decision covers this project ([SRC-PUB-UBUNTU-CI-BOTH-LINE]); (4) the first release, at the maintainer's gate, then T12 once the first push-triggered public run exists. The private-repository CI job (D1, D5, T4, T5) follows later. T1a, T1b, T2, T3 and T6 are shown red first, as [ACC-PUB] requires.
+
+## Requirement: an unconfigured run in a lenient mode says so and never looks like a clean run [REQ-PUB-UNCONFIGURED-SAYS-SO]
+
+- part-of: [FL-PUBLICATION]
+- status: draft
+- x-label: R7
+- implements: [GOAL-PUB-NO-SILENT-UNCONFIGURED]
+- verified-by: [SCEN-PUB-UNCONFIGURED-NOT-CLEAN]
+- see-also: [DD-PUB-FAIL-CLOSED-IN-PUBLICATION-MODE]
+- x-rule: Outside publication mode, a run in which a private file is missing or empty does not print a zero-findings result. It says which private file was not loaded and that its rules were not checked. It may exit 0. Its output and the output of a configured run that found nothing are never the same.
+- x-present-gap: Before this requirement, such a run warns that a private file is missing but still prints a zero-findings result.
+- x-whose: A ruling of 2026-11-19 by the owner of the development model, who is not the maintainer: the lenient modes stay lenient, and an unconfigured run and a clean run must never look the same.

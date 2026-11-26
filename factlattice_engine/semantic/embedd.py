@@ -38,6 +38,7 @@ import heapq
 import itertools
 import json
 import os
+import re
 import secrets
 import signal
 import socket
@@ -48,7 +49,6 @@ import sys
 import threading
 import time
 from dataclasses import asdict
-from typing import List, Optional
 
 from .embedder import ModelPin, SemanticUnavailable
 
@@ -127,7 +127,7 @@ def run_dir(state_root: str) -> str:
     return d
 
 
-def pidfiles(state_root: str) -> List[str]:
+def pidfiles(state_root: str) -> list[str]:
     d = os.path.join(state_root, "run")
     try:
         return sorted(os.path.join(d, n) for n in os.listdir(d) if n.startswith("embedd-") and n.endswith(".pid"))
@@ -150,7 +150,7 @@ def _send(sock, obj: dict, payload: bytes = b"") -> None:
     sock.sendall(struct.pack(">II", len(h), len(payload)) + h + payload)
 
 
-def _recvn(sock, n: int, end: Optional[float] = None) -> bytes:
+def _recvn(sock, n: int, end: float | None = None) -> bytes:
     """Read exactly n bytes. With `end` (time.monotonic), the WHOLE read must finish by then:
     the socket timeout is re-armed to the time left before every recv, so a peer trickling a
     byte at a time cannot stretch it (review P1-4: one byte per 0.5 s held a 2 s call 10 s)."""
@@ -159,7 +159,7 @@ def _recvn(sock, n: int, end: Optional[float] = None) -> bytes:
         if end is not None:
             left = end - time.monotonic()
             if left <= 0:
-                raise socket.timeout("deadline passed")
+                raise TimeoutError("deadline passed")
             sock.settimeout(left)
         chunk = sock.recv(min(n - len(buf), 1 << 20))
         if not chunk:
@@ -168,7 +168,7 @@ def _recvn(sock, n: int, end: Optional[float] = None) -> bytes:
     return bytes(buf)
 
 
-def _recv(sock, end: Optional[float] = None):
+def _recv(sock, end: float | None = None):
     hl, pl = struct.unpack(">II", _recvn(sock, 8, end))
     if hl == 0 or hl > MAX_HEADER or pl > MAX_PAYLOAD:
         raise ProtocolError(f"bad frame sizes {hl}/{pl}")
@@ -178,7 +178,7 @@ def _recv(sock, end: Optional[float] = None):
     return h, (_recvn(sock, pl, end) if pl else b"")
 
 
-def _peer_uid(conn) -> Optional[int]:
+def _peer_uid(conn) -> int | None:
     """The connecting process's euid from the kernel, or None when the platform can't say."""
     try:
         if sys.platform == "darwin":
@@ -194,8 +194,8 @@ def _peer_uid(conn) -> Optional[int]:
 
 # --- the service ------------------------------------------------------------------------------
 class Server:
-    def __init__(self, state_root: str, pin: ModelPin, model_root: Optional[str], max_len: int = 512,
-                 idle_s: Optional[float] = None, idle_exit: bool = True):
+    def __init__(self, state_root: str, pin: ModelPin, model_root: str | None, max_len: int = 512,
+                 idle_s: float | None = None, idle_exit: bool = True):
         self.pin, self.model_root, self.max_len = pin, model_root, max_len
         self.material = material(pin, max_len)
         self.hash = material_hash(self.material)
@@ -214,9 +214,9 @@ class Server:
         self._conns = 0
         self._last = time.monotonic()
         self._stop = threading.Event()
-        self._listener: Optional[socket.socket] = None
+        self._listener: socket.socket | None = None
         self._embedder = None
-        self._pid_fd: Optional[int] = None
+        self._pid_fd: int | None = None
         self._bound = False
         # Test seam only (P3-3): set on an in-process Server by a test. Never read from the
         # environment, so no deployment setting can slow the production inference loop.
@@ -315,7 +315,7 @@ class Server:
             while not self._stop.is_set():
                 try:
                     conn, _ = self._listener.accept()
-                except socket.timeout:
+                except TimeoutError:
                     with self._cv:
                         idle = (self.idle_exit and self._conns == 0 and not any(self._lanes.values())
                                 and time.monotonic() - self._last > self.idle_s)
@@ -437,9 +437,9 @@ class SharedEmbedder:
 
     supports_interactive = True     # SemanticIndex.refresh(interactive=True) may route to the query lane
 
-    def __init__(self, pin: ModelPin, model_root: Optional[str] = None, max_len: int = 512,
-                 state_root: Optional[str] = None, frame_deadline_s: Optional[float] = None,
-                 startup_s: Optional[float] = None):
+    def __init__(self, pin: ModelPin, model_root: str | None = None, max_len: int = 512,
+                 state_root: str | None = None, frame_deadline_s: float | None = None,
+                 startup_s: float | None = None):
         self.pin, self.model_root, self.max_len = pin, model_root, max_len
         self.model_id = model_id_of(pin)
         self.state_root = state_root or os.environ.get("LTS_ENGINE_STATE_DIR") or os.path.expanduser("~/.lts-engine")
@@ -447,7 +447,7 @@ class SharedEmbedder:
         self.material_hash = material_hash(self.material)
         self.frame_deadline_s = frame_deadline_s if frame_deadline_s is not None else _frame_deadline()
         self.startup_s = startup_s if startup_s is not None else _startup_deadline()
-        self.server_pid: Optional[int] = None
+        self.server_pid: int | None = None
         # One connection PER THREAD: an engine's background index worker and its query threads
         # each talk to the service on their own socket, so the service's priority queue (query
         # before build) actually applies. A single shared connection serialised them: measured
@@ -462,7 +462,7 @@ class SharedEmbedder:
             raise Unsafe(f"socket path longer than {SOCK_PATH_MAX} bytes")
         return run, base + ".sock", base + ".spawn"
 
-    def _try_connect(self, path: str, end: float) -> Optional[socket.socket]:
+    def _try_connect(self, path: str, end: float) -> socket.socket | None:
         if not os.path.lexists(path):
             return None
         _check_owned(path, stat.S_ISSOCK)
@@ -563,8 +563,8 @@ class SharedEmbedder:
                 self._local.sock = None
 
     # the call -----------------------------------------------------------------------------
-    def _request(self, s, texts: List[str], query: bool, batch: int, lane: int,
-                 call_end: Optional[float]):
+    def _request(self, s, texts: list[str], query: bool, batch: int, lane: int,
+                 call_end: float | None):
         """Send one request and assemble its rows. Every frame must carry THIS request's id
         (a stale frame from an earlier request is refused: review P1-2), name in-range rows not
         seen before, and carry exactly their bytes; `done` is accepted only when every row has
@@ -601,7 +601,7 @@ class SharedEmbedder:
             out[idx] = np.frombuffer(p, dtype=np.float32).reshape(len(idx), dim)
             covered[idx] = True
 
-    def embed(self, texts: List[str], query: bool, batch: int = 32, interactive: bool = False):
+    def embed(self, texts: list[str], query: bool, batch: int = 32, interactive: bool = False):
         """`interactive`: a document embed someone is waiting on (a query's synchronous top-up
         or build) takes the query lane and the query budget, up to INTERACTIVE_MAX texts; larger
         ones go to the build lane so they cannot crowd out other engines' queries (P2-3).
@@ -619,7 +619,7 @@ class SharedEmbedder:
                 connect_end = call_end if urgent else time.monotonic() + self.startup_s
                 return self._request(self._connect(connect_end), texts, query, batch,
                                      0 if urgent else 1, call_end)
-            except socket.timeout:
+            except TimeoutError:
                 self._close()
                 raise SemanticUnavailable(
                     "shared_embedder_timeout",
@@ -642,13 +642,26 @@ class SharedEmbedder:
 
 
 # --- always-on: `keep` and the LaunchAgent [MECH-EMBEDD-ALWAYS-ON] ---------------------------
-LAUNCHD_LABEL = "io.factlattice.lts-embedd"
-# An earlier release installed this agent under another reverse-DNS prefix. A leftover is recognised by
-# SHAPE, never by a spelled-out name, and is only MIGRATED when it is the plist this install would itself
-# write, apart from its Label (see _legacy_agents and launchagent). A same-module agent that differs (another
-# checkout or state dir) is left alone unless named with --adopt-legacy.
-LEGACY_LABEL_SUFFIX = ".lts-embedd"
-LEGACY_PROGRAM_MARKER = "factlattice_engine.semantic.embedd"
+LAUNCHD_LABEL = "local.factlattice.lts-embedd"      # the default; FACTLATTICE_EMBEDD_LAUNCHD_LABEL or `--label` overrides it
+LAUNCHD_LABEL_ENV = "FACTLATTICE_EMBEDD_LAUNCHD_LABEL"
+_LABEL_SHAPE = re.compile(r"[A-Za-z0-9._-]+")
+LABEL_MAX = 200                                     # a file name is limited (~255 bytes); a longer label fails AFTER `bootout` ran
+
+
+def resolve_label(label: str | None = None) -> str:
+    """The LaunchAgent label an install, uninstall or status acts on: the `label` argument (the CLI's
+    `--label`), else $FACTLATTICE_EMBEDD_LAUNCHD_LABEL (read NOW, at call time), else LAUNCHD_LABEL. The label becomes a
+    file name and a launchctl target, so it is checked BEFORE any use: `[A-Za-z0-9._-]+`, never empty, never `..`
+    (a `/` is outside the shape), never longer than LABEL_MAX characters. Raises InstallRefused naming where the bad value came from; the value itself is shown."""
+    source = "--label"
+    if label is None:
+        label, source = os.environ.get(LAUNCHD_LABEL_ENV), LAUNCHD_LABEL_ENV
+    if label is None:
+        return LAUNCHD_LABEL
+    if not _LABEL_SHAPE.fullmatch(label) or ".." in label or len(label) > LABEL_MAX:
+        raise InstallRefused(f"the LaunchAgent label from {source} is {label!r}; it must match [A-Za-z0-9._-]+ "
+                             f"and must not be empty, contain `..` or exceed {LABEL_MAX} characters")
+    return label
 EXIT_RESTART = 75                           # EX_TEMPFAIL: "restart me on the new code" (launchd KeepAlive)
 # Obligation [MECH-EMBEDD-ALWAYS-ON install-environment]: any file added to factlattice_engine/semantic
 # that shapes vectors MUST join this tuple in the same change, or a go-live that edits it will not
@@ -664,7 +677,7 @@ KEEP_TRIPPED_FILE = "embedd-keep-tripped.json"
 class KeepConfig:
     """What `keep` serves: resolved exactly as an engine's SharedEmbedder resolves it."""
 
-    def __init__(self, pin: ModelPin, state_root: str, model_root: Optional[str] = None, max_len: int = 512):
+    def __init__(self, pin: ModelPin, state_root: str, model_root: str | None = None, max_len: int = 512):
         self.pin, self.state_root, self.model_root, self.max_len = pin, state_root, model_root, max_len
 
 
@@ -678,7 +691,7 @@ def keep_config_from_env() -> KeepConfig:
     return KeepConfig(_pin_from_env(), state_root, None, 512)
 
 
-def source_fingerprint(pkg_dir: Optional[str] = None) -> str:
+def source_fingerprint(pkg_dir: str | None = None) -> str:
     """sha256 over the vector-shaping source files, in a fixed order; a missing file is a distinct
     marker, so deleting one also changes the fingerprint."""
     d = pkg_dir or os.path.dirname(os.path.abspath(__file__))
@@ -725,7 +738,7 @@ def _interpreter_identity() -> str:
         return f"{real}|<unreadable>"
 
 
-def watch_fingerprint(pkg_dir: Optional[str] = None) -> str:
+def watch_fingerprint(pkg_dir: str | None = None) -> str:
     """What `keep` watches: everything that shapes the material but is not inside the running
     process's memory: the source files, the onnxruntime and numpy versions, the interpreter, and the
     content of LTS_SEMANTIC_PIN_FILE. Any change -> exit 75 -> launchd restarts onto the new
@@ -793,7 +806,7 @@ def _write_private_json(path: str, obj) -> None:
         raise
 
 
-def _read_tripped(run: str) -> Optional[dict]:
+def _read_tripped(run: str) -> dict | None:
     """None = no marker. A marker that exists but is unreadable or malformed comes back as
     {"corrupt": True}: a stopped service must never be reported as healthy because its marker is bad."""
     try:
@@ -849,7 +862,7 @@ def _count_start(state_root: str, now: float, window_s: float, limit: int, log, 
     return None, n
 
 
-def keep(cfg: KeepConfig, *, stop: Optional[threading.Event] = None, log=None, clock=time.time,
+def keep(cfg: KeepConfig, *, stop: threading.Event | None = None, log=None, clock=time.time,
          fingerprint_fn=None, watch_s: float = KEEP_WATCH_S, takeover_s: float = KEEP_TAKEOVER_S,
          crash_limit: int = KEEP_CRASH_LIMIT, crash_window_s: float = KEEP_CRASH_WINDOW_S,
          install_signals: bool = False) -> int:
@@ -949,9 +962,9 @@ def _default_probe(python: str, env: dict):
     return True, ""
 
 
-def build_plist(*, python: str, env: dict, log_path: str) -> dict:
+def build_plist(*, python: str, env: dict, log_path: str, label: str | None = None) -> dict:
     return {
-        "Label": LAUNCHD_LABEL,
+        "Label": label or LAUNCHD_LABEL,
         "ProgramArguments": [python, "-m", "factlattice_engine.semantic.embedd", "keep"],
         "EnvironmentVariables": dict(env),
         "RunAtLoad": True,
@@ -971,7 +984,7 @@ class InstallRefused(Exception):
     """The LaunchAgent cannot be built to match the engines; nothing was written."""
 
 
-def _mcp_install_env(mcp_config: str, path: Optional[str], pythonpath: Optional[str]):
+def _mcp_install_env(mcp_config: str, path: str | None, pythonpath: str | None):
     """(interpreter, EnvironmentVariables) from the lts-engine MCP server entry [install-environment].
     The interpreter is that entry's `command` resolved by shutil.which against `path` (default: the
     PATH of this process). Raises InstallRefused with a reason."""
@@ -1001,57 +1014,10 @@ def _mcp_install_env(mcp_config: str, path: Optional[str], pythonpath: Optional[
     return python, env
 
 
-def _legacy_agents(plist_path: str):
-    """(candidates, unclassifiable) among `*.lts-embedd.plist` files next to `plist_path`. Read-only.
-    candidates: [(label, file, plist dict)] named `<label>.plist`, Label ending LEGACY_LABEL_SUFFIX and not
-    the current label, ProgramArguments containing LEGACY_PROGRAM_MARKER. unclassifiable: [(file, reason)]
-    for a symlink, a non-regular file (a FIFO would block a plain open), an unreadable or unparseable file.
-    The file is opened O_NOFOLLOW|O_NONBLOCK and fstat'ed before any read."""
-    import glob
-    import plistlib
-    import stat
-    cands, bad = [], []
-    for f in sorted(glob.glob(os.path.join(os.path.dirname(plist_path), "*" + LEGACY_LABEL_SUFFIX + ".plist"))):
-        if os.path.abspath(f) == os.path.abspath(plist_path):
-            continue
-        try:
-            if stat.S_ISLNK(os.lstat(f).st_mode):
-                bad.append((f, "a symlink"))
-                continue
-            fd = os.open(f, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-        except OSError as ex:
-            bad.append((f, f"unreadable ({type(ex).__name__})"))
-            continue
-        try:
-            if not stat.S_ISREG(os.fstat(fd).st_mode):
-                bad.append((f, "not a regular file"))
-                continue
-            with os.fdopen(fd, "rb") as fh:
-                fd = -1
-                d = plistlib.load(fh)
-        except (OSError, ValueError, plistlib.InvalidFileException) as ex:
-            bad.append((f, f"unreadable or not a plist ({type(ex).__name__})"))
-            continue
-        finally:
-            if fd >= 0:
-                os.close(fd)
-        label = d.get("Label") if isinstance(d, dict) else None
-        args = d.get("ProgramArguments") if isinstance(d, dict) else None
-        if (isinstance(label, str) and label != LAUNCHD_LABEL and label.endswith(LEGACY_LABEL_SUFFIX)
-                and os.path.basename(f) == label + ".plist"
-                and isinstance(args, list) and LEGACY_PROGRAM_MARKER in args):
-            cands.append((label, f, d))
-    return cands, bad
-
-
-def _same_but_label(a: dict, b: dict) -> bool:
-    return ({k: v for k, v in a.items() if k != "Label"} == {k: v for k, v in b.items() if k != "Label"})
-
-
-def launchagent(action: str, *, runner=None, plist_path: Optional[str] = None, state_root: Optional[str] = None,
-                pythonpath: Optional[str] = None, uid: Optional[int] = None, pin: Optional[ModelPin] = None,
-                out=None, mcp_config: Optional[str] = None, path: Optional[str] = None, probe=None,
-                now: Optional[float] = None, adopt_legacy: Optional[List[str]] = None) -> int:
+def launchagent(action: str, *, runner=None, plist_path: str | None = None, state_root: str | None = None,
+                pythonpath: str | None = None, uid: int | None = None, pin: ModelPin | None = None,
+                out=None, mcp_config: str | None = None, path: str | None = None, probe=None,
+                now: float | None = None, label: str | None = None) -> int:
     """install | uninstall | status. launchctl is reached ONLY through `runner(argv)` (an object
     with returncode/stdout/stderr), so tests never touch the real launchd. Returns an exit code.
     install/status read the engines' environment from the lts-engine entry of `mcp_config`
@@ -1061,10 +1027,11 @@ def launchagent(action: str, *, runner=None, plist_path: Optional[str] = None, s
     probe = probe or _default_probe
     out = out or sys.stdout
     mcp_config = mcp_config or DEFAULT_MCP_CONFIG
-    plist_path = plist_path or os.path.expanduser(f"~/Library/LaunchAgents/{LAUNCHD_LABEL}.plist")
+    label = resolve_label(label)                    # refuses a bad shape before anything is read or written
+    plist_path = plist_path or os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
     state_root = state_root or os.environ.get("LTS_ENGINE_STATE_DIR") or os.path.expanduser("~/.lts-engine")
     uid = os.getuid() if uid is None else uid
-    domain, target = f"gui/{uid}", f"gui/{uid}/{LAUNCHD_LABEL}"
+    domain, target = f"gui/{uid}", f"gui/{uid}/{label}"
     if action == "install":
         try:
             python, env = _mcp_install_env(mcp_config, path, pythonpath)
@@ -1078,96 +1045,33 @@ def launchagent(action: str, *, runner=None, plist_path: Optional[str] = None, s
             return 1
         # the log lives in the run dir of the state root the SERVICE will use, created 0600
         log_path = os.path.join(run_dir(env.get("LTS_ENGINE_STATE_DIR") or state_root), "embedd-keep.log")
-        cands, bad = _legacy_agents(plist_path)
-        if bad:
-            for f, why in bad:
-                print(f"install REFUSED (no agent or plist written): {f} looks like an earlier-release agent but is {why}; "
-                      "cannot tell whether it is loaded. Remove or fix it, then retry.", file=out)
-            return 1
-        want = build_plist(python=python, env=env, log_path=log_path)
-        adopt = set(adopt_legacy or ())
-        legacy = [(l, f) for l, f, d in cands if _same_but_label(d, want) or l in adopt]
-        for l, f, d in cands:
-            if (l, f) not in legacy:
-                print(f"left alone: {l} ({f}) runs this module but differs from this install; "
-                      f"pass --adopt-legacy {l} to migrate it", file=out)
-        stopped = []                                # old agents we actually stopped (to put back on failure)
-
-        def restore_old():
-            todo = list(stopped)
-            stopped.clear()                         # each stopped agent is restored at most once
-            for label, f in todo:
-                rr = runner(["launchctl", "bootstrap", domain, f])
-                if rr.returncode == 0:
-                    print(f"restored the earlier agent {label}", file=out)
-                else:
-                    print(f"COULD NOT restore the earlier agent {label}: launchctl bootstrap exited "
-                          f"{rr.returncode}: {(rr.stderr or rr.stdout or '').strip()}; its plist is {f}", file=out)
-
+        os.close(os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600))
         try:
             with open(plist_path, "rb") as fh:
                 previous = fh.read()
         except OSError:
             previous = None
-
-        def rollback_new():
-            if previous is None:
-                try:
-                    os.unlink(plist_path)
-                except FileNotFoundError:
-                    pass
-            else:                                   # put the previous plist back, byte for byte, 0600
-                tmp2 = _tmp_name(plist_path)
-                fd2 = os.open(tmp2, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-                with os.fdopen(fd2, "wb") as fh:
-                    fh.write(previous)
-                os.replace(tmp2, plist_path)
-        # From the FIRST bootout to the new bootstrap, any exception puts the stopped old agents back.
-        try:
-            for label, f in legacy:                 # stop the old agent first: never two services at once
-                r = runner(["launchctl", "bootout", f"{domain}/{label}"])
-                if r.returncode == 0:
-                    stopped.append((label, f))
-                elif runner(["launchctl", "print", f"{domain}/{label}"]).returncode == 0:
-                    print(f"install REFUSED: the earlier agent {label} is still loaded after launchctl bootout "
-                          f"exited {r.returncode}: {(r.stderr or r.stdout or '').strip()}; no new agent was "
-                          "installed", file=out)
-                    restore_old()
-                    return 1
-                # else: it was not loaded; nothing to stop and nothing to restore
-            os.close(os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600))
-            os.makedirs(os.path.dirname(plist_path), exist_ok=True)
-            tmp = _tmp_name(plist_path)
-            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-            with os.fdopen(fd, "wb") as fh:
-                plistlib.dump(want, fh)
-            os.replace(tmp, plist_path)
-            r = runner(["launchctl", "bootstrap", domain, plist_path])
-        except BaseException:                       # any failure in the window: the old agents come back
-            try:
-                rollback_new()
-            except Exception:
-                pass
-            restore_old()
-            raise
+        os.makedirs(os.path.dirname(plist_path), exist_ok=True)
+        tmp = _tmp_name(plist_path)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            plistlib.dump(build_plist(python=python, env=env, log_path=log_path, label=label), fh)
+        os.replace(tmp, plist_path)
+        r = runner(["launchctl", "bootstrap", domain, plist_path])
         if r.returncode != 0:
-            rollback_new()
-            restore_old()
+            if previous is None:
+                os.unlink(plist_path)
+            else:                                   # put the previous plist back, byte for byte, 0600
+                tmp = _tmp_name(plist_path)
+                fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                with os.fdopen(fd, "wb") as fh:
+                    fh.write(previous)
+                os.replace(tmp, plist_path)
             print(f"install FAILED: launchctl bootstrap exited {r.returncode}: "
                   f"{(r.stderr or r.stdout or '').strip()}", file=out)
             return 1
-        rc = 0
-        for label, f in legacy:                     # the new agent is up: drop the old one for good
-            try:
-                os.unlink(f)
-                print(f"migrated: removed the earlier agent {label}", file=out)
-            except OSError as ex:
-                rc = 1
-                print(f"COULD NOT remove the earlier agent's plist {f} ({type(ex).__name__}: {ex}); it is "
-                      f"booted out but would load again at next login beside {LAUNCHD_LABEL}: remove it by hand",
-                      file=out)
-        print(f"installed {LAUNCHD_LABEL}: {plist_path}", file=out)
-        return rc
+        print(f"installed {label}: {plist_path}", file=out)
+        return 0
     if action == "uninstall":
         r = runner(["launchctl", "bootout", target])
         if r.returncode != 0:
@@ -1177,7 +1081,7 @@ def launchagent(action: str, *, runner=None, plist_path: Optional[str] = None, s
             os.unlink(plist_path)
         except FileNotFoundError:
             pass
-        print(f"uninstalled {LAUNCHD_LABEL}", file=out)
+        print(f"uninstalled {label}", file=out)
         return 0
     if action == "status":
         if pin is None:
@@ -1185,23 +1089,6 @@ def launchagent(action: str, *, runner=None, plist_path: Optional[str] = None, s
         r = runner(["launchctl", "print", target])
         loaded = r.returncode == 0
         print(f"loaded: {'yes' if loaded else 'no'}", file=out)
-        cands, bad = _legacy_agents(plist_path)
-        for f, why in bad:
-            print(f"legacy-shaped file {f}: cannot classify, it is {why}; install will refuse until it is "
-                  "removed or fixed", file=out)
-        try:
-            spy, senv = _mcp_install_env(mcp_config, path, pythonpath)
-            swant = build_plist(python=spy, env=senv, log_path=os.path.join(
-                run_dir(senv.get("LTS_ENGINE_STATE_DIR") or state_root), "embedd-keep.log"))
-        except (InstallRefused, OSError, Unsafe):
-            swant = None
-        for label, f, d in cands:
-            lr = runner(["launchctl", "print", f"{domain}/{label}"])
-            same = swant is not None and _same_but_label(d, swant)
-            print(f"legacy label {label}: installed ({f}), loaded: {'yes' if lr.returncode == 0 else 'no'}; "
-                  + ("run `launchagent install` to migrate" if same else
-                     f"differs from this install (left alone; `launchagent install --adopt-legacy {label}` "
-                     "migrates it)"), file=out)
         if loaded:
             import re
             m = re.search(r"\bpid = (\d+)", r.stdout or "")
@@ -1274,7 +1161,7 @@ def _env_interval(name: str, default: float) -> float:
     return v
 
 
-def _main(argv: List[str], runner=None, probe=None) -> int:
+def _main(argv: list[str], runner=None, probe=None) -> int:
     import argparse
     ap = argparse.ArgumentParser(prog="lts-embedd")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1287,16 +1174,20 @@ def _main(argv: List[str], runner=None, probe=None) -> int:
     la = sub.add_parser("launchagent")
     la.add_argument("action", choices=["install", "uninstall", "status"])
     la.add_argument("--plist-path")
-    la.add_argument("--adopt-legacy", action="append", default=[])   # migrate a differing earlier-release label
+    la.add_argument("--label")                  # the LaunchAgent label; wins over $FACTLATTICE_EMBEDD_LAUNCHD_LABEL
     la.add_argument("--state-root")
     la.add_argument("--pythonpath")
     la.add_argument("--mcp-config")             # default ~/.mcp.json
     la.add_argument("--path")                   # PATH used to resolve the MCP `command` (default: process PATH)
     a = ap.parse_args(argv)
     if a.cmd == "launchagent":
-        return launchagent(a.action, runner=runner, plist_path=a.plist_path, state_root=a.state_root,
-                           pythonpath=a.pythonpath, mcp_config=a.mcp_config, path=a.path, probe=probe,
-                           adopt_legacy=a.adopt_legacy)
+        try:
+            return launchagent(a.action, runner=runner, plist_path=a.plist_path, state_root=a.state_root,
+                               pythonpath=a.pythonpath, mcp_config=a.mcp_config, path=a.path, probe=probe,
+                               label=a.label)
+        except InstallRefused as ex:
+            print(f"launchagent REFUSED (nothing read or written): {ex}")
+            return 1
     if a.cmd == "keep":
         try:
             cfg = keep_config_from_env()

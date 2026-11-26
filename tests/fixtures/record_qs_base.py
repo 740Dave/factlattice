@@ -2,13 +2,21 @@
 
     PYTHONPATH=<tree> FACTLATTICE_STATE_DIR=<tmp> python3 tests/fixtures/record_qs_base.py <out.json>
 
-The committed tests/fixtures/qs_base_responses.json was recorded this way against main 64ee63f
-(a detached worktree), so test_query_surface_parity.py compares the branch to the REAL base.
+The fixture is recorded under the same registry isolation the test suite applies (tests/conftest.py
+_isolate_registry_lookup): FACTLATTICE_CORPUS_CONFIG unset and HOME an empty directory, so no live
+registry or user-config pointer can change a reply (lts_profile_audit's reply depends on it). This
+script applies that isolation itself before importing the engine. Re-record only for a deliberate
+reply-shape change, and check the diff against the old fixture before committing (spec 39
+x-minted-keys was the last such change).
 """
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
+
+os.environ.pop("FACTLATTICE_CORPUS_CONFIG", None)
+os.environ["HOME"] = tempfile.mkdtemp(prefix="qs-record-home-")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tests.qs_fixture import run_base_calls  # noqa: E402

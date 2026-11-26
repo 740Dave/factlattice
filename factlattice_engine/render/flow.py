@@ -24,14 +24,14 @@ arrows into one box.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 # Forward-directed sequence types only (see `AFTER` note above).
-FLOW_EDGE_TYPES: Tuple[str, ...] = (
+FLOW_EDGE_TYPES: tuple[str, ...] = (
     "BEFORE", "SEQUENCE", "CAUSES", "PRECONDITION_FOR", "ENABLES", "CASCADES_TO",
 )
-MEMBERSHIP_EDGE_TYPES: Tuple[str, ...] = ("CONTAINS", "PART_OF")
+MEMBERSHIP_EDGE_TYPES: tuple[str, ...] = ("CONTAINS", "PART_OF")
 
 DEFAULT_MAX_DEPTH = 8
 
@@ -44,13 +44,13 @@ class FlowWalk:
     membership-discovery order, then sequence-BFS discoveries.
     """
     start_node: str
-    nodes: List[dict] = field(default_factory=list)
-    edges: List[dict] = field(default_factory=list)              # sequence (drawn)
-    membership_edges: List[dict] = field(default_factory=list)   # structure (not drawn)
-    container: Optional[str] = None    # start node acting purely as a container
+    nodes: list[dict] = field(default_factory=list)
+    edges: list[dict] = field(default_factory=list)              # sequence (drawn)
+    membership_edges: list[dict] = field(default_factory=list)   # structure (not drawn)
+    container: str | None = None    # start node acting purely as a container
     max_depth_reached: bool = False
 
-    def node_ids(self) -> List[str]:
+    def node_ids(self) -> list[str]:
         return [str(n.get("id")) for n in self.nodes]
 
 
@@ -60,11 +60,11 @@ def _bare(etype: object) -> str:
 
 
 def walk_flow(*, start_node: str,
-              get_node: Callable[[str], Optional[dict]],
+              get_node: Callable[[str], dict | None],
               has_node: Callable[[str], bool],
-              fwd_adj: Dict[str, Sequence[Tuple[str, dict]]],
-              rev_adj: Dict[str, Sequence[Tuple[str, dict]]],
-              edge_types: Optional[Sequence[str]] = None,
+              fwd_adj: dict[str, Sequence[tuple[str, dict]]],
+              rev_adj: dict[str, Sequence[tuple[str, dict]]],
+              edge_types: Sequence[str] | None = None,
               membership: bool = True,
               direction: str = "forward",
               max_depth: int = DEFAULT_MAX_DEPTH) -> FlowWalk:
@@ -86,20 +86,20 @@ def walk_flow(*, start_node: str,
     if not has_node(start_node):
         return FlowWalk(start_node=start_node)
 
-    order: List[str] = [start_node]
+    order: list[str] = [start_node]
     seen = {start_node}
-    membership_edges: List[dict] = []
+    membership_edges: list[dict] = []
 
     # --- 1. membership ------------------------------------------------------
-    members: List[str] = []
+    members: list[str] = []
     if membership:
-        frontier: List[Tuple[str, int]] = [(start_node, 0)]
+        frontier: list[tuple[str, int]] = [(start_node, 0)]
         while frontier:
             nid, depth = frontier.pop(0)
             if depth >= max_depth:
                 depth_hit = True
                 continue
-            children: List[Tuple[str, dict]] = []
+            children: list[tuple[str, dict]] = []
             for _layer, edge in fwd_adj.get(nid, ()):
                 if _bare(edge.get("type")) == "CONTAINS" and edge.get("source") == nid:
                     children.append((str(edge.get("target")), edge))
@@ -126,7 +126,7 @@ def walk_flow(*, start_node: str,
         if depth >= max_depth:
             depth_hit = True
             continue
-        neighbours: List[str] = []
+        neighbours: list[str] = []
         for _layer, edge in fwd_adj.get(nid, ()):
             if edge.get("source") != nid:
                 continue
@@ -146,7 +146,7 @@ def walk_flow(*, start_node: str,
             frontier.append((nb, depth + 1))
 
     # --- 3. induced sequence edges -----------------------------------------
-    edges: List[dict] = []
+    edges: list[dict] = []
     seen_edge_ids: set = set()
     for nid in order:
         for _layer, edge in fwd_adj.get(nid, ()):

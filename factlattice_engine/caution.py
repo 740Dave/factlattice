@@ -14,8 +14,6 @@ nothing is re-derived from properties.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 CANONICAL_EDGE_TYPE = "CANONICAL"      # one place to change if Part A names the edge differently
 SUPERSEDES_EDGE_TYPE = "SUPERSEDES"
 CAUTION_ENABLED = True                 # the B3 test switches it off to compare rank/scores
@@ -25,7 +23,7 @@ def _live(edge) -> bool:
     return not edge.get("dangling") and "unresolved_target" not in (edge.get("flags") or ())
 
 
-def _label(node: dict) -> Optional[str]:
+def _label(node: dict) -> str | None:
     v = (node.get("properties") or {}).get("canonical-label")
     if isinstance(v, (list, tuple)):
         v = "; ".join(str(x) for x in v if str(x).strip())
@@ -33,7 +31,7 @@ def _label(node: dict) -> Optional[str]:
     return v or None
 
 
-def caution_for(part, node_id: str, fwd=None, rev=None) -> Optional[dict]:
+def caution_for(part, node_id: str, fwd=None, rev=None) -> dict | None:
     """The caution for `node_id` in `part`, or None. Pass `fwd`/`rev` to reuse one adjacency fetch."""
     if not CAUTION_ENABLED:
         return None

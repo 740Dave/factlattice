@@ -1,0 +1,97 @@
+---
+lts: "1.1"
+title: Default scope: an unnamed search reads a named list of corpora
+domain: MET.FACTLATTICE
+doctype: SPEC
+generated-by: factlattice lts_add_node (create=true)
+---
+
+# Default scope: an unnamed search reads a named list of corpora [FL-DEFAULT-SCOPE]
+
+- status: draft
+- x-created: 2026-11-04
+- scope: A server may be given a named list of whole corpora as its default scope. A search that names no corpus then reads that list, and says so. A call can give its own list or widen to all, and any corpus stays reachable by name.
+- boundary: The engine holds a list and answers over it. It does not know what a project is, or which corpora belong to one: whoever launches the server decides that and supplies the list. No registry key is added and no corpus file changes.
+- not-this: Not a wall and not privacy. A default scope hides nothing from a caller who asks, and it is no protection against one. The registry's private flag is a separate thing and stays as it is. Not a split inside one corpus: the grain is whole corpora.
+- rationale: Maintainers' ruling of 2026-11-04 (submitted 07:11Z, selecting an option the architects worded): a project's default scope is a named list of whole corpora; a search can widen to all, and any corpus stays reachable by name. Measured on one deployment before this spec: a corpus-omitted search read every public corpus; no call or server setting could narrow that to a list; a server given a smaller registry was a wall (naming another corpus returned not found); marking other corpora private also removed their referrers from reverse lookups; and node domain text was too inconsistent to use as a key.
+- x-flag: LTS_DEFAULT_CORPORA (environment), unset by default. Unset or empty: replies are byte-identical to the engine without this spec.
+- x-not-built: Built on a branch, not landed. Not yet run: c6, c7, c8, and any launcher setting the variable.
+- x-authority: Requirement: the maintainers' ruling above, which chose the shape. The variable, the argument, the reply fields and every number in [ACC-DS] are the architects' design.
+- x-grain: Whole corpora. A corpus that two projects share goes on both lists, whole. Nothing here splits nodes inside a corpus; the maintainers chose this over a split when asked.
+
+## Invariant: a default, not a wall [INV-DS-NOT-A-WALL]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-rule: The list changes only which corpora a corpus-omitted lts_find or lts_find_in_prose call from outside the engine reads. A call with corpus reads that corpus exactly as without this spec, on or off the list. lts_list_corpora and extent.corpora_available still name every public corpus, so a caller can see what the scope left out. Nothing is refused because of the list.
+- rationale: A wall was considered and declined, and would take operating-system separation to be real.
+
+## Invariant: a narrowed reply says it was narrowed [INV-DS-DECLARED]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-rule: Every reply over a list carries extent.search_scope (see [MECH-DS-REPLY]). complete, count and total_matched then describe the scope, not the deployment. No reply over a list lacks the field.
+- rationale: A default is a filter the reader cannot see. A zero from a narrowed search read as a zero from everything is a confident wrong answer, and it looks tidier than the right one.
+
+## Invariant: privacy is a separate seam [INV-DS-PRIVATE-UNCHANGED]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-rule: [INV-PRIVATE-FANOUT] holds. A private corpus on the server's list is not read, since a default is not a caller naming it, and is counted as it is today, never named. A call's corpora argument that names a private corpus exactly is a caller naming it, and reads it. A list never makes a private corpus's id appear in a reply it would not otherwise appear in.
+- rationale: Who may read and what is read by default are different questions, and neither mechanism should import the other.
+
+## Mechanism: the server's list [MECH-DS-LIST]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-shape: LTS_DEFAULT_CORPORA is a comma-separated list of corpus ids, spaces around a comma ignored, read from the process environment at each dispatch. A running process's environment does not change, so a server keeps one list for its life, and a short-lived process follows the same rule with its own environment.
+- x-unknown: A name on the list that is not loaded is not an error and is not dropped silently: extent.search_scope.unknown_count counts it, and no reply names it, since a name that is not loaded may be a private corpus that failed to build. If no listed corpus is loaded, the search reads nothing and says so; it never falls back to all.
+- x-where: The list applies in tool dispatch, at the lts_find and lts_find_in_prose branches only, which pass the read set down to the corpus-omitted arm. It is NOT applied inside _fanout_parts when no read set is passed: lts_aggregate and lts_profile_audit reach find through _find_all and stay over every public corpus. An engine component that goes through dispatch and needs every corpus passes corpora=all: the reviewer's site-config lookup does, since it fails closed on zero results and a list would stop every review run in that environment. [INV-PRIVATE-FANOUT] still holds inside _fanout_parts.
+- x-config: One function reads the variable, default_corpora_listed in tools, and call_context states the count of what it returns, never the names ([CLI-CALL-STATES-ITS-CONFIG]), so a command-line user can see a list applied.
+
+## Mechanism: a call's own list [MECH-DS-CALL]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-argument: lts_find and lts_find_in_prose gain corpora: a non-empty list of corpus ids, or the string all. A list replaces the server's list for that call; all reads every public corpus, as an unnamed search does today. It works on a server with no list too.
+- x-refusals: Refused, reading nothing: corpora together with corpus or path; an empty list; an element that is not a string; another string than all; a name not loaded, as for corpus today. rank=relevance and semantic=on_miss still need a named corpus. corpora does not join the find-filter keys of the analytics tools, which take no scope.
+- x-not-in-call: lts_semantic_find already requires a corpus and is unchanged.
+- x-corpus: A corpus given as a non-empty list or mapping is refused, where it raised a raw error. A falsy corpus still reads as omitted and another scalar is still corpus not found, so nothing else about corpus changes.
+
+## Mechanism: what a reply says [MECH-DS-REPLY]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-shape: extent.search_scope, a new key, since extent.scope already names the call: {source: server-list | call-list | call-all, left_out_count: public corpora not read, widen: the argument that reads the rest, absent on call-all}. extent.corpora_consulted already names what was read. unknown_count appears when above zero, and stale_count when a corpus in the scope could not be read. On a zero with none stale it also holds zero_in_scope: true. extent.scope.corpus reads SEARCH SCOPE on a list. Present where a source applies, absent otherwise.
+- x-cost: Names of the corpora left out are not repeated: corpora_available carries them. Nothing outside the scope is searched, gated or healed for this reply, so a stale corpus outside the scope does not make the reply incomplete, and left_out_count says that part is unread.
+- x-not-in-v1: Reporting how many hits exist outside the scope on a zero. It would mean searching everything on every zero, which gives back the cost the list saves. A question for evidence from [ACC-DS] c6.
+
+## Mechanism: what stays unscoped [MECH-DS-UNSCOPED]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-edges: lts_reverse, lts_traverse, lts_flow and include_reverse_digest are unchanged. A reference from a corpus outside the list is a fact about the named node, and a scoped reverse lookup would give a false no referrers.
+- x-tools: Every tool that requires a corpus is unchanged. lts_list_corpora is unchanged. Corpus-omitted lts_aggregate and lts_profile_audit are unchanged and stay over every public corpus, by [MECH-DS-LIST] x-where: they count, they do not search, and a total that changes with a setting would mislead. Internal callers of find, such as the reviewer's site-config lookup, are unchanged.
+
+## Acceptance [ACC-DS]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-setup: A real server process over MCP on a scratch tree, with only the registry and this variable set: three public corpora, one private, one cross-corpus reference.
+- x-red-first: Each check is first shown failing on the prior commit for the reason it names.
+- x-c1: Unset and empty: every reply byte-identical to the prior commit across the tool set. Compared across trees by the cold reader; the suite pins that the key is absent and that a falsy corpus still reads as omitted.
+- x-c2: A list of two: an unnamed lts_find and lts_find_in_prose return hits from those two only, with extent.search_scope. A planted hit in the third corpus must stay out; removing the filter must turn this red.
+- x-c3: The same server: corpus=third returns its hit; corpora=all returns all three; a call list replaces the server's list; lts_reverse on the third corpus's node still shows the reference from outside the list; a corpus-omitted lts_aggregate still counts all three; and the reviewer's site-config lookup still finds a site config in a corpus off the list.
+- x-c4: Private: on the list and unnamed, not read and not named, skip still counted; named in corpora, read. Unknown name on the server's list reported; all names unknown reads nothing and never falls back.
+- x-c5: Every refusal in [MECH-DS-CALL] writes nothing and raises nothing raw.
+- x-c6: Recall, on the first real list: replay the deployment's logged unnamed queries that kept their text against it, count those whose hits fall only outside the list, and read each by hand against the question it asked. The bar is set before the run: if more than 10% of the queries with hits lose a wanted answer, the design goes back to the maintainers. The architects' judgement, not derived. It reports; it does not stage any launcher's rollout.
+- x-c7: Cold reader: an agent with no context gets a scoped zero for something outside the list and must say the search was narrowed, and find it with one more call.
+- x-c8: Latency of an unnamed search on the largest deployment list against no list, p50 and p95. Reported, no bar: this spec is for grouping, not speed.
+
+## Build order and rollout [PLAN-DS]
+
+- part-of: [FL-DEFAULT-SCOPE]
+- status: draft
+- x-order: Engine lands with the variable unset everywhere: no behaviour change. The launcher sets the variable, on its own evidence that a session's server inherits it, as its own build decides. c6 runs on the first real list and its result goes to the maintainers.
+- x-rollback: Unset the variable and restart the affected servers. Nothing is stored, so there is nothing to undo.
+- x-extension-points: In the same commit: SDLC 7.5 notes that a default scope is applied at dispatch and that an internal corpus-omitted read stays complete, and 7.6 gains [DEFAULT-SCOPE-DECLARED] (a new externally reachable corpus-omitted read declares extent.search_scope, or states why it stays unscoped; an internal one passes no scope). SPEC.md states the variable, the argument and the field with an absence test. corpora joins the two tool schemas and the query log, which records source and left_out_count; the call CLI's tool list needs no change. A launcher that sets the variable proves inheritance with a real launch; that rule belongs to the launcher's own checklist.

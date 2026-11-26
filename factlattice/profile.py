@@ -46,8 +46,8 @@ h2 node with plain `- key: value` (P1) / `- key:` + indented items (P4) properti
 
     ## [PREFIX-DEC] Decision nodes
     - registers-prefix: DEC-
-    - document: decision-graph-analyst
-    - definition: Load-bearing DS decisions
+    - document: decision-graph-evaluation
+    - definition: Load-bearing evaluation decisions
 
     ## [DOCTAG-AMEND] Governance amendment
     - document-tag: AMEND
@@ -113,11 +113,11 @@ profile needs no optional dependency at all: it is read by the parser this repo 
 from __future__ import annotations
 
 import glob
-import json
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Tuple
+from typing import NamedTuple
 
 from . import registry
 from .parser import DEFAULT_DOMAIN_VERBS, DEFAULT_REGISTERED_NS
@@ -131,7 +131,7 @@ PROFILE_GLOB_LTS = "*-profile.lts"
 # Top-level profile keys with a KNOWN structural meaning. `enum_values` refuses to
 # reinterpret one of these as an enum, so `enum_values('prefixes')` is None rather
 # than a set of garbage harvested out of a record list.
-_STRUCTURAL_KEYS: FrozenSet[str] = frozenset({
+_STRUCTURAL_KEYS: frozenset[str] = frozenset({
     "domain", "prefixes", "document_tags", "relationship_verbs", "edge_types",
     "properties", "decision_nodes", "mutation_nodes", "decision_lifecycle",
     "linter_guidance", "traversal", "roles", "frontmatter_extensions",
@@ -150,8 +150,8 @@ class PrefixSpec(NamedTuple):
     """
 
     prefix: str
-    document: Optional[str] = None
-    note: Optional[str] = None
+    document: str | None = None
+    note: str | None = None
 
 
 class ReviewExtensionReg(NamedTuple):
@@ -171,15 +171,15 @@ class LifecycleStages(NamedTuple):
     answers "decisions made but never implemented".
     """
 
-    pipeline: List[str]
-    off_pipeline: List[str]
+    pipeline: list[str]
+    off_pipeline: list[str]
 
     @property
-    def all_stages(self) -> FrozenSet[str]:
+    def all_stages(self) -> frozenset[str]:
         return frozenset(self.pipeline) | frozenset(self.off_pipeline)
 
 
-def _str_or_none(value: object) -> Optional[str]:
+def _str_or_none(value: object) -> str | None:
     """First scalar of a property value, as a stripped str; None if there is none.
 
     A repeated property key accumulates into a list (parser `_maybe_multivalue`),
@@ -198,7 +198,7 @@ def _str_or_none(value: object) -> Optional[str]:
     return text or None
 
 
-def _record_field(rec: object, *keys: str) -> Optional[str]:
+def _record_field(rec: object, *keys: str) -> str | None:
     """First present key of a mapping-shaped profile record, as a str."""
     if not isinstance(rec, dict):
         return None
@@ -208,7 +208,7 @@ def _record_field(rec: object, *keys: str) -> Optional[str]:
     return None
 
 
-def _scalar_set(value: object) -> Optional[FrozenSet[str]]:
+def _scalar_set(value: object) -> frozenset[str] | None:
     """A list of scalars -> a set of strings. Anything else -> None.
 
     Returning None (not an empty set) for a non-list is what lets `enum_values`
@@ -226,7 +226,7 @@ def _scalar_set(value: object) -> Optional[FrozenSet[str]]:
     return frozenset(out)
 
 
-def _str_list(value: object) -> List[str]:
+def _str_list(value: object) -> list[str]:
     """A profile list-valued field -> `list[str]`; anything unusable -> `[]`."""
     if isinstance(value, (list, tuple)):
         out = []
@@ -259,14 +259,14 @@ class Profile:
     "this domain declares it empty" (nothing is valid) — those are different rules.
     """
 
-    registered_ns: FrozenSet[str]
-    domain_verbs: FrozenSet[str] = DEFAULT_DOMAIN_VERBS
-    domain_id: Optional[str] = None
-    raw: Dict[str, object] = field(default_factory=dict)
-    path: Optional[str] = None
+    registered_ns: frozenset[str]
+    domain_verbs: frozenset[str] = DEFAULT_DOMAIN_VERBS
+    domain_id: str | None = None
+    raw: dict[str, object] = field(default_factory=dict)
+    path: str | None = None
 
     @property
-    def property_edges(self) -> Dict[str, Tuple[str, str, bool]]:
+    def property_edges(self) -> dict[str, tuple[str, str, bool]]:
         """The domain's registered edge-bearing property keys.
 
         `{property_key: (edge_type, layer, reversed)}`, projected from the profile's
@@ -280,7 +280,7 @@ class Profile:
         return _property_edges_from_raw(self.raw, self.path)
 
     @property
-    def declared_property_keys(self) -> FrozenSet[str]:
+    def declared_property_keys(self) -> frozenset[str]:
         """The domain's declared NON-minting descriptive keys (SPEC §1.3.3 / A2).
 
         ⛔ THIS PROPERTY EXISTS BECAUSE ITS ABSENCE WOULD HAVE BEEN V5 AGAIN, INSIDE THE
@@ -300,7 +300,7 @@ class Profile:
         return _declared_property_keys_from_raw(self.raw, self.path)
 
     @property
-    def edge_types(self) -> Dict[str, str]:
+    def edge_types(self) -> dict[str, str]:
         """The domain's declared edge TYPES as `{edge_type: layer}`.
 
         Every `edge_types[]` record, whether or not it also registers a `property_key`
@@ -316,14 +316,14 @@ class Profile:
         return _edge_types_from_raw(self.raw, self.path)
 
     @property
-    def review_extensions(self) -> List[ReviewExtensionReg]:
+    def review_extensions(self) -> list[ReviewExtensionReg]:
         """The review extensions this profile REGISTERS, in declaration order (SPEC §10.4, A-E5).
 
         Total: `[]` for a profile that registers none (his 62133 ruling: with nothing registered the generic
         review runs). A record with no `path` or no `ext_id` is SKIPPED here and surfaces in
         `validate_review_extensions` / `unprojected_review_extensions`, never as a half-registration.
         """
-        out: List[ReviewExtensionReg] = []
+        out: list[ReviewExtensionReg] = []
         for item in self.raw.get("review_extensions") or []:
             path = _record_field(item, "path")
             ext = _record_field(item, "ext_id", "ext-id")
@@ -332,7 +332,7 @@ class Profile:
         return out
 
     @property
-    def review_output(self) -> Optional[str]:
+    def review_output(self) -> str | None:
         """The per-corpus review OUTPUT root, as authored (`review-output` on the `.lts` PROFILE node,
         `domain.review_output` in YAML/JSON), or None. Precedence against the site config lives in
         `factlattice_engine.reviewer.resolve_output`, not here."""
@@ -341,7 +341,7 @@ class Profile:
             return _str_or_none(dom.get("review_output") or dom.get("review-output"))
         return None
 
-    def resolve_path(self, value: str) -> Optional[str]:
+    def resolve_path(self, value: str) -> str | None:
         """`value` (a path authored in this profile) as a realpath: `~` expanded; a relative path is taken
         relative to the directory of the profile FILE, and is unresolvable (None) for a dict profile, which
         has no directory. Never touches the filesystem beyond `realpath`."""
@@ -355,7 +355,7 @@ class Profile:
         return os.path.realpath(v)
 
     @property
-    def namespaces(self) -> List[str]:
+    def namespaces(self) -> list[str]:
         dom = self.raw.get("domain") or {}
         if isinstance(dom, dict):
             ns = dom.get("namespaces") or []
@@ -366,7 +366,7 @@ class Profile:
     # --- typed accessors (BUILD-profile-driven-validation §3) ---------------
 
     @property
-    def prefixes(self) -> List[PrefixSpec]:
+    def prefixes(self) -> list[PrefixSpec]:
         """Registered node-id prefixes, in declaration order (V1's input).
 
         Accepts both the record form (`- {prefix: "DEC-", document: …, note: …}`)
@@ -374,7 +374,7 @@ class Profile:
         than materialised as a `PrefixSpec(None)` that would silently register the
         empty prefix — i.e. match every id.
         """
-        out: List[PrefixSpec] = []
+        out: list[PrefixSpec] = []
         for item in self.raw.get("prefixes") or []:
             if isinstance(item, dict):
                 pref = _record_field(item, "prefix")
@@ -392,12 +392,12 @@ class Profile:
         return out
 
     @property
-    def prefix_set(self) -> FrozenSet[str]:
+    def prefix_set(self) -> frozenset[str]:
         """Just the prefix strings — the membership test V1 actually runs."""
         return frozenset(p.prefix for p in self.prefixes)
 
     @property
-    def document_tags(self) -> FrozenSet[str]:
+    def document_tags(self) -> frozenset[str]:
         """Doctypes this domain registers (V2's input; CORE tags are §1.7's, not a
         profile's, so this set is the DOMAIN half of that check and no more)."""
         out = set()
@@ -407,7 +407,7 @@ class Profile:
                 out.add(tag)
         return frozenset(out)
 
-    def enum_values(self, key: str) -> Optional[FrozenSet[str]]:
+    def enum_values(self, key: str) -> frozenset[str] | None:
         """Declared values of the enum `key`, or None if the domain declares no such
         enum. Handles both authored shapes: a flat list (`confidentiality`) and a
         tiered mapping of lists (`artifact_readiness: {core: […], extended: […]}`),
@@ -433,7 +433,7 @@ class Profile:
             return frozenset(out)
         return None
 
-    def _family_blocks(self, family_or_section: str) -> List[Dict[str, object]]:
+    def _family_blocks(self, family_or_section: str) -> list[dict[str, object]]:
         """Resolve a node-family SECTION name (`decision_nodes`) or a FAMILY prefix
         (`DEC-`, or `DEC`) to EVERY schema block that claims it. A family matches a
         section whose `families` list contains it; the trailing hyphen is optional on
@@ -458,7 +458,7 @@ class Profile:
         want = (family_or_section or "").strip()
         if not want:
             return []
-        out: List[Dict[str, object]] = []
+        out: list[dict[str, object]] = []
         block = self.raw.get(want)
         if isinstance(block, dict):
             out.append(block)
@@ -472,18 +472,18 @@ class Profile:
                     break
         return out
 
-    def _family_union(self, family_or_section: str, key: str) -> FrozenSet[str]:
+    def _family_union(self, family_or_section: str, key: str) -> frozenset[str]:
         out: set = set()
         for block in self._family_blocks(family_or_section):
             out |= set(_str_list(block.get(key)))
         return frozenset(out)
 
-    def required_properties(self, family_or_section: str) -> FrozenSet[str]:
+    def required_properties(self, family_or_section: str) -> frozenset[str]:
         """Properties a node of this family/section MUST carry (V3). Unions every
         block claiming the family — see `_family_blocks`."""
         return self._family_union(family_or_section, "required")
 
-    def recommended_properties(self, family_or_section: str) -> FrozenSet[str]:
+    def recommended_properties(self, family_or_section: str) -> frozenset[str]:
         """Properties a node of this family/section SHOULD carry (V4 — lower
         severity than V3 by policy, see the brief §5). Unions every block claiming
         the family — see `_family_blocks`."""
@@ -502,7 +502,7 @@ class Profile:
         )
 
     @property
-    def guidance_notes(self) -> List[str]:
+    def guidance_notes(self) -> list[str]:
         """`linter_guidance.notes` — hand-authored warnings the domain wrote FOR the
         linter. In Acme's profile these describe silent-drop mechanisms, authored into
         a field nothing read; this accessor is the field finally acquiring a reader."""
@@ -518,7 +518,7 @@ class Profile:
 DEFAULT_PROFILE = Profile(registered_ns=DEFAULT_REGISTERED_NS, domain_id=None, raw={}, path=None)
 
 
-def _registered_ns_from_raw(raw: Dict[str, object]) -> FrozenSet[str]:
+def _registered_ns_from_raw(raw: dict[str, object]) -> frozenset[str]:
     """Project a profile dict onto the core's `registered_ns` hook.
 
     Registered namespaces = {'core'} plus every namespace the profile's `domain`
@@ -535,7 +535,7 @@ def _registered_ns_from_raw(raw: Dict[str, object]) -> FrozenSet[str]:
     return frozenset(ns)
 
 
-def _domain_verbs_from_raw(raw: Dict[str, object]) -> FrozenSet[str]:
+def _domain_verbs_from_raw(raw: dict[str, object]) -> frozenset[str]:
     """Project a profile's `relationship_verbs` onto the parser's `domain_verbs` hook.
 
     Both `core:` and `domain:` lists are read (a profile may restate core verbs);
@@ -576,7 +576,20 @@ class ProfileCollisionError(ValueError):
     string nobody reads. The only safe behaviour is to refuse to load at all and name
     both definitions (the epistemics rule: signals that AGREE WITH THE WRONG ANSWER
     are the failure class this codebase is organised against).
+
+    `names` is the registered name(s) that collided (a property key or an edge type), when the raise site knows
+    them: never a path and never a message, so a caller that records WHY a corpus failed (the engine's
+    `failed_corpora`) can say which reserved name a profile declared without carrying the profile's location.
+    A raise site where NO name collided (a malformed profile) passes `detail` instead, a short fixed phrase.
+    The class is shared (it was one class before this distinction); the reason a caller reports must not be.
     """
+
+    def __init__(self, message: str = "", *, names=(), detail=None):
+        super().__init__(message)
+        self.names = tuple(names)
+        # `detail` is a short FIXED phrase (never a message, never a path) for a profile that is MALFORMED, where no name collided; `names` and
+        # `detail` are exclusive: a raise site passes one or neither. The loader reads them to say which of the two failures it was.
+        self.detail = detail
 
 
 # A registrable property key must be able to PARSE as a property key, or the
@@ -584,17 +597,17 @@ class ProfileCollisionError(ValueError):
 _PROPERTY_KEY_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 
 
-def _builtin_minting_keys() -> Dict[str, Tuple[str, str, bool]]:
+def _builtin_minting_keys() -> dict[str, tuple[str, str, bool]]:
     """The built-in minting table, read from the parser — never a second copy."""
     from .parser import FLOW_PROPERTY_EDGES, REL_PROPERTY_EDGES
-    out: Dict[str, Tuple[str, str, bool]] = dict(REL_PROPERTY_EDGES)
+    out: dict[str, tuple[str, str, bool]] = dict(REL_PROPERTY_EDGES)
     for k, v in FLOW_PROPERTY_EDGES.items():
         out[k] = (v[0], v[1], v[2])
     return out
 
 
-def _declared_property_keys_from_raw(raw: Dict[str, object],
-                                     path: Optional[str] = None) -> FrozenSet[str]:
+def _declared_property_keys_from_raw(raw: dict[str, object],
+                                     path: str | None = None) -> frozenset[str]:
     """Project a profile's `property_keys[]` onto A2's declared-key tier.
 
     ⛔ SAME REFUSAL CONSTRAINTS AS §1.3.1, DELIBERATELY WORDED THE SAME WAY. A key that
@@ -614,7 +627,7 @@ def _declared_property_keys_from_raw(raw: Dict[str, object],
     if not isinstance(keys, list):
         raise ProfileCollisionError(
             f"profile `property_keys` must be a list of key names"
-            f"{f' (profile: {path})' if path else ''}, got {type(keys).__name__}")
+            f"{f' (profile: {path})' if path else ''}, got {type(keys).__name__}", detail="property-keys-not-a-list")
     where = f" (profile: {path})" if path else ""
     builtins = _builtin_minting_keys()
     out = set()
@@ -626,20 +639,20 @@ def _declared_property_keys_from_raw(raw: Dict[str, object],
             raise ProfileCollisionError(
                 f"profile declares property key '{key}'{where}, which cannot parse as "
                 f"a property key (must match ^[a-z][a-z0-9_-]*$). The declaration "
-                f"would be INERT while reading as functional.")
+                f"would be INERT while reading as functional.", detail="property-key-cannot-parse")
         if key in builtins:
             raise ProfileCollisionError(
                 f"profile declares '{key}' under `property_keys`{where}, but it is a "
                 f"BUILT-IN EDGE-MINTING key. Declaring it as a plain descriptive key "
                 f"would have the profile assert that it both does and does not mint. "
-                f"Remove it — built-in keys need no declaration.")
+                f"Remove it — built-in keys need no declaration.", names=(key,))
         out.add(key)
     return frozenset(out)
 
 
-def _property_edges_from_raw(raw: Dict[str, object],
-                             path: Optional[str] = None
-                             ) -> Dict[str, Tuple[str, str, bool]]:
+def _property_edges_from_raw(raw: dict[str, object],
+                             path: str | None = None
+                             ) -> dict[str, tuple[str, str, bool]]:
     """Project a profile's `edge_types[].property_key` onto the parser's hook.
 
     The maintainer's ruling 2026-08-15: "Domain profiles absolutely should be able to register
@@ -655,7 +668,7 @@ def _property_edges_from_raw(raw: Dict[str, object],
         return {}
     builtins = _builtin_minting_keys()
     where = f" (profile: {path})" if path else ""
-    out: Dict[str, Tuple[str, str, bool]] = {}
+    out: dict[str, tuple[str, str, bool]] = {}
     for rec in recs:
         if not isinstance(rec, dict):
             continue
@@ -665,12 +678,12 @@ def _property_edges_from_raw(raw: Dict[str, object],
         etype = _str_or_none(rec.get("type") or rec.get("edge-type"))
         if not etype:
             raise ProfileCollisionError(
-                f"profile registers property_key '{key}' with no edge type{where}")
+                f"profile registers property_key '{key}' with no edge type{where}", detail="property-key-without-edge-type")
         if not _PROPERTY_KEY_RE.match(key):
             raise ProfileCollisionError(
                 f"profile registers property_key '{key}'{where}, which cannot parse as "
                 f"a property key (must match ^[a-z][a-z0-9_-]*$). The registration "
-                f"would be INERT while reading as functional.")
+                f"would be INERT while reading as functional.", detail="property-key-cannot-parse")
         if key in builtins:
             b_type, b_layer, b_rev = builtins[key]
             raise ProfileCollisionError(
@@ -678,14 +691,14 @@ def _property_edges_from_raw(raw: Dict[str, object],
                 f"is a BUILT-IN minting key meaning {b_type} "
                 f"(layer={b_layer}, reversed={b_rev}). Refusing to load: redefining a "
                 f"built-in is a SUBSTITUTION, not an addition — every existing use would "
-                f"silently change meaning. Choose a different property key.")
+                f"silently change meaning. Choose a different property key.", names=(key,))
         layer = _str_or_none(rec.get("layer")) or "semantic"
         rev = bool(rec.get("reversed") or rec.get("reversed_dir") or False)
         prior = out.get(key)
         if prior is not None and prior != (etype, layer, rev):
             raise ProfileCollisionError(
                 f"profile{where} registers property key '{key}' twice, disagreeing: "
-                f"{prior} vs {(etype, layer, rev)}")
+                f"{prior} vs {(etype, layer, rev)}", detail="property-key-declared-twice")
         out[key] = (etype, layer, rev)
     return out
 
@@ -696,7 +709,7 @@ def _property_edges_from_raw(raw: Dict[str, object],
 # ⛔ WHY THIS BLOCK EXISTS. The 2026-08-15 ruling made property KEYS registrable and
 # guarded them with load-time refusals. The engineer who built it flagged its own hole
 # in the handover: "I applied collision discipline to property KEYS only, not to the
-# edge-TYPE namespace." Measured against the code as it stood at 3f9a2c1:
+# edge-TYPE namespace." Measured against the code as it stood at 9819d48:
 #
 #   * a profile could declare `{type: PART_OF, property_key: contained-by,
 #     layer: causal}` and LOAD CLEAN. The resulting graph then carries PART_OF edges in
@@ -760,7 +773,7 @@ def _property_edges_from_raw(raw: Dict[str, object],
 _EDGE_TYPE_RE = re.compile(r"^(?:[A-Za-z][A-Za-z0-9_]*\.)*[A-Z][A-Z0-9_]*$")
 
 
-def _core_edge_layers() -> Dict[str, str]:
+def _core_edge_layers() -> dict[str, str]:
     """The core edge-type table, read from the parser — never a second copy.
 
     A second list here would drift from `CORE_EDGE_LAYER` and the guard would go
@@ -771,13 +784,13 @@ def _core_edge_layers() -> Dict[str, str]:
     return dict(CORE_EDGE_LAYER)
 
 
-def _canonical_layers() -> Tuple[str, ...]:
+def _canonical_layers() -> tuple[str, ...]:
     from .parser import CANONICAL_LAYERS
     return tuple(CANONICAL_LAYERS)
 
 
-def _edge_types_from_raw(raw: Dict[str, object],
-                         path: Optional[str] = None) -> Dict[str, str]:
+def _edge_types_from_raw(raw: dict[str, object],
+                         path: str | None = None) -> dict[str, str]:
     """Project a profile's `edge_types[]` declarations onto `{edge_type -> layer}`.
 
     This is the EDGE-TYPE half of the 2026-08-15 registrability ruling, and it enforces
@@ -793,9 +806,10 @@ def _edge_types_from_raw(raw: Dict[str, object],
     if not isinstance(recs, list):
         return {}
     core = _core_edge_layers()
+    from .parser import RESERVED_EDGE_TYPES as reserved
     canonical = _canonical_layers()
     where = f" (profile: {path})" if path else ""
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for rec in recs:
         if not isinstance(rec, dict):
             continue
@@ -812,8 +826,18 @@ def _edge_types_from_raw(raw: Dict[str, object],
                 f"verb, optionally dot-namespaced). Refusing to load: such a declaration "
                 f"is at best INERT while reading as functional, and at worst SUBSTITUTED "
                 f"— the parser reads 'clin-ical.GOVERNS' as the edge type 'ical.GOVERNS' "
-                f"and emits it with no flag.")
+                f"and emits it with no flag.", detail="edge-type-name-cannot-parse")
         # --- R1: a BARE core name. Refused even if the declaration is identical.
+        if "." not in etype and etype in reserved:
+            dom = raw.get("domain")
+            ns = (_str_or_none(dom.get("id")) if isinstance(dom, dict) else None) or "mydomain"
+            ns = ns.split(".")[-1]
+            raise ProfileCollisionError(
+                f"profile{where} declares edge type '{etype}', which is RESERVED: a built-in property "
+                f"key mints it (see parser.RESERVED_EDGE_TYPES). Refusing to load: a profile may not "
+                f"declare it bare, EVEN IDENTICALLY, because the graph would carry one type with two "
+                f"owners. Namespace it ('{ns}.{etype}') to declare your own; a namespaced type that "
+                f"shares the bare name is a distinct type and loads.", names=(etype,))
         if "." not in etype and etype in core:
             dom = raw.get("domain")
             ns = (_str_or_none(dom.get("id")) if isinstance(dom, dict) else None) or "mydomain"
@@ -825,7 +849,7 @@ def _edge_types_from_raw(raw: Dict[str, object],
                 f"meanings and every layer-scoped traversal would return part of it, "
                 f"confidently. Namespace it ('{ns}.{etype}') to declare your own, or "
                 f"declare it under `relationship_verbs` if you only mean to RESTATE that "
-                f"the core verb is used here.")
+                f"the core verb is used here.", names=(etype,))
         layer = _str_or_none(rec.get("layer"))
         if layer is not None and layer not in canonical:
             # Not one of the four canonical layers -> no `lts_traverse(layers=[...])`
@@ -835,19 +859,19 @@ def _edge_types_from_raw(raw: Dict[str, object],
                 f"profile{where} declares edge type '{etype}' at layer '{layer}', which "
                 f"is not one of the canonical layers {list(canonical)}. Refusing to load: "
                 f"no layer-scoped query could ever name it, so the declaration would be "
-                f"INERT while reading as functional.")
+                f"INERT while reading as functional.", detail="layer-not-canonical")
         layer = layer or "semantic"
         prior = out.get(etype)
         if prior is not None and prior != layer:
             raise ProfileCollisionError(
                 f"profile{where} declares edge type '{etype}' twice, disagreeing about "
                 f"its layer: '{prior}' vs '{layer}'. Refusing to load a profile that "
-                f"contradicts itself.")
+                f"contradicts itself.", detail="edge-type-declared-twice")
         out[etype] = layer
     return out
 
 
-def merge_edge_types(profiles: Sequence["Profile"]) -> Dict[str, str]:
+def merge_edge_types(profiles: Sequence[Profile]) -> dict[str, str]:
     """Union the declared edge TYPES of several profiles, refusing disagreement (R2).
 
     The exact shape of `merge_property_edges`, deliberately: SAME-NAME-SAME-DEFINITION
@@ -863,8 +887,8 @@ def merge_edge_types(profiles: Sequence["Profile"]) -> Dict[str, str]:
     ORDINARY case, and refusing it would make a shared root unusable. What must never
     happen is the two disagreeing, because then the type's meaning depends on load order.
     """
-    out: Dict[str, str] = {}
-    owner: Dict[str, Optional[str]] = {}
+    out: dict[str, str] = {}
+    owner: dict[str, str | None] = {}
     for prof in profiles:
         pid = prof.domain_id or prof.path or "<anonymous>"
         for etype, layer in (prof.edge_types or {}).items():
@@ -874,14 +898,14 @@ def merge_edge_types(profiles: Sequence["Profile"]) -> Dict[str, str]:
                     f"profiles '{owner.get(etype)}' and '{pid}' both declare edge type "
                     f"'{etype}' but disagree about its layer: '{prior}' vs '{layer}'. "
                     f"Refusing to build a graph whose edge meaning depends on profile "
-                    f"load order.")
+                    f"load order.", detail="edge-type-profiles-disagree")
             out[etype] = layer
             owner.setdefault(etype, pid)
     return out
 
 
-def merge_property_edges(profiles: Sequence["Profile"]
-                         ) -> Dict[str, Tuple[str, str, bool]]:
+def merge_property_edges(profiles: Sequence[Profile]
+                         ) -> dict[str, tuple[str, str, bool]]:
     """Union the registered property-edge keys of several profiles, refusing conflicts.
 
     ⛔ THIS IS A LIVE SCENARIO, NOT A HYPOTHETICAL. `corpora/acme-specs/` is a root
@@ -890,8 +914,8 @@ def merge_property_edges(profiles: Sequence["Profile"]
     disagreeing about one key is an ordinary Tuesday. Agreement is fine and expected;
     disagreement refuses and names both profiles.
     """
-    out: Dict[str, Tuple[str, str, bool]] = {}
-    owner: Dict[str, Optional[str]] = {}
+    out: dict[str, tuple[str, str, bool]] = {}
+    owner: dict[str, str | None] = {}
     for prof in profiles:
         pid = prof.domain_id or prof.path or "<anonymous>"
         for key, spec in (prof.property_edges or {}).items():
@@ -900,7 +924,7 @@ def merge_property_edges(profiles: Sequence["Profile"]
                 raise ProfileCollisionError(
                     f"profiles '{owner.get(key)}' and '{pid}' both register property "
                     f"key '{key}' but disagree: {prior} vs {spec}. Refusing to build a "
-                    f"graph whose edge meaning depends on profile load order.")
+                    f"graph whose edge meaning depends on profile load order.", detail="property-key-profiles-disagree")
             out[key] = spec
             owner.setdefault(key, pid)
     return out
@@ -931,6 +955,7 @@ def load_profile(source) -> Profile:
         # `PART_OF` loaded clean and produced a two-layer PART_OF graph.
         _property_edges_from_raw(raw, None)
         _edge_types_from_raw(raw, None)
+        _declared_property_keys_from_raw(raw, None)     # the third collision check, at LOAD like the two above (it used to run on first access)
         return Profile(registered_ns=_registered_ns_from_raw(raw),
                        domain_verbs=_domain_verbs_from_raw(raw),
                        domain_id=domain_id, raw=raw, path=None)
@@ -944,12 +969,13 @@ def load_profile(source) -> Profile:
     abspath = os.path.abspath(path)
     _property_edges_from_raw(raw, abspath)
     _edge_types_from_raw(raw, abspath)
+    _declared_property_keys_from_raw(raw, abspath)      # the third collision check, at LOAD like the two above (it used to run on first access)
     return Profile(registered_ns=_registered_ns_from_raw(raw),
                    domain_verbs=_domain_verbs_from_raw(raw),
                    domain_id=domain_id, raw=raw, path=abspath)
 
 
-def _read_profile_file(path: str) -> Dict[str, object]:
+def _read_profile_file(path: str) -> dict[str, object]:
     lower = path.lower()
     if lower.endswith((".yaml", ".yml")):
         try:
@@ -959,11 +985,11 @@ def _read_profile_file(path: str) -> Dict[str, object]:
                 f"profile {path!r} is YAML but PyYAML is not installed; "
                 "`pip install factlattice[profile]` (or PyYAML) to load YAML profiles"
             ) from exc
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     elif lower.endswith(".json"):
         import json
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     elif lower.endswith(".lts"):
         data = _read_lts_profile(path)
@@ -987,7 +1013,7 @@ def _read_profile_file(path: str) -> Dict[str, object]:
 
 # Flags whose presence proves the profile reached for vocabulary it has not yet
 # registered — i.e. that it tried to parse itself with itself.
-_BOOTSTRAP_VIOLATION_FLAGS: FrozenSet[str] = frozenset({
+_BOOTSTRAP_VIOLATION_FLAGS: frozenset[str] = frozenset({
     "unregistered_ns", "unregistered_verb",
 })
 
@@ -1018,7 +1044,7 @@ def _assert_core_only_parse(parsed, path: str) -> None:
         )
 
 
-def _lts_list(value: object) -> List[str]:
+def _lts_list(value: object) -> list[str]:
     """A `.lts` property value -> `list[str]`, by the ONE mechanical rule.
 
     * P4 nested (`- key:` + indented items) parses to a `list` -> items VERBATIM,
@@ -1033,7 +1059,7 @@ def _lts_list(value: object) -> List[str]:
     if value is None:
         return []
     if isinstance(value, (list, tuple)):
-        out: List[str] = []
+        out: list[str] = []
         for item in value:
             text = _str_or_none(item)
             if text:
@@ -1045,17 +1071,17 @@ def _lts_list(value: object) -> List[str]:
     return [part.strip() for part in text.split(",") if part.strip()]
 
 
-def _lts_inline_list(value: object) -> List[str]:
+def _lts_inline_list(value: object) -> list[str]:
     """As `_lts_list` but comma-splits list elements too — used for the inline-only
     registry fields (`namespaces`, `families`, `decision-prefixes`) where a comma
     never belongs to the value."""
-    out: List[str] = []
+    out: list[str] = []
     for item in _lts_list(value):
         out.extend(part.strip() for part in item.split(",") if part.strip())
     return out
 
 
-def _project_lts_nodes(nodes: Sequence) -> Dict[str, object]:
+def _project_lts_nodes(nodes: Sequence) -> dict[str, object]:
     """Project parsed `.lts` profile nodes onto the YAML loader's dict shape.
 
     Dispatch is on the node's `type_prefix` (the id text before the first hyphen),
@@ -1064,15 +1090,15 @@ def _project_lts_nodes(nodes: Sequence) -> Dict[str, object]:
     SKIPPED — a `.lts` profile is a normal document and may carry prose sections,
     an h1 document node, and section dividers alongside its declarations.
     """
-    domain: Dict[str, object] = {}
-    prefixes: List[Dict[str, object]] = []
-    document_tags: List[Dict[str, object]] = []
-    property_keys: List[str] = []
-    review_extensions: List[Dict[str, object]] = []
-    edge_types: List[Dict[str, object]] = []
-    rel_verbs: Dict[str, List[str]] = {}
-    notes: List[str] = []
-    out: Dict[str, object] = {}
+    domain: dict[str, object] = {}
+    prefixes: list[dict[str, object]] = []
+    document_tags: list[dict[str, object]] = []
+    property_keys: list[str] = []
+    review_extensions: list[dict[str, object]] = []
+    edge_types: list[dict[str, object]] = []
+    rel_verbs: dict[str, list[str]] = {}
+    notes: list[str] = []
+    out: dict[str, object] = {}
 
     for node in nodes:
         kind = (node.type_prefix or "").upper()
@@ -1100,7 +1126,7 @@ def _project_lts_nodes(nodes: Sequence) -> Dict[str, object]:
             prefix = _str_or_none(props.get("registers-prefix"))
             if not prefix:
                 continue
-            rec: Dict[str, object] = {"prefix": prefix}
+            rec: dict[str, object] = {"prefix": prefix}
             document = _str_or_none(props.get("document"))
             if document:
                 rec["document"] = document
@@ -1198,7 +1224,7 @@ def _project_lts_nodes(nodes: Sequence) -> Dict[str, object]:
             section = _str_or_none(props.get("section"))
             if not section:
                 continue
-            block: Dict[str, object] = {}
+            block: dict[str, object] = {}
             families = _lts_inline_list(props.get("families"))
             if families:
                 block["families"] = families
@@ -1250,7 +1276,7 @@ def _project_lts_nodes(nodes: Sequence) -> Dict[str, object]:
     return out
 
 
-def _read_lts_profile(path: str) -> Dict[str, object]:
+def _read_lts_profile(path: str) -> dict[str, object]:
     """Parse a `.lts` profile with CORE settings only, then project it.
 
     Core-only is not a default that could drift — it is the bootstrapping invariant
@@ -1274,13 +1300,13 @@ def _read_lts_profile(path: str) -> Dict[str, object]:
 # ---------------------------------------------------------------------------
 # Node kinds `_project_lts_nodes` DISPATCHES on. A profile node whose kind is none of these is SKIPPED by the
 # loader without a word; `unprojected_review_extensions` names the ones that look like a registration.
-PROFILE_NODE_KINDS: FrozenSet[str] = frozenset({
+PROFILE_NODE_KINDS: frozenset[str] = frozenset({
     "PROFILE", "PREFIX", "DOCTAG", "EDGETYPE", "PROPKEY", "ENUM", "NODEFAMILY", "LIFECYCLE", "GUIDANCE",
     "REVEXTREG",
 })
 
 
-def unprojected_review_extensions(profile_path: str) -> List[Dict[str, object]]:
+def unprojected_review_extensions(profile_path: str) -> list[dict[str, object]]:
     """Profile nodes that CARRY `path` AND `ext-id` but whose kind the loader does not know.
 
     This is the loud half of audit D4: the `.lts` loader skips an unrecognised kind silently, so a registration
@@ -1296,7 +1322,7 @@ def unprojected_review_extensions(profile_path: str) -> List[Dict[str, object]]:
                             domain_verbs=DEFAULT_DOMAIN_VERBS, profile_layers=None)
     except Exception:                                    # noqa: BLE001 — an unreadable profile is the loader's report
         return []
-    out: List[Dict[str, object]] = []
+    out: list[dict[str, object]] = []
     for node in parsed.nodes:
         kind = (node.type_prefix or "").upper()
         if kind in PROFILE_NODE_KINDS:
@@ -1320,8 +1346,8 @@ def _ext_bare(ext_id: str) -> str:
     return e[len("REVEXT-"):] if e.upper().startswith("REVEXT-") else e
 
 
-def validate_review_extensions(profile: "Profile",
-                               corpus_roots: Optional[Sequence[str]] = None) -> List[Dict[str, object]]:
+def validate_review_extensions(profile: Profile,
+                               corpus_roots: Sequence[str] | None = None) -> list[dict[str, object]]:
     """Check every registered review extension; `[]` means all fine. Findings are dicts
     `{kind, ext_id, path, message[, keys]}`:
 
@@ -1336,8 +1362,8 @@ def validate_review_extensions(profile: "Profile",
     Relative paths resolve against the profile file's directory (`Profile.resolve_path`). Nothing here raises
     for a bad registration; a bad registration is the finding.
     """
-    findings: List[Dict[str, object]] = []
-    seen: Dict[str, str] = {}
+    findings: list[dict[str, object]] = []
+    seen: dict[str, str] = {}
     declared = profile.declared_property_keys
     for reg in profile.review_extensions:
         real = profile.resolve_path(reg.path)
@@ -1356,6 +1382,7 @@ def validate_review_extensions(profile: "Profile",
                 f"ext-id {bare!r} is registered twice: {seen[bare]} and {real}")
         else:
             seen[bare] = real
+        from .core_keys import ENGINE_MINTED_KEYS  # core and engine-minted: never "undeclared" in a strict host
         from .parser import parse_file
         try:
             parsed = parse_file(real, registered_ns=DEFAULT_REGISTERED_NS, domain_verbs=DEFAULT_DOMAIN_VERBS,
@@ -1370,7 +1397,7 @@ def validate_review_extensions(profile: "Profile",
             inside = any(_is_within(real, os.path.realpath(r)) for r in corpus_roots)
             if inside and getattr(parsed, "mode", None) == "strict":
                 used = sorted({k for n in parsed.nodes if (n.type_prefix or "").upper().startswith("REV")
-                               for k in (n.properties or {}) if k != "aliases"})
+                               for k in (n.properties or {}) if k != "aliases" and k not in ENGINE_MINTED_KEYS})
                 missing = [k for k in used if k not in declared]
                 if missing:
                     add("ext_strict_in_host_missing_keys",
@@ -1380,7 +1407,7 @@ def validate_review_extensions(profile: "Profile",
     return findings
 
 
-def discover_profile(corpus_root: str) -> Optional[str]:
+def discover_profile(corpus_root: str) -> str | None:
     """Return the path of the auto-discovered profile in `corpus_root`, or None.
 
     Two conventions, checked in this order:
@@ -1443,9 +1470,9 @@ class ProfileResolution(NamedTuple):
 
     profile: Profile
     source: str
-    detail: Optional[str] = None
-    root: Optional[str] = None
-    conflict: Tuple[str, ...] = ()
+    detail: str | None = None
+    root: str | None = None
+    conflict: tuple[str, ...] = ()
 
     @property
     def available(self) -> bool:
@@ -1474,7 +1501,7 @@ class ProfileResolution(NamedTuple):
         return out
 
 
-def load_corpus_config(path: Optional[str] = None) -> Dict[str, dict]:
+def load_corpus_config(path: str | None = None) -> dict[str, dict]:
     """The corpus registry's entries, from THE lookup (`registry.resolve_registry`), or from `path`.
 
     ⛔ THIS NO LONGER DEGRADES TO `{}`. It used to be "total": an unset variable, a missing file or a
@@ -1503,9 +1530,9 @@ def _is_within(child: str, parent: str) -> bool:
     return child.startswith(parent.rstrip(os.sep) + os.sep)
 
 
-def registered_profile_for_root(corpus_root: Optional[str],
-                                config_path: Optional[str] = None,
-                                ) -> Optional[Tuple[str, str, Tuple[str, ...]]]:
+def registered_profile_for_root(corpus_root: str | None,
+                                config_path: str | None = None,
+                                ) -> tuple[str, str, tuple[str, ...]] | None:
     """`(corpus_id, abs_profile_path, conflicts)` for the corpus owning `corpus_root`.
 
     A root may be claimed by SEVERAL corpora — in the live deployment
@@ -1531,7 +1558,7 @@ def registered_profile_for_root(corpus_root: Optional[str],
         return None
 
     best_len = -1
-    claimants: List[Tuple[str, str]] = []   # (corpus_id, abs_profile_path)
+    claimants: list[tuple[str, str]] = []   # (corpus_id, abs_profile_path)
     for corpus_id, spec in corpora.items():
         if not isinstance(spec, dict):
             continue
@@ -1557,15 +1584,15 @@ def registered_profile_for_root(corpus_root: Optional[str],
         return None
     claimants.sort()
     distinct = sorted({p for _cid, p in claimants})
-    conflicts: Tuple[str, ...] = tuple(distinct) if len(distinct) > 1 else ()
+    conflicts: tuple[str, ...] = tuple(distinct) if len(distinct) > 1 else ()
     corpus_id, abs_prof = claimants[0]
     if len(claimants) > 1:
         corpus_id = ", ".join(sorted({cid for cid, _p in claimants}))
     return corpus_id, abs_prof, conflicts
 
 
-def resolve_profile_ex(profile, corpus_root: Optional[str],
-                       config_path: Optional[str] = None) -> ProfileResolution:
+def resolve_profile_ex(profile, corpus_root: str | None,
+                       config_path: str | None = None) -> ProfileResolution:
     """Resolve the effective Profile AND report how — the declared-verdict form.
 
     Order, most-specific first:
@@ -1603,7 +1630,7 @@ def resolve_profile_ex(profile, corpus_root: Optional[str],
     return ProfileResolution(DEFAULT_PROFILE, RESOLVED_NONE, detail=None, root=corpus_root)
 
 
-def resolve_profile(profile, corpus_root: Optional[str]) -> Profile:
+def resolve_profile(profile, corpus_root: str | None) -> Profile:
     """Resolve the effective Profile for a parse() call.
 
     Back-compat shim over `resolve_profile_ex` — same answer, provenance discarded.

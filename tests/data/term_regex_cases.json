@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "terms": {
+    "agent_ids": ["Notary", "lantern", "notice", "qx"],
+    "corpus_ids": ["team-handbook"],
+    "word_ids": ["Notary", "notice"]
+  },
+  "cases": [
+    {"id": "a-hyphen-prefix", "text": "see x-lantern here", "expect": ["lantern"], "rule": "a-today: a hyphen join is a token boundary, so it matches"},
+    {"id": "a-underscore-suffix", "text": "lantern_x ran", "expect": ["lantern"], "rule": "a-today: an underscore join is a token boundary, so it matches"},
+    {"id": "a-plural-suffix", "text": "the lanterns", "expect": [], "rule": "a-today: a letter after the id extends the word, so no match"},
+    {"id": "a-letter-prefix", "text": "xlantern ran", "expect": [], "rule": "a-today: a letter before the id extends the word, so no match"},
+    {"id": "a-digit-suffix", "text": "lantern2 ran", "expect": [], "rule": "a-today: a digit after the id extends the token, so no match"},
+    {"id": "a-mixed-case", "text": "Lantern said", "expect": ["lantern"], "rule": "a-today: a lower-case id of ordinary length matches case-insensitively"},
+    {"id": "b-plain-prose", "text": "you should notice that", "expect": [], "rule": "b-word-id: a lower-case word id in running prose is not a match"},
+    {"id": "b-upper-case", "text": "ask NOTICE about it", "expect": ["notice"], "rule": "b-word-id: an all-upper-case word id is a match"},
+    {"id": "b-path-segment", "text": "see /notice/inbox", "expect": ["notice"], "rule": "b-word-id: a path segment between slashes is a match"},
+    {"id": "b-path-segment-dot", "text": "path ~/x/notice.md", "expect": ["notice"], "rule": "b-word-id: a path segment followed by a dot is a match"},
+    {"id": "b-plural", "text": "notices", "expect": [], "rule": "b-word-id: a letter after the id extends the word, so no match"},
+    {"id": "b-mixed-case-upper", "text": "ask NOTARY now", "expect": ["Notary"], "rule": "b-word-id mixed case: an all-upper-case form of a mixed-case word id is a match, reported as the stored id"},
+    {"id": "b-mixed-case-path", "text": "see /Notary/inbox", "expect": ["Notary"], "rule": "b-word-id mixed case: a path segment spelled exactly as the stored id is a match"},
+    {"id": "b-mixed-case-path-lower", "text": "see /notary/inbox", "expect": [], "rule": "b-word-id mixed case: a path segment in lower case is not a match for a mixed-case id"},
+    {"id": "b-mixed-case-prose", "text": "the Notary said", "expect": [], "rule": "b-word-id mixed case: the stored spelling in running prose is not a match"},
+    {"id": "b-mixed-case-plain", "text": "a notary public", "expect": [], "rule": "b-word-id mixed case: the lower-case word in running prose is not a match"},
+    {"id": "b-segment-end", "text": "see /notice", "expect": ["notice"], "rule": "b-word-id path segment at end: the last segment, at the end of the text, is a match"},
+    {"id": "b-segment-end-space", "text": "see /notice now", "expect": ["notice"], "rule": "b-word-id path segment at end: a space after the segment is a boundary, so it matches"},
+    {"id": "b-segment-end-mixed-case", "text": "see /Notary", "expect": ["Notary"], "rule": "b-word-id path segment at end: a mixed-case id as stored, at the end of the text, is a match"},
+    {"id": "b-segment-end-plural", "text": "see /notices", "expect": [], "rule": "b-word-id path segment at end: a letter after the id extends the word, so no match"},
+    {"id": "c-upper-case", "text": "QX said", "expect": ["qx"], "rule": "c-short-id: an all-upper-case short id is a match"},
+    {"id": "c-lower-case", "text": "qx said", "expect": [], "rule": "c-short-id: a lower-case short id is not a match"},
+    {"id": "c-hyphen-run", "text": "id X-QX-7", "expect": [], "rule": "c-short-id: inside a hyphen-joined upper-case and digit run is not a match"},
+    {"id": "c-hyphen-digit", "text": "QX-2", "expect": [], "rule": "c-short-id: right edge only, a hyphen then a digit after the id (nothing joined on the left) is not a match"},
+    {"id": "c-left-hyphen-upper", "text": "id X-QX ok", "expect": [], "rule": "c-short-id: left edge only, an upper-case letter and a hyphen before the id (token ends right after it) is not a match"},
+    {"id": "c-left-hyphen-digit", "text": "7-QX ok", "expect": [], "rule": "c-short-id: left edge only, a digit and a hyphen before the id (token ends right after it) is not a match"},
+    {"id": "c-left-hyphen-upper-eol", "text": "id X-QX", "expect": [], "rule": "c-short-id: left edge only, an upper-case letter and a hyphen before the id, with the id ending the line, is not a match"},
+    {"id": "c-left-hyphen-lower", "text": "x-QX ok", "expect": ["qx"], "rule": "c-short-id: left edge contrast, a hyphen joined to a lower-case letter is not a run, so it matches"},
+    {"id": "c-comma", "text": "see QX, then", "expect": ["qx"], "rule": "c-short-id: punctuation after the id is a boundary, so it matches"},
+    {"id": "d-unshipped-corpus", "text": "the team-handbook corpus", "expect": ["team-handbook"], "rule": "d-corpus: a corpus id that is not private and not shipped stays matched"},
+    {"id": "d-corpus-extension", "text": "the team-handbooks corpus", "expect": [], "rule": "d-corpus: a letter after the id extends the word, so no match"}
+  ]
+}

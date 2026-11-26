@@ -1,0 +1,121 @@
+# ci: the per-PR checks of this repository.
+#
+# WHO RUNS THIS (the maintainers' ruling of 2026-11-23). Only collaborators can open PRs here (an interaction limit the maintainers set), and any collaborator is trusted.
+# Forks are welcome as forks, but a fork cannot open a PR. The rules below are a SECOND LINE, not the first: keeping a non-collaborator's code off our runners rests on the
+# interaction limit and the repository's fork-approval setting, which this file cannot enforce; and a collaborator's PR can change its own `pull_request` workflow files, so
+# these rules pin what the files on the default branch promise, no more. tests/test_public_workflows_lint.py pins them over this file:
+#   1. Every job that `pull_request` triggers runs on the LITERAL `ubuntu-latest`: no `vars.` and no expression in `runs-on`, so a repository variable cannot move PR code onto a
+#      self-hosted machine from this workflow. (Self-hosted runners are used only by merge-queue.yml's test job.)
+#   2. No secret is referenced anywhere in this file. Every job holds `contents: read` only and checks out with `persist-credentials: false`.
+#   3. No `${{ }}` outside a short allow-list is pasted into a `run:` script: author-controlled values go in an `env:` entry (and are then used as `"$NAME"`, never re-expanded).
+#
+# JOBS (the check names are the required set of the branch ruleset: renaming one is a settings change):
+#   checks    lock sources, the lint and complexity gate, pip-audit, then the pytest suite in a scratch HOME and state dir.
+#   gitleaks  tools/ci_gitleaks.py --require-history: a secrets scan of the tree and of the PR's commits (BASE_REF..HEAD); it reads no config from the PR.
+#   smoke     tools/ci_smoke.py: the packages import, and `lts_selfcheck` passes on the built-in example registry.
+# Each job runs the tools/ commands directly, with a step timeout. The lint gate here is the PR's own copy of tools/ci_lint.py (feedback for the author); the merge queue
+# runs the base branch's copy.
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+env:
+  CI_UV_VERSION: "0.11.7"   # the uv the lock was made with; installed by astral-sh/setup-uv at exactly this version in every job
+  UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/../factlattice-venv   # the locked venv lives OUTSIDE the checkout (the registry guard scans .venv)
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # setup-uv runs `uv python find --directory <working-directory>` and executes the interpreter uv finds there. Its working directory is a fresh
+      # EMPTY folder, never the checkout, so a PR-committed .venv/bin/python never runs there.
+      - run: echo "SETUP_UV_WD=$(mktemp -d "$RUNNER_TEMP/setup-uv-wd.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.CI_UV_VERSION }}
+          enable-cache: false
+          working-directory: ${{ env.SETUP_UV_WD }}
+          ignore-empty-workdir: true
+      - run: uv python install --no-config "$(cat .python-version)"   # --no-config: a uv.toml or [tool.uv] of the PR tree cannot change what is installed
+      - run: uv sync --locked --extra test --extra semantic
+      - name: lock sources (every package source in uv.lock is the default PyPI index)
+        timeout-minutes: 2
+        run: '"$UV_PROJECT_ENVIRONMENT/bin/python" tools/ci_lock_sources.py'
+      - name: lint and complexity gate
+        timeout-minutes: 10
+        env:
+          BASE_REF: origin/${{ github.base_ref }}   # the format check covers the .py files added since this base (fetch-depth 0 above)
+        run: '"$UV_PROJECT_ENVIRONMENT/bin/python" tools/ci_lint.py all'
+      - name: pip-audit over the locked environment
+        timeout-minutes: 15
+        run: '"$UV_PROJECT_ENVIRONMENT/bin/python" tools/ci_pip_audit.py'
+      - name: the pytest suite (scratch HOME and state dir)
+        timeout-minutes: 60
+        env:
+          CI_SCRATCH: ${{ runner.temp }}/ci-scratch
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          mkdir -p "$CI_SCRATCH/home" "$CI_SCRATCH/st" "$CI_SCRATCH/bk" "$CI_SCRATCH/lt"
+          HOME="$CI_SCRATCH/home" FACTLATTICE_STATE_DIR="$CI_SCRATCH/st" FACTLATTICE_BACKUP_DIR="$CI_SCRATCH/bk" LTS_ENGINE_STATE_DIR="$CI_SCRATCH/lt" \
+            "$UV_PROJECT_ENVIRONMENT/bin/python" -m pytest -q -p no:cacheprovider tests
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: echo "SETUP_UV_WD=$(mktemp -d "$RUNNER_TEMP/setup-uv-wd.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.CI_UV_VERSION }}
+          enable-cache: false
+          working-directory: ${{ env.SETUP_UV_WD }}
+          ignore-empty-workdir: true
+      - run: uv python install --no-config "$(cat .python-version)"
+      - run: uv sync --locked --extra test --extra semantic
+      - name: secrets scan (tree and the PR's commits)
+        timeout-minutes: 15
+        env:
+          BASE_REF: origin/${{ github.base_ref }}   # the history scan covers BASE_REF..HEAD
+        run: '"$UV_PROJECT_ENVIRONMENT/bin/python" tools/ci_gitleaks.py --require-history'
+
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: echo "SETUP_UV_WD=$(mktemp -d "$RUNNER_TEMP/setup-uv-wd.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.CI_UV_VERSION }}
+          enable-cache: false
+          working-directory: ${{ env.SETUP_UV_WD }}
+          ignore-empty-workdir: true
+      - run: uv python install --no-config "$(cat .python-version)"
+      - run: uv sync --locked --extra test --extra semantic
+      - name: smoke
+        timeout-minutes: 10
+        run: '"$UV_PROJECT_ENVIRONMENT/bin/python" tools/ci_smoke.py'

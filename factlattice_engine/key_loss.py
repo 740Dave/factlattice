@@ -55,11 +55,12 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable, Optional
 
 from factlattice.authoring.schema import _coerce_key
+from factlattice.core_keys import ENGINE_MINTED_KEYS
 from factlattice.coverage import account_file
 from factlattice.parser import (
     BRANCH_PROP_BOLD,
@@ -200,13 +201,13 @@ class Dropped:
     source_file: str
     line_number: int          # 1-based
     text: str
-    node_id: Optional[str]
+    node_id: str | None
     shapes: tuple[str, ...]   # every signal detected, strongest first
     confidence: str
-    key_region: Optional[str]
-    normalised_key: Optional[str]   # what it WOULD have been. Never written anywhere.
+    key_region: str | None
+    normalised_key: str | None   # what it WOULD have been. Never written anywhere.
     key_parsed_elsewhere: bool = False
-    ratified_kind: Optional[str] = None      # what [FL-LINE-ACCOUNTING] called it
+    ratified_kind: str | None = None      # what [FL-LINE-ACCOUNTING] called it
     seen_by_ratified_lint: bool = False      # would today's lts_lint have shown this?
 
     @property
@@ -227,7 +228,7 @@ class FileReport:
     minted_properties: int
     dropped: list[Dropped] = field(default_factory=list)
     node_count: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
     def loss(self) -> int:
@@ -257,7 +258,7 @@ class FileReport:
 # the classifier — EXPLAINS a drop, never decides one
 # ──────────────────────────────────────────────────────────────────────────────────
 
-def classify(line: str, *, in_node_body: bool) -> tuple[tuple[str, ...], str, Optional[str], Optional[str]]:
+def classify(line: str, *, in_node_body: bool) -> tuple[tuple[str, ...], str, str | None, str | None]:
     """(shapes, confidence, key_region, normalised_key) for one dropped bullet line.
 
     ⛔ Called ONLY on lines the parser already declined. It answers "what did the author
@@ -274,8 +275,8 @@ def classify(line: str, *, in_node_body: bool) -> tuple[tuple[str, ...], str, Op
         shapes.append("nonascii_bullet_marker")
 
     cm = _COLON.search(body)
-    key_region: Optional[str] = None
-    fixed: Optional[str] = None
+    key_region: str | None = None
+    fixed: str | None = None
 
     if cm is not None and cm.start() <= _MAX_KEY_REGION:
         key_region = body[: cm.start()].strip()
@@ -383,8 +384,10 @@ def scan_text(text: str, source_file: str) -> FileReport:
     verdicts = {v.line_index: v for v in account_file(cov)}
     node_at: dict[int, str] = dict(cov.node_body)
 
-    minted = sum(len(n.properties) for n in pf.nodes)
-    parsed_keys = {k for n in pf.nodes for k in n.properties}
+    # The engine-minted state (`normative_effective`, on every node) is not an authored property: counting it would
+    # make `minted` exceed `authored` by the node count and read as "this corpus keeps more than it authors".
+    minted = sum(1 for n in pf.nodes for k in n.properties if k not in ENGINE_MINTED_KEYS)
+    parsed_keys = {k for n in pf.nodes for k in n.properties if k not in ENGINE_MINTED_KEYS}
 
     authored = 0
     authored_in_body = 0
@@ -533,7 +536,8 @@ def render_text(report: dict, *, show_prose: bool = False) -> str:
 
 
 def _main(argv: list[str] | None = None) -> int:
-    import argparse, json, sys
+    import argparse
+    import json
     ap = argparse.ArgumentParser(prog="python3 -m factlattice_engine.key_loss",
                                  description=__doc__.splitlines()[0])
     ap.add_argument("roots", nargs="+")

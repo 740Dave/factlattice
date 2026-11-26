@@ -18,7 +18,6 @@ an instrument).
 from __future__ import annotations
 
 import os
-import textwrap
 
 import pytest
 import yaml

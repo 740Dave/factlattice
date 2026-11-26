@@ -263,7 +263,7 @@ Check for cross-profile conflicts.
 | Domain | Prefixes | Edge Types | Properties | Tags | Status |
 |--------|----------|------------|------------|------|--------|
 | gov.example | 8 | 3 | 5 | 2 | VALID |
-| ops.example | 10 | 2 | 6 | 1 | VALID |
+| bio.example | 10 | 2 | 6 | 1 | VALID |
 | clinical.medical | 12 | 4 | 8 | 1 | VALID |
 | platform.example | 6 | 2 | 3 | 3 | 1 ERROR |
 

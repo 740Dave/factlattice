@@ -6,7 +6,6 @@ Every cell is judged against an oracle that does not use the reply: the file sys
 from __future__ import annotations
 
 import errno
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -330,9 +329,9 @@ LINK_FAILURES = {**SUPPORT, **OTHER_OS, **NO_ERRNO, **NON_OS}
 
 def _expected_evidence(name):
     if name in SUPPORT:
-        return {"refusal": "create_link_unsupported", "errno": name}
+        return {"refusal": "create_link_unsupported", "errno": errno.errorcode[getattr(errno, name)]}  # the platform's name for the number: on Linux ENOTSUP and EOPNOTSUPP are one errno
     if name in OTHER_OS:
-        return {"refusal": "create_os_error", "errno": name}
+        return {"refusal": "create_os_error", "errno": errno.errorcode[getattr(errno, name)]}
     if name in NO_ERRNO:
         return {"refusal": "create_os_error", "exception": "OSError"}
     return {"refusal": "create_unexpected_error", "exception": {"ValueError": "ValueError", "Custom": "Custom"}[name]}
@@ -345,7 +344,7 @@ def test_link_failure_is_classified_by_errno_and_keeps_the_verified_absent_guara
     assert _classify(r) == "refused", r
     ev = {k: v for k, v in r["evidence"].items() if k != "leftover_temp"}
     assert ev == _expected_evidence(name), (name, r["evidence"])
-    assert "errno" not in r["evidence"] or r["evidence"]["errno"] == errno.errorcode[getattr(LINK_FAILURES[name](), "errno")]
+    assert "errno" not in r["evidence"] or r["evidence"]["errno"] == errno.errorcode[LINK_FAILURES[name]().errno]
     assert not (world / "r.lts").exists() and not _recs(world / "r.lts")        # the target is absent
     assert _tmp_leftovers(world) == []                                          # the temp was removed
     assert "leftover_temp" not in r["evidence"]

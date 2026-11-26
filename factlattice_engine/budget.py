@@ -27,11 +27,12 @@ folded over everything found, before the slice. See [INV-DECLARED-REACH].
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 
-def budget_slice(items: List[Any], offset: int, budget: int,
-                 keyfn: Callable[[Any], dict]) -> Tuple[List[Any], bool, Optional[int], int]:
+def budget_slice(items: list[Any], offset: int, budget: int,
+                 keyfn: Callable[[Any], dict]) -> tuple[list[Any], bool, int | None, int]:
     """Token-budget slice ([ENGINE-BUDGET]).
 
     Skips `offset`, emits in order until the next item would exceed `budget` (always
@@ -43,7 +44,7 @@ def budget_slice(items: List[Any], offset: int, budget: int,
     `keyfn(item)` returns a dict carrying a `token_count`; absent/zero costs 1.
     """
     total = len(items)
-    emitted: List[Any] = []
+    emitted: list[Any] = []
     used = 0
     i = max(0, offset)
     while i < total:
@@ -58,7 +59,42 @@ def budget_slice(items: List[Any], offset: int, budget: int,
     return emitted, truncated, cursor, total
 
 
-def resolve_budget(token_budget: Optional[Any], default: int) -> int:
+def budget_slice_declared(items: list[Any], offset: int, budget: int,
+                          keyfn: Callable[[Any], dict]) -> tuple[list[Any], bool, int | None, int, list[tuple[int, Any]]]:
+    """[ENGINE-BUDGET] as specified: "an over-budget item is skipped whole and REPORTED".
+
+    Like `budget_slice`, except that an item whose cost ALONE exceeds `budget` is never
+    emitted: it is skipped whole and returned in `oversize` as `(index, item)`, and the walk
+    continues, so the page fills with what fits. `budget_slice`'s "always >=1 emitted" rule
+    instead shipped such an item whole, past the budget (a 111,576-token node on page 1 at
+    token_budget=3000, 2026-10-27). Progress is kept because the cursor still advances past a
+    skipped item. `truncated` is true when anything in the window was not carried, whether
+    unread or skipped ([INV-DECLARED-REACH]: count < total means truncated); `cursor` is null
+    once the window is walked, and `oversize` then says what was left out and why.
+    Lifting the legacy guarantee for this one behaviour: maintainers' ruling of 2026-10-27.
+    """
+    total = len(items)
+    emitted: list[Any] = []
+    oversize: list[tuple[int, Any]] = []
+    used = 0
+    i = max(0, offset)
+    while i < total:
+        cost = int(keyfn(items[i]).get("token_count") or 1)
+        if cost > budget:
+            oversize.append((i, items[i]))
+            i += 1
+            continue
+        if emitted and used + cost > budget:
+            break
+        emitted.append(items[i])
+        used += cost
+        i += 1
+    cursor = i if i < total else None
+    truncated = i < total or bool(oversize)
+    return emitted, truncated, cursor, total, oversize
+
+
+def resolve_budget(token_budget: Any | None, default: int) -> int:
     """Resolve the effective budget: an explicit per-call `token_budget` WINS, in BOTH
     directions; absent/garbage falls back to `default`.
 
@@ -77,8 +113,8 @@ def resolve_budget(token_budget: Optional[Any], default: int) -> int:
     return max(1, tb)
 
 
-def declare(emitted: List[Any], truncated: bool, cursor: Optional[int],
-            total: int) -> Dict[str, Any]:
+def declare(emitted: list[Any], truncated: bool, cursor: int | None,
+            total: int) -> dict[str, Any]:
     """The [INV-DECLARED-REACH] fields for a bounded collection, as a dict to merge
     into a response. Built in one place so no layer can spell the contract its own way
     or emit three of the four fields and call it declared."""
@@ -91,4 +127,4 @@ def declare(emitted: List[Any], truncated: bool, cursor: Optional[int],
 # would agree until the day it didn't, and nothing would notice.
 from factlattice import token_estimate  # noqa: E402  (re-exported for budget callers)
 
-__all__ = ["budget_slice", "declare", "resolve_budget", "token_estimate"]
+__all__ = ["budget_slice", "budget_slice_declared", "declare", "resolve_budget", "token_estimate"]

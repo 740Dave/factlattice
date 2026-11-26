@@ -39,7 +39,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from factlattice import registry
 from factlattice.registry import RegistryError
@@ -57,15 +57,15 @@ ENV_LABEL = registry.env_var_name()     # DISPLAY only: the name comes from the 
 # explicit READ allow-list (`tools.LTS_READ_ONLY_TOOL_NAMES`): a served tool that is not on it is a
 # WRITE, refused without --allow-write. Functions, not constants, so the answer tracks
 # `server.TOOLS` as it is when asked.
-def served_tool_names() -> Tuple[str, ...]:
+def served_tool_names() -> tuple[str, ...]:
     return tuple(t["name"] for t in _server.TOOLS)
 
 
-def read_tool_names() -> Tuple[str, ...]:
+def read_tool_names() -> tuple[str, ...]:
     return tuple(n for n in served_tool_names() if n in LTS_READ_ONLY_TOOL_NAMES)
 
 
-def write_tool_names() -> Tuple[str, ...]:
+def write_tool_names() -> tuple[str, ...]:
     return tuple(n for n in served_tool_names() if n not in LTS_READ_ONLY_TOOL_NAMES)
 
 
@@ -110,7 +110,7 @@ def _dispatch(name: str, arguments: dict, engine) -> dict:
 
 
 # ----------------------------------------------------------------------- P4: the statement
-def _git(pkg_parent: str, *args: str) -> Optional[str]:
+def _git(pkg_parent: str, *args: str) -> str | None:
     try:
         p = subprocess.run(["git", "-C", pkg_parent, *args], capture_output=True, text=True,
                            timeout=_GIT_TIMEOUT_S)
@@ -119,7 +119,7 @@ def _git(pkg_parent: str, *args: str) -> Optional[str]:
     return p.stdout if p.returncode == 0 else None
 
 
-def _package_dirs() -> Tuple[str, str]:
+def _package_dirs() -> tuple[str, str]:
     """(factlattice_engine dir, factlattice core dir) as actually imported by THIS process."""
     import factlattice
     import factlattice_engine
@@ -127,21 +127,20 @@ def _package_dirs() -> Tuple[str, str]:
             os.path.dirname(os.path.abspath(factlattice.__file__)))
 
 
-def build_info(package_dir: str, core_dir: Optional[str] = None) -> Dict[str, Any]:
-    """The build stamp. `source_sha256` hashes the source of BOTH the engine package and the
-    `factlattice` core package (the parser, which the selfcheck exercises), through the engine's
-    own `build_stamp.build_stamp`; the two halves are also given separately. The git fields are
+def build_info(package_dir: str, core_dir: str | None = None) -> dict[str, Any]:
+    """The build stamp. `source_sha256` IS the engine's own `build_stamp.build_stamp` over BOTH the
+    engine package and the `factlattice` core package (the parser, which the selfcheck exercises),
+    the value the code-currency sentinel watches; the two packages' hashes are also given
+    separately (`engine_sha256`, `core_sha256`). The git fields are
     filled ONLY when the engine package sits at the root of a git checkout that tracks it;
     otherwise they are None and say why. A package installed into some unrelated repo's venv
     must not report that repo's HEAD."""
-    from .build_stamp import build_stamp
-    import hashlib
+    from .build_stamp import CORE_PACKAGE, ENGINE_PACKAGE, build_stamp, package_stamp
     if core_dir is None:
         core_dir = _package_dirs()[1]
-    eng_h, core_h = build_stamp(package_dir), build_stamp(core_dir)
-    combined = None if eng_h is None or core_h is None else \
-        "sha256:" + hashlib.sha256((eng_h + "\n" + core_h).encode("utf-8")).hexdigest()
-    info: Dict[str, Any] = {"source_sha256": combined, "engine_sha256": eng_h, "core_sha256": core_h,
+    eng_h, core_h = package_stamp(package_dir, ENGINE_PACKAGE), package_stamp(core_dir, CORE_PACKAGE)
+    combined = build_stamp(package_dir, core_dir)
+    info: dict[str, Any] = {"source_sha256": combined, "engine_sha256": eng_h, "core_sha256": core_h,
                             "git_head": None, "git_dirty": None}
     parent = os.path.dirname(package_dir)
     top = _git(parent, "rev-parse", "--show-toplevel")
@@ -161,7 +160,7 @@ def build_info(package_dir: str, core_dir: Optional[str] = None) -> Dict[str, An
     return info
 
 
-def corpus_config_info() -> Dict[str, Any]:
+def corpus_config_info() -> dict[str, Any]:
     """Which registry this run uses, from THE lookup: `source` (env | user-config | example), `path`, `sha256`
     (registry bytes, plus cwd/root/HOME/profile-dir only when a path needs them), `loaded`, and a `note`. It never reads the environment itself. A
     broken configured registry is `loaded: false` with the named `error` -- NOT a silent example fallback."""
@@ -183,7 +182,7 @@ def corpus_config_info() -> Dict[str, Any]:
             "note": "registry file loaded" + via}
 
 
-def registry_statement(engine=None, reason: Optional[str] = None) -> Dict[str, Any]:
+def registry_statement(engine=None, reason: str | None = None) -> dict[str, Any]:
     """The registry statement every exit path that has read the environment carries (F3): the
     config (path, loaded, note) and the counts. `corpus_count` is an int, or None meaning the
     engine was NOT built, with `count_note` saying why. NAMES NO CORPUS: P3 binds it too."""
@@ -200,15 +199,20 @@ def registry_statement(engine=None, reason: Optional[str] = None) -> Dict[str, A
     out = {"corpus_count": count, "registry_entries": entries, "count_note": note}
     if entries_note and engine is not None:
         out["entries_note"] = entries_note
-    return {"corpus_config": corpus_config_info(), "registry": out}
+    ctx = {"corpus_config": corpus_config_info(), "registry": out}
+    from .tools import default_corpora_listed
+    listed = default_corpora_listed()
+    if listed:   # specs/37-default-scope.lts: a count, never the names
+        ctx["default_scope"] = {"listed": len(listed)}
+    return ctx
 
 
-def _explicit_registry_empty(ctx: Dict[str, Any]) -> bool:
+def _explicit_registry_empty(ctx: dict[str, Any]) -> bool:
     """F1: an EXPLICITLY configured registry (the env var is set) that loaded zero corpora."""
     return ctx["corpus_config"]["path"] is not None and ctx["registry"]["corpus_count"] == 0
 
 
-def build_context(tool: str, allow_write: bool, engine=None) -> Dict[str, Any]:
+def build_context(tool: str, allow_write: bool, engine=None) -> dict[str, Any]:
     """The `call_context` block. NAMES NO CORPUS (a count only): P3 binds the statement too."""
     eng_dir, core_dir = _package_dirs()
     same = os.path.dirname(os.path.realpath(eng_dir)) == os.path.dirname(os.path.realpath(core_dir))
@@ -227,15 +231,15 @@ def build_context(tool: str, allow_write: bool, engine=None) -> Dict[str, Any]:
     return ctx
 
 
-def early_context(tool: Optional[str], allow_write: bool, reason: str) -> Dict[str, Any]:
+def early_context(tool: str | None, allow_write: bool, reason: str) -> dict[str, Any]:
     """F3: the context for an exit that came before the engine was built. It still states the
     registry (path, loaded flag, entries) and says the count was not read, and why."""
     return {"tool": tool, "allow_write": bool(allow_write), **registry_statement(None, reason)}
 
 
-def context_warnings(ctx: Dict[str, Any], tool: str) -> List[str]:
+def context_warnings(ctx: dict[str, Any], tool: str) -> list[str]:
     """Warnings that travel with a RESULT (top-level `warnings` in JSON, stderr in human mode)."""
-    w: List[str] = []
+    w: list[str] = []
     if _explicit_registry_empty(ctx):
         w.append(f"registry loaded 0 corpora: {ctx['corpus_config']['path']} is configured but "
                  f"yielded none; {tool} needs no corpus so it ran, but every corpus-scoped tool "
@@ -247,7 +251,7 @@ def context_warnings(ctx: Dict[str, Any], tool: str) -> List[str]:
     return w
 
 
-def _banner(ctx: Dict[str, Any], warnings: Optional[List[str]] = None) -> str:
+def _banner(ctx: dict[str, Any], warnings: list[str] | None = None) -> str:
     cc, n = ctx["corpus_config"], ctx["registry"]
     if cc["loaded"]:
         reg = f"{cc['path']} [{cc.get('source')}] sha256:{str(cc.get('sha256'))[:12]}"
@@ -260,6 +264,8 @@ def _banner(ctx: Dict[str, Any], warnings: Optional[List[str]] = None) -> str:
              f"  corpora  : {n['corpus_count']} loaded ({n['registry_entries']} registry entries)"
              if n["corpus_count"] is not None else
              f"  corpora  : {n['count_note']}; {n['registry_entries']} registry entries"]
+    if ctx.get("default_scope"):
+        lines.append(f"  scope    : default list of {ctx['default_scope']['listed']} corpora")
     if "build" in ctx:
         b = ctx["build"]
         head = b["git_head"][:12] + (" (dirty)" if b["git_dirty"] else "") if b["git_head"] else "unknown"
@@ -276,14 +282,14 @@ class UsageError(Exception):
     pass
 
 
-def _load_args(args_json: Optional[str], args_file: Optional[str]) -> Dict[str, Any]:
+def _load_args(args_json: str | None, args_file: str | None) -> dict[str, Any]:
     if args_json is not None and args_file is not None:
         raise UsageError("give --args-json OR --args-file, not both")
     if args_json is None and args_file is None:
         return {}
     if args_file is not None:
         try:
-            with open(args_file, "r", encoding="utf-8") as fh:
+            with open(args_file, encoding="utf-8") as fh:
                 raw = fh.read()
         except OSError as exc:
             raise UsageError(f"cannot read --args-file {args_file!r}: {exc.strerror or exc}")
@@ -299,7 +305,7 @@ def _load_args(args_json: Optional[str], args_file: Optional[str]) -> Dict[str, 
 
 
 # --------------------------------------------------------------------------- the verdict
-def _gate(name: str, result: Any) -> Tuple[int, Optional[str]]:
+def _gate(name: str, result: Any) -> tuple[int, str | None]:
     """Exit status and error text for a tool result. 0 ONLY for a tool that ran and succeeded.
     Tool-specific verdict fields come from `VERDICT_GATES`, never from this function's body."""
     if not isinstance(result, dict):
@@ -317,7 +323,7 @@ def _gate(name: str, result: Any) -> Tuple[int, Optional[str]]:
     return EXIT_OK, None
 
 
-def _emit(env: Dict[str, Any], as_json: bool, banner: Optional[str]) -> None:
+def _emit(env: dict[str, Any], as_json: bool, banner: str | None) -> None:
     if as_json:
         print(json.dumps(env, indent=1, default=str))
         return
@@ -330,8 +336,8 @@ def _emit(env: Dict[str, Any], as_json: bool, banner: Optional[str]) -> None:
 
 
 def _envelope(tool, ctx, *, result=None, error=None, refused=False, rc=EXIT_OK,
-              warnings=None) -> Dict[str, Any]:
-    env: Dict[str, Any] = {"success": rc == EXIT_OK, "refused": refused, "exit_code": rc,
+              warnings=None) -> dict[str, Any]:
+    env: dict[str, Any] = {"success": rc == EXIT_OK, "refused": refused, "exit_code": rc,
                            "tool": tool, "call_context": ctx}
     if error:
         env["error"] = error
@@ -358,7 +364,7 @@ def list_tools(as_json: bool) -> int:
     return EXIT_OK
 
 
-def run(tool: Optional[str], args_json: Optional[str], args_file: Optional[str],
+def run(tool: str | None, args_json: str | None, args_file: str | None,
         allow_write: bool, as_json: bool, list_only: bool = False) -> int:
     if list_only:
         return list_tools(as_json)

@@ -41,11 +41,12 @@ to it.
 from __future__ import annotations
 
 import json
-import os
+import sys
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from .querylog import log_path
 
@@ -57,15 +58,15 @@ STORM_WINDOW_S = 180
 STORM_MIN_DISTINCT = 3
 
 
-def read_records(path: Optional[Path] = None) -> List[dict]:
+def read_records(path: Path | None = None) -> list[dict]:
     """Every well-formed record. ⛔ A corrupt line is SKIPPED AND COUNTED, never fatal:
     an append-only log written by a crashing process will have a torn tail, and a reader
     that dies on it is a reader that stops working exactly when it is most needed."""
     p = path or log_path()
     if p is None or not Path(p).is_file():
         return []
-    out: List[dict] = []
-    with open(p, "r", encoding="utf-8") as fh:
+    out: list[dict] = []
+    with open(p, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -79,17 +80,17 @@ def read_records(path: Optional[Path] = None) -> List[dict]:
     return out
 
 
-def _ts(rec: dict) -> Optional[datetime]:
+def _ts(rec: dict) -> datetime | None:
     try:
         return datetime.fromisoformat(str(rec.get("ts")))
     except (TypeError, ValueError):
         return None
 
 
-def within(records: Iterable[dict], days: Optional[int]) -> List[dict]:
+def within(records: Iterable[dict], days: int | None) -> list[dict]:
     if not days:
         return list(records)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     out = []
     for r in records:
         t = _ts(r)
@@ -101,7 +102,7 @@ def within(records: Iterable[dict], days: Optional[int]) -> List[dict]:
 # ---------------------------------------------------------------------------
 # 1. NEVER READ
 # ---------------------------------------------------------------------------
-def never_read(records: Iterable[dict], corpus_nodes: Dict[str, Iterable[str]]) -> dict:
+def never_read(records: Iterable[dict], corpus_nodes: dict[str, Iterable[str]]) -> dict:
     """Nodes never delivered by any logged call, per corpus, WITH the denominator.
 
     `corpus_nodes` is `{corpus_id: [node_id, ...]}` — supplied by the caller from a live
@@ -166,7 +167,7 @@ def _question_key(rec: dict) -> str:
 
 
 def storms(records: Iterable[dict], *, window_s: int = STORM_WINDOW_S,
-           min_distinct: int = STORM_MIN_DISTINCT) -> List[dict]:
+           min_distinct: int = STORM_MIN_DISTINCT) -> list[dict]:
     """Bursts of DISTINCT questions to one corpus from one session, with a zero among them.
 
     ⛔ THE DISTINCTNESS IS COUNTED AMONG THE ZEROS, NOT ACROSS THE WINDOW, and that
@@ -177,7 +178,7 @@ def storms(records: Iterable[dict], *, window_s: int = STORM_WINDOW_S,
     three times is re-phrasing against a wall. Only the second is a place the tool lost,
     and only the second is a number that should fall — so only the second is counted.
     """
-    by_session: Dict[Any, List[dict]] = defaultdict(list)
+    by_session: dict[Any, list[dict]] = defaultdict(list)
     for r in records:
         if not (r.get("tool") or "").startswith("lts_"):
             continue
@@ -187,7 +188,7 @@ def storms(records: Iterable[dict], *, window_s: int = STORM_WINDOW_S,
         cid = (r.get("filters") or {}).get("corpus", "<all>")
         by_session[(r.get("session"), cid)].append({**r, "_t": t})
 
-    out: List[dict] = []
+    out: list[dict] = []
     for (session, cid), recs in sorted(by_session.items(), key=lambda kv: str(kv[0])):
         recs.sort(key=lambda r: r["_t"])
         i = 0
@@ -225,7 +226,7 @@ def storms(records: Iterable[dict], *, window_s: int = STORM_WINDOW_S,
 # ---------------------------------------------------------------------------
 # 3. SHAPE
 # ---------------------------------------------------------------------------
-def shape(records: List[dict]) -> dict:
+def shape(records: list[dict]) -> dict:
     if not records:
         return {"calls": 0}
     lat = sorted(float(r.get("elapsed_ms") or 0.0) for r in records)
@@ -251,8 +252,8 @@ def shape(records: List[dict]) -> dict:
     }
 
 
-def report(corpus_nodes: Dict[str, Iterable[str]], *, days: Optional[int] = 30,
-           path: Optional[Path] = None) -> dict:
+def report(corpus_nodes: dict[str, Iterable[str]], *, days: int | None = 30,
+           path: Path | None = None) -> dict:
     records = within(read_records(path), days)
     return {
         "log_path": str(path or log_path()),
@@ -266,15 +267,21 @@ def report(corpus_nodes: Dict[str, Iterable[str]], *, days: Optional[int] = 30,
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def _live_corpus_nodes(corpus: Optional[str]) -> Dict[str, List[str]]:
+def _live_corpus_nodes(corpus: str | None) -> dict[str, list[str]]:
     from . import config
     store = config.build_store()
+    served, _pending, failed, _no_roots = store.snapshot_all()
+    for cid, rec in sorted(failed.items()):
+        if corpus is None or cid == corpus:
+            # a corpus that could not be loaded (a root that did not answer, an unreadable member) has no node list here: say so, so that its
+            # absence from 'never read' is not read as 'nothing in it is unread'
+            print(f"corpus {cid!r} was NOT loaded ({rec.get('code')}); it is missing from this report", file=sys.stderr)
     return {p.corpus_id: list(p.nodes)
-            for p in store.partitions()
+            for p in served
             if corpus is None or p.corpus_id == corpus}
 
 
-def _main(argv: Optional[List[str]] = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     import argparse
     ap = argparse.ArgumentParser(prog="python3 -m factlattice_engine.readprofile",
                                  description=__doc__.splitlines()[0])

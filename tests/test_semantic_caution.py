@@ -14,7 +14,6 @@ unpatched, and test_cross_import_pin binds caution.CANONICAL_EDGE_TYPE to that t
 """
 from __future__ import annotations
 
-import copy
 import json
 
 import pytest
@@ -29,13 +28,13 @@ from factlattice_engine.semantic import suggest as S  # noqa: E402
 from factlattice_engine.tools import LtsEngine  # noqa: E402
 from tests.semantic_helpers import _tiny_model  # noqa: E402
 
-BODY = "tile map version field hello world"
+BODY = "zero map version field hello world"
 CORPUS = (
     "# Corpus [DOC-C]\n\n"
     f"## Canonical trust model [C-1]\n\n- status: active\n- what: {BODY} canonical\n\n"
     # B1: legacy label with a canonical-label
     f"## Legacy trust model [L-1]\n\n- status: active\n- canonical-node: [C-1]\n"
-    f"- canonical-label: QX-3 here means Vendor QX2\n- what: {BODY} legacy\n\n"
+    f"- canonical-label: TM-3 here means Vendor TM2\n- what: {BODY} legacy\n\n"
     # legacy label WITHOUT a canonical-label: default text
     f"## Legacy unlabelled [L-2]\n\n- status: active\n- canonical-node: [C-1]\n- what: {BODY} unlabelled\n\n"
     # B2 spelling 1: superseded-by (reversed)
@@ -69,7 +68,7 @@ def world(tmp_path, monkeypatch):
 
 
 def _cands(eng):
-    r = eng.semantic_find(corpus="c", text="tile map version", k=50)
+    r = eng.semantic_find(corpus="c", text="zero map version", k=50)
     assert r["success"] and r["status"] == "ok", r
     return {c["id"]: c for c in r["candidates"]}, r
 
@@ -87,7 +86,7 @@ def test_B1_legacy_label_caution_with_label_text(world):
     c = cs["L-1"]["caution"]
     assert c == {"kind": "legacy-label", "canonical_id": "C-1",
                  "canonical_title": "Canonical trust model",
-                 "text": "QX-3 here means Vendor QX2"}
+                 "text": "TM-3 here means Vendor TM2"}
     assert "caution" not in cs["C-1"]
     assert "caution" not in cs["P-1"]
 
@@ -118,7 +117,7 @@ def test_canonical_edge_wins_over_supersession(world):
 
 
 def test_B3_ranks_and_scores_unchanged_by_the_caution_code(world, monkeypatch):
-    from factlattice_engine import caution as CA     # the switch lives with the caution code
+    from factlattice_engine import caution as CA  # the switch lives with the caution code
     on, _ = _cands(world)
     monkeypatch.setattr(CA, "CAUTION_ENABLED", False)
     off, _ = _cands(world)
@@ -134,7 +133,7 @@ def test_B4_lts_node_carries_the_caution(world):
     n = world.node(corpus="c", node_id="L-1")
     assert n["caution"] == {"kind": "legacy-label", "canonical_id": "C-1",
                             "canonical_title": "Canonical trust model",
-                            "text": "QX-3 here means Vendor QX2"}
+                            "text": "TM-3 here means Vendor TM2"}
     assert world.node(corpus="c", node_id="S-3")["caution"]["kind"] == "superseded"
     assert world.node(corpus="c", node_id="S-1")["caution"]["kind"] == "superseded"
 
@@ -152,7 +151,7 @@ def test_exact_find_results_do_not_carry_it_v1(world):
 
 
 def test_on_miss_block_carries_the_caution_too(world):
-    r = world.find(corpus="c", text="tile map version qqqxyz", semantic="on_miss")
+    r = world.find(corpus="c", text="zero map version qqqxyz", semantic="on_miss")
     blk = r["did_you_mean_semantic"]
     kinds = {c["id"]: c["caution"]["kind"] for c in blk["candidates"] if "caution" in c}
     assert kinds, [c["id"] for c in blk["candidates"]]      # the on-miss block annotates too

@@ -1,0 +1,116 @@
+# comment-containment: detect a comment, a review or an issue that names what the public repository must not name, hide it, and raise an alert.
+#
+# SCOPE, STATED PLAINLY. This workflow detects and contains; it cannot prevent. An issue comment or an issue is public the moment it posts, so for those the exposure lasts seconds, not
+# zero (the run starts with the event). A pull-request REVIEW or REVIEW COMMENT is not handled by an event: it stays public until the next scheduled sweep, which is minutes and not seconds
+# (the schedule is every 10 minutes, and GitHub may delay a scheduled run by many more; the sweep looks back 24 hours, and a gap of more than 23 hours between successful sweeps is alerted). Minimising collapses a comment and does not delete it. An issue cannot be minimised by the API at all:
+# for an issue the alert is the whole containment, and the run goes red to say so. See the script's own header (scripts/comment_containment.py) for what it reads, what it cannot see (text
+# edited away before the run read it, and the edit history) and what it prints (rule names and counts, never a term and never the text).
+# THE TRIGGERS. issue_comment (created, edited) and issues (opened, edited), which the public set's trigger allow-list (tests/test_public_workflows_lint.py, L0) refuses everywhere else and
+# names for this one file with a reason each; and `schedule` (every 10 minutes, the default branch), which the allow-list allows and L0 pins here to that one cron line. The review events
+# (pull_request_review, pull_request_review_comment) are NOT triggers of this file and L0 refuses them here as everywhere: their runs execute on a pull request's merge ref, where this
+# workflow's file is the pull request's own and an environment restricted to the default branch refuses the run, so no secret could be held safely. The sweep reads reviews and review comments
+# through the API from the default branch instead. The text of an event is written by whoever may comment or open an issue, so the workflow reads only ids from the event and reads the text
+# through the API as data; nothing of it reaches a shell, an environment variable or a command. Only collaborators comment or open issues here, and any collaborator is trusted (the maintainers'
+# ruling of 2026-11-23); this workflow is the tripwire for a name a trusted author wrote by mistake, not a defence against an attacker.
+# WHICH CODE RUNS. The base repository's default branch, never anything from a pull request: each of the three events runs on the default branch (GitHub's documented behaviour, not measured here)
+# and every job checks out with no `ref` and no `repository`. The lint pins that, and refuses any workflow that adds a review event to a ref-less checkout.
+# THREE JOBS, EACH HOLDING ONLY ITS OWN SECRET (tests/test_public_workflows_lint.py pins each name to its one job and each job's shape). detect holds OVERLAY_READ_TOKEN (read only; this workflow's OWN
+# copy of the secret, in its own environment `comment-containment`, so the pull-request check's environment `leak-check` is named by that check's job alone) and writes nothing to GitHub. minimise
+# holds COMMENT_MINIMISE_TOKEN (a write token; environment `comment-minimise`) and nothing else. alert holds OVERLAY_ALERT_TOKEN (meant to write to the overlay repository only; environment
+# `comment-alert`) and nothing else. The jobs hand each other, in one JSON list, each hit's kind, id, node id, rule names, count and address, and a few result words; each later job checks every
+# field against a fixed shape. The lint lets a holder's environment read only the output or result of another holder job of this workflow whose outputs are script outputs, so a helper job cannot relay event
+# text into a holder; what a script writes to its outputs is that script's business, pinned by its tests.
+# THE ALERTS (all in the private overlay repository). One alert per object, rule set and text (the same text opens nothing new; while an alert for the object is open, a new text adds a comment to it instead of opening another; once it is closed a new leak opens a new one), at most 10 alerts or
+# comments per run (the rest in one summary alert), and ONE alert when a scan was refused or never ran (no secret, an unreadable overlay, stale terms, an environment that refused the job): without it a refused scan would be only a red run
+# that GitHub tells the commenter about. An alert's key follows the object's current text, so a new leak in an already-alerted object is noted again (a comment on the open alert, or a new alert once it is closed). Overlay rows that guard our own paths need neutral names (`own-path-1`, ...). See the script's header for the keys.
+# THE DETECT JOB alone has `actions: read` (the sweep's gap check reads this workflow's previous successful scheduled run through the Actions API with the job's own token).
+# THE GENERIC PATH RULES of the guard (a home path) are not applied to comments, reviews or issues; every overlay rule and every generated-id rule is, and the scan REFUSES (cause `own-paths-missing`) unless
+# the overlay vocabulary holds a rule named `own-path-...` for the maintainers' own names, so a missing row cannot silently leave our own paths unguarded.
+# EACH ENVIRONMENT MUST BE RESTRICTED TO THE DEFAULT BRANCH (deployment branches: the default branch only). The lints see the files on the branch under test; only that setting keeps a
+# workflow edited on another branch from naming an environment and reading its secret. The three environments of this workflow are `comment-containment`, `comment-minimise` and `comment-alert`.
+# NO CONCURRENCY GROUP, on purpose: a newer run must never cancel the run that is about to contain an older text.
+# SCRIPT: scripts/comment_containment.py, which imports scripts/leak_check.py (its rule loading, controls and refusal machinery) and gh_api.py.
+name: comment-containment
+
+on:
+  issue_comment:
+    types: [created, edited]
+  issues:
+    types: [opened, edited]
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions: {}
+
+jobs:
+  detect:
+    name: detect
+    runs-on: ubuntu-latest   # literal, always
+    timeout-minutes: 10
+    environment: comment-containment   # the scope of this workflow's own copy of the overlay read token
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read   # the sweep reads this workflow's previous successful scheduled run (the gap check); no other job has it
+    outputs:
+      hit: ${{ steps.scan.outputs.hit }}
+      hits: ${{ steps.scan.outputs.hits }}
+      overflow: ${{ steps.scan.outputs.overflow }}
+      refused: ${{ steps.scan.outputs.refused }}
+      gap: ${{ steps.scan.outputs.gap }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - id: scan
+        name: scan the comment, issue or recent reviews
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # read-only (contents, issues, pull-requests, actions: read)
+          OVERLAY_READ_TOKEN: ${{ secrets.OVERLAY_READ_TOKEN }}
+          LC_OVERLAY_REPO: 740Dave/factlattice-deploy
+        run: python3 .github/workflows/scripts/comment_containment.py detect --max-terms-age-hours 192
+
+  minimise:
+    name: minimise
+    needs: detect
+    if: needs.detect.outputs.hit == 'true'
+    runs-on: ubuntu-latest   # literal, always
+    timeout-minutes: 5
+    environment: comment-minimise   # the scope of the write token
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: minimise what the scan found
+        env:
+          COMMENT_MINIMISE_TOKEN: ${{ secrets.COMMENT_MINIMISE_TOKEN }}
+          CC_HITS: ${{ needs.detect.outputs.hits }}
+        run: python3 .github/workflows/scripts/comment_containment.py minimise
+
+  alert:
+    name: alert
+    needs: [detect, minimise]
+    if: always() && (needs.detect.outputs.hit == 'true' || needs.detect.result != 'success' || needs.detect.outputs.refused != '' || needs.detect.outputs.gap != '')
+    runs-on: ubuntu-latest   # literal, always
+    timeout-minutes: 5
+    environment: comment-alert   # the scope of the alert token
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: open the alerts in the overlay repository
+        env:
+          OVERLAY_ALERT_TOKEN: ${{ secrets.OVERLAY_ALERT_TOKEN }}
+          LC_OVERLAY_REPO: 740Dave/factlattice-deploy
+          CC_HITS: ${{ needs.detect.outputs.hits }}
+          CC_OVERFLOW: ${{ needs.detect.outputs.overflow }}
+          CC_REFUSED: ${{ needs.detect.outputs.refused }}
+          CC_GAP: ${{ needs.detect.outputs.gap }}
+          CC_DETECT_RESULT: ${{ needs.detect.result }}
+          CC_MINIMISE_RESULT: ${{ needs.minimise.result }}
+        run: python3 .github/workflows/scripts/comment_containment.py alert

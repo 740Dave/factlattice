@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from factlattice import build_index
-from factlattice.authoring.edit import EditRefused, _gate, _parsed_props, set_property
+from factlattice.authoring.edit import EditRefused, _gate, set_property
 from factlattice.parser import parse_text
 from factlattice_engine import LtsEngine, LtsStore, Partition, authoring
 from factlattice_engine.tools import dispatch

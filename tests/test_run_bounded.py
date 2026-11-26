@@ -95,6 +95,9 @@ def _mini_repo(tmp_path, test_body):
     (repo / "tests" / "test_x.py").write_text(test_body)
     env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t",
                GIT_COMMITTER_EMAIL="t@t")
+    # the tool runs `python3 -m pytest`: make that the interpreter running this suite (in CI the venv is not on PATH, and the
+    # system python3 has no pytest), not whichever python3 the PATH happens to hold
+    env["PATH"] = os.path.dirname(sys.executable) + os.pathsep + env.get("PATH", "")
     for cmd in (["git", "init", "-q"], ["git", "add", "-A"], ["git", "commit", "-qm", "base"]):
         subprocess.run(cmd, cwd=repo, check=True, env=env)
     (repo / "change.txt").write_text("x")

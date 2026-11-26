@@ -6,7 +6,7 @@
 That is the root cause this module closes, and it is NOT the lint's job. Lint answers
 *"does this violate a rule?"*. Preview answers *"what did my document actually become,
 and what did it lose?"*. The distinction is measurable, not rhetorical. Measured on the
-committed `41-example-process-launcher.lts` (frozen at `tests/fixtures/preview/`):
+committed `41-intelligence-host-spawner.lts` (frozen at `tests/fixtures/preview/`):
 
     lts_lint        ->  0 errors, exit 0; 5 warnings, ALL of them on lines 4-10
     the document    ->  its own root `[SPEC:ACME-INTELLIGENCE-HOST]` (line 3) mints NO
@@ -90,8 +90,8 @@ import os
 import re
 import shutil
 import tempfile
+from collections.abc import Sequence
 from types import SimpleNamespace
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import factlattice
 from factlattice import corpus as fl_corpus
@@ -156,7 +156,7 @@ class PreviewRefusal(Exception):
 # cry-wolf failure that gets a tool switched off. The defining positions are exactly
 # the two the parser itself recognises, plus the two near-misses of those:
 #
-#   HEADING        `### [ACME-ID-5A] Title`      -> `_heading_id`, mints a node
+#   HEADING        `### [ACME-IH-5A] Title`      -> `_heading_id`, mints a node
 #   LIST NODE-DEF  `- [ID] **Title** ...`       -> `_LI_NODEDEF_RE`, mints a node
 #   BARE LEADING   `[SPEC:X] Title` at col 0    -> mints NOTHING (a heading that
 #                                                  lost its `#`)
@@ -203,7 +203,7 @@ class Declaration:
     __slots__ = ("id", "doctype", "line", "text", "shape", "minted", "minted_at",
                  "why")
 
-    def __init__(self, id: str, doctype: Optional[str], line: int, text: str,
+    def __init__(self, id: str, doctype: str | None, line: int, text: str,
                  shape: str):
         self.id = id
         self.doctype = doctype
@@ -211,8 +211,8 @@ class Declaration:
         self.text = text
         self.shape = shape
         self.minted = False
-        self.minted_at: Optional[int] = None
-        self.why: Optional[str] = None
+        self.minted_at: int | None = None
+        self.why: str | None = None
 
     def to_dict(self, *, verbose: bool = False) -> dict:
         d = {"id": self.id, "doctype": self.doctype, "line": self.line,
@@ -225,7 +225,7 @@ class Declaration:
         return d
 
 
-def _leading_bracket_id(body: str) -> Optional[Tuple[str, Optional[str]]]:
+def _leading_bracket_id(body: str) -> tuple[str, str | None] | None:
     """`(node_id, doctype)` when `body` STARTS with an id-like bracket, else None.
 
     Mirrors `_heading_id`'s id/doctype segmentation so a bracket is judged by exactly
@@ -249,14 +249,14 @@ def _leading_bracket_id(body: str) -> Optional[Tuple[str, Optional[str]]]:
     return node_id, doctype
 
 
-def find_declarations(cov: "factlattice.LineCoverage") -> List[Declaration]:
+def find_declarations(cov: factlattice.LineCoverage) -> list[Declaration]:
     """Every bracketed id authored in a DEFINING position, in file order.
 
     Reads the parser's own `LineCoverage` (its `lines`, `fenced`, `section` and
     `body_start` records) rather than re-deriving document structure — same anti-fork
     rule the coverage classifier follows.
     """
-    out: List[Declaration] = []
+    out: list[Declaration] = []
     for idx in range(cov.body_start, len(cov.lines)):
         if idx in cov.fenced:
             continue
@@ -312,9 +312,9 @@ def find_declarations(cov: "factlattice.LineCoverage") -> List[Declaration]:
 
 
 def _settle_declarations(decls: Sequence[Declaration],
-                         nodes: Sequence["factlattice.Node"]) -> None:
+                         nodes: Sequence[factlattice.Node]) -> None:
     """Mark each declaration minted/not, and attach the WHY for the losses."""
-    minted_at: Dict[str, int] = {}
+    minted_at: dict[str, int] = {}
     for n in nodes:
         minted_at.setdefault(n.id, n.line_range[0])
     for d in decls:
@@ -334,7 +334,7 @@ def _settle_declarations(decls: Sequence[Declaration],
 # ---------------------------------------------------------------------------
 # Corpus resolution — the mode DECLARATION's factual basis
 # ---------------------------------------------------------------------------
-def _resolve_corpus_root(corpus: str, store=None) -> Tuple[str, dict]:
+def _resolve_corpus_root(corpus: str, store=None) -> tuple[str, dict]:
     """`(root_dir, how)` for a `corpus` given as a directory PATH or a loaded NAME.
 
     Refuses on a multi-root corpus it cannot disambiguate rather than silently
@@ -361,7 +361,7 @@ def _resolve_corpus_root(corpus: str, store=None) -> Tuple[str, dict]:
         hint="pass `corpus` as an absolute path to the corpus directory")
 
 
-def _rel_within(root: str, path: str) -> Optional[str]:
+def _rel_within(root: str, path: str) -> str | None:
     """`path` as a root-relative posix path, or None if it is outside `root`.
 
     [GUARDS-CANONICALISE-FIRST] Both sides are canonicalised (realpath) before the containment
@@ -377,7 +377,7 @@ def _rel_within(root: str, path: str) -> Optional[str]:
     return rel.replace(os.sep, "/")
 
 
-def _stage(root: str, draft_rel: str, content: str, replaces_rel: Optional[str]) -> str:
+def _stage(root: str, draft_rel: str, content: str, replaces_rel: str | None) -> str:
     """Copy `root`'s .lts set into a temp dir with the draft SWAPPED IN, and return it.
 
     A directory copy (not a file-set parse) so the staged parse runs the SAME
@@ -409,10 +409,10 @@ def _clip(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 3] + "..."
 
 
-def _prop_view(props: Dict[str, object], verbose: bool) -> Dict[str, object]:
+def _prop_view(props: dict[str, object], verbose: bool) -> dict[str, object]:
     if verbose:
         return props
-    out: Dict[str, object] = {}
+    out: dict[str, object] = {}
     for k, v in props.items():
         if isinstance(v, list):
             out[k] = [_clip(x, VALUE_CHARS) for x in v]
@@ -423,7 +423,7 @@ def _prop_view(props: Dict[str, object], verbose: bool) -> Dict[str, object]:
     return out
 
 
-def _node_view(n: "factlattice.Node", verbose: bool) -> dict:
+def _node_view(n: factlattice.Node, verbose: bool) -> dict:
     return {
         "id": n.id,
         "title": n.title,
@@ -438,7 +438,7 @@ def _node_view(n: "factlattice.Node", verbose: bool) -> dict:
     }
 
 
-def _edge_view(e: "factlattice.Edge") -> dict:
+def _edge_view(e: factlattice.Edge) -> dict:
     d = {"source": e.source, "type": e.type, "target": e.target, "layer": e.layer,
          "inference": e.inference, "source_line": e.source_line}
     if e.flags:
@@ -450,7 +450,7 @@ def _edge_view(e: "factlattice.Edge") -> dict:
     return d
 
 
-def _edge_key(e) -> Tuple[str, str, str]:
+def _edge_key(e) -> tuple[str, str, str]:
     return (e.source, e.type, e.target)
 
 
@@ -465,9 +465,9 @@ def _loss_view(v, verbose: bool) -> dict:
 # ---------------------------------------------------------------------------
 # THE TOOL
 # ---------------------------------------------------------------------------
-def preview(content: Optional[str] = None, *, path: Optional[str] = None,
-            corpus: Optional[str] = None, replaces: Optional[str] = None,
-            virtual_path: Optional[str] = None, profile=None,
+def preview(content: str | None = None, *, path: str | None = None,
+            corpus: str | None = None, replaces: str | None = None,
+            virtual_path: str | None = None, profile=None,
             verbose: bool = False, store=None) -> dict:
     """What would this `.lts` content BECOME, and what would it LOSE?
 
@@ -548,14 +548,14 @@ def _preview_isolated(content: str, label: str, src: dict, profile, verbose: boo
 
 # --- target corpus ----------------------------------------------------------
 def _preview_in_corpus(content: str, label: str, src: dict, corpus: str,
-                       replaces: Optional[str], profile, verbose: bool,
+                       replaces: str | None, profile, verbose: bool,
                        store) -> dict:
     root, how = _resolve_corpus_root(corpus, store)
     baseline = fl_corpus.parse(source=root, profile=profile, corpus_id="preview-base")
     corpus_files = len(list_lts_files(root))
 
     # --- intent: ADD or REPLACE, never inferred from a guess -----------------
-    replaces_rel: Optional[str] = None
+    replaces_rel: str | None = None
     replaces_inferred = False
     if replaces:
         replaces_rel = _rel_within(root, replaces) if os.path.isabs(replaces) else \
@@ -664,7 +664,7 @@ def _core_payload(parsed, draft_rel: str, verbose: bool) -> dict:
     if cov is None and len(parsed.coverage) == 1:
         cov = parsed.coverage[0]
 
-    frontmatter: Dict[str, str] = {}
+    frontmatter: dict[str, str] = {}
     doc_tag = domain = None
     if cov is not None:
         pf = factlattice.parse_text("\n".join(cov.lines), draft_rel)
@@ -882,8 +882,8 @@ def _delta(baseline, candidate, replaces_rel: str, draft_rel: str,
     old_edges = {_edge_key(e) for e in baseline.edges if e.source_file == replaces_rel}
     new_edges = {_edge_key(e) for e in candidate.edges if e.source_file == draft_rel}
 
-    props_lost: Dict[str, List[str]] = {}
-    props_gained: Dict[str, List[str]] = {}
+    props_lost: dict[str, list[str]] = {}
+    props_gained: dict[str, list[str]] = {}
     for nid in sorted(set(old_nodes) & set(new_nodes)):
         ok, nk = set(old_nodes[nid].properties), set(new_nodes[nid].properties)
         if ok - nk:
@@ -914,7 +914,7 @@ def render_text(out: dict) -> str:
     r = out["resolution"]
     la = out["line_accounting"]
     b = out["became"]
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(f"lts_preview — {out['source']['virtual_path'] if out.get('source') else '(draft)'}")
     lines.append(f"-- mode: {r['mode']} | {r['declaration']}")
     prof = r.get("profile") or {}

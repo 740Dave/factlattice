@@ -1,6 +1,6 @@
 """THE EDGE-TYPE NAMESPACE — collision discipline, one level up from property keys.
 
-⛔ WHAT THIS CLOSES. 3f9a2c1 made property KEYS profile-registrable and guarded them with
+⛔ WHAT THIS CLOSES. 9819d48 made property KEYS profile-registrable and guarded them with
 load-time refusals, and its author flagged its own hole rather than hiding it: "I applied
 collision discipline to property KEYS only, not to the edge-TYPE namespace." Measured
 against that commit, before any of this existed:
@@ -15,7 +15,7 @@ against that commit, before any of this existed:
     by filename sort order, with a note in `.ambiguities` that nothing reads.
 
 ⛔ NEGATIVE-CONTROL DISCIPLINE. Every refusal here was RUN AND OBSERVED NOT FIRING
-against the code as it stood at 3f9a2c1 before the guard was written. A guard observed
+against the code as it stood at 9819d48 before the guard was written. A guard observed
 only refusing is not a guard — it cannot be told apart from a function that refuses
 everything, which is why every refusal test in this module is paired with an ACCEPTANCE
 test on the nearest legitimate neighbour (the epistemics rule rule-negative-control).
@@ -28,8 +28,8 @@ import pytest
 
 from factlattice.parser import CANONICAL_LAYERS, CORE_EDGE_LAYER, parse_text
 from factlattice.profile import (
-    ProfileCollisionError,
     _EDGE_TYPE_RE,
+    ProfileCollisionError,
     load_profile,
     merge_edge_types,
 )
@@ -172,7 +172,7 @@ def test_core_shadow_produced_a_two_layer_graph_BEFORE_the_guard():
     """⛔ THE DAMAGE, REPRODUCED THROUGH THE PARSER — not asserted from memory.
 
     This is what `{type: PART_OF, layer: causal, property_key: contained-by}` did on
-    3f9a2c1: bypass the loader (which now refuses it) and hand the parser the map the
+    9819d48: bypass the loader (which now refuses it) and hand the parser the map the
     loader used to return. Two PART_OF edges, two different layers, one graph.
     `lts_traverse(layers=['semantic'])` returns one of them and reports success.
     """
@@ -223,8 +223,7 @@ def test_restating_a_core_verb_under_relationship_verbs_is_allowed():
 
 
 def test_the_SHIPPED_profiles_still_load():
-    """The blast-radius control. If R1/R3 refused anything that ships, this is red.
-    (The published tree ships five profiles; a maintainer checkout carries one more.)"""
+    """The blast-radius control. If R1/R3 refused anything that ships, this is red. (Five ship: the sixth, a deployment's own, lives in the overlay.)"""
     import glob
     paths = sorted(glob.glob(os.path.join(SHIPPED_PROFILE_DIR, "*.lts")))
     assert len(paths) >= 5, "the shipped profile set moved; re-measure before trusting"
@@ -268,7 +267,7 @@ def test_an_omitted_layer_defaults_to_semantic_and_is_not_refused():
 def test_cross_profile_edge_type_disagreement_is_a_loud_refusal():
     """⛔ `corpora/acme-specs/` is a root of THREE registered corpora, so this is a
     live scenario. Note the two profiles use DIFFERENT property keys — which is exactly
-    why the key-level guard from 3f9a2c1 stayed silent on it."""
+    why the key-level guard from 9819d48 stayed silent on it."""
     a = load_profile(_profile("team-a", {"type": "GOVERNS", "property_key": "governs",
                                          "layer": "semantic"}))
     b = load_profile(_profile("team-b", {"type": "GOVERNS",
@@ -385,13 +384,14 @@ def test_identical_declarations_across_profiles_still_merge(tmp_path):
 
 
 def test_the_SHIPPED_profile_dir_loads_clean():
-    """Measured 2026-08-15 BEFORE the guard: 72 types, six namespaces, ZERO conflicts.
+    """Measured 2026-08-15 BEFORE the guard: 72 types, six namespaces, ZERO conflicts. Since the deployment's own profile left the
+    public tree (it now loads from the overlay) the shipped five declare 63 types in five namespaces.
     The guard was installed while the corpus was clean, which is the only time a guard
     can be installed without also being a migration."""
     from factlattice.domain_profiles import load_profile_edge_config
 
     cfg = load_profile_edge_config(SHIPPED_PROFILE_DIR)
-    assert len(cfg.edge_layers) >= 45      # the published set measures 45; a maintainer checkout carries more
+    assert len(cfg.edge_layers) >= 63
     assert cfg.ambiguities == []
     assert all("." in t for t in cfg.edge_layers), (
         "a BARE type reached the layer table — R1's premise (only namespaced types "
@@ -419,10 +419,9 @@ def test_audit_adapter_exposes_the_loaded_profile():
     stored the profile only as `_profile`, so that getattr returned None on EVERY call
     and the section reported `profile_registered: {}` for a profile that registers a
     key. It failed in the safe-looking direction — a well-formed zero, identical to the
-    answer for a profile that registers nothing. Measured against 3f9a2c1.
+    answer for a profile that registers nothing. Measured against 9819d48.
     """
-    from factlattice_engine.analytics.profile_audit import (
-        YamlProfileAdapter, _property_edges_section)
+    from factlattice_engine.analytics.profile_audit import YamlProfileAdapter, _property_edges_section
 
     ad = YamlProfileAdapter(AUDIT_PROFILE)
     assert getattr(ad, "profile", None) is not None
@@ -444,8 +443,7 @@ def test_audit_declared_edge_types_include_edge_types_declarations():
 
 
 def test_audit_registration_block_attributes_and_flags():
-    from factlattice_engine.analytics.profile_audit import (
-        YamlProfileAdapter, _edge_type_registration)
+    from factlattice_engine.analytics.profile_audit import YamlProfileAdapter, _edge_type_registration
 
     reg = _edge_type_registration(YamlProfileAdapter(AUDIT_PROFILE),
                                   used_edges={"EXEMPLIFIES", "PART_OF"})
@@ -459,8 +457,7 @@ def test_audit_registration_block_attributes_and_flags():
 
 def test_audit_registration_block_is_inert_without_a_profile():
     """The negative half — proves the numbers above came from the REGISTRATION."""
-    from factlattice_engine.analytics.profile_audit import (
-        NullProfileAdapter, _edge_type_registration)
+    from factlattice_engine.analytics.profile_audit import NullProfileAdapter, _edge_type_registration
 
     reg = _edge_type_registration(NullProfileAdapter(), used_edges={"PART_OF"})
     assert reg["profile_registered"] == {}

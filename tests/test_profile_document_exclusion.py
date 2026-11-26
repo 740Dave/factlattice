@@ -21,6 +21,7 @@ Covers, in order:
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -387,3 +388,212 @@ def test_the_check_rides_out_on_lts_profile_audit(corpus, tmp_path, monkeypatch)
     out = profile_audit(LtsAggregator(LtsEngine(_store_for(root))), corpus="c")
     assert out["registration"]["success"] is True
     assert out["registration"]["findings"] == []
+
+
+# =========================================================================== #
+# 5. BOTH BUILDERS, ANY CWD: a single-`root:` entry is built by `build_partition`, a `roots:` entry by
+#    `build_merged_partition`. The agreement check must read the same absolute path from either, whatever the
+#    process's working directory. (Every test above builds through the merged path only; the single-root path
+#    recorded root-relative names, which the audit resolved against the cwd, so a REGISTERED profile was reported
+#    as registered by nobody. Found 2026-10-29 through the procedures guide's `call` example.)
+# =========================================================================== #
+@pytest.mark.parametrize("shape", ["root", "roots"])
+def test_a_registered_profile_agrees_from_either_builder_and_any_cwd(corpus, tmp_path, monkeypatch, shape):
+    from factlattice_engine.config import build_store
+    root, prof = corpus
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    entry = {"root": str(root)} if shape == "root" else {"roots": [{"path": str(root)}]}
+    cfg = _config(c={**entry, "domain_suffix": "proj.c", "profile": str(prof)})
+    st = build_store(cfg)
+    assert st.get_partition("c").profile_documents == [str(prof)]
+    res = audit_profile_registration(st, config=cfg)
+    assert res["findings"] == []
+    assert list(res["excluded_profile_documents"]) == [str(prof)]
+
+
+@pytest.mark.parametrize("shape", ["root", "roots"])
+def test_an_unregistered_profile_is_named_by_its_real_path_from_either_builder(corpus, tmp_path, monkeypatch, shape):
+    """The control for the test above: with no `profile` key the finding must still fire, and name the file
+    where it is, never a path under the cwd."""
+    from factlattice_engine.config import build_store
+    root, prof = corpus
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    entry = {"root": str(root)} if shape == "root" else {"roots": [{"path": str(root)}]}
+    cfg = _config(c={**entry, "domain_suffix": "proj.c"})
+    res = audit_profile_registration(build_store(cfg), config=cfg)
+    assert _kinds(res) == [KIND_UNREGISTERED_PROFILE_DOC]
+    assert res["findings"][0]["path"] == str(prof)
+
+
+@pytest.mark.parametrize("force_full", [False, True], ids=["incremental", "full"])
+@pytest.mark.parametrize("shape", ["root", "roots", "two-roots"])
+def test_a_heal_carries_the_profile_list_onto_the_partition(tmp_path, monkeypatch, shape, force_full):
+    """A PROFILE file added (or removed) after the build must reach the audit through the next heal, not only
+    after a restart: the heal rebuilds the list in its corpus index, and publish must carry it onto the
+    partition the audit reads."""
+    from factlattice_engine.config import build_store
+    from factlattice_engine.selfheal import SelfHealer
+    root = tmp_path / "h"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "other.lts").write_text(DOC_LTS.replace("WIDGET-", "GADGET-"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    entry = ({"root": str(root)} if shape == "root" else
+             {"roots": [{"path": str(root)}]} if shape == "roots" else
+             {"roots": [{"path": str(root)}, {"path": str(other)}]})
+    cfg = _config(h={**entry, "domain_suffix": "proj.h"})
+    st = build_store(cfg)
+    assert audit_profile_registration(st, config=cfg)["findings"] == []
+
+    stray = root / "stray-profile.lts"
+    stray.write_text(PROFILE_LTS, encoding="utf-8")
+    assert SelfHealer(st, force_full=force_full).heal(st.get_partition("h")).healed is True
+    assert st.get_partition("h").profile_documents == [str(stray)]
+    assert st.get_partition("h").stats["profile_documents"] == 1
+    res = audit_profile_registration(st, config=cfg)
+    assert _kinds(res) == [KIND_UNREGISTERED_PROFILE_DOC] and res["findings"][0]["path"] == str(stray)
+
+    stray.unlink()
+    assert SelfHealer(st, force_full=force_full).heal(st.get_partition("h")).healed is True
+    assert st.get_partition("h").profile_documents == []
+    assert st.get_partition("h").stats["profile_documents"] == 0
+    assert audit_profile_registration(st, config=cfg)["findings"] == []
+
+
+# =========================================================================== #
+# 4. A REGISTERED PROFILE THAT IS NOT `.lts` HAS NO DOCUMENT TAG, AND IS NEVER CONTENT
+# =========================================================================== #
+# `.yaml`/`.yml`/`.json` profiles are a supported shape (`load_profile`), but only `.lts` files are parsed as
+# corpus content, so "STILL PARSED AS CONTENT" is false for them and `registered_profile_not_tagged_profile`
+# must not fire. `registered_profile_missing` applies to every extension; the `.lts` control above
+# (direction A) must keep firing.
+_NON_LTS_PROFILES = {
+    ".yaml": "domain:\n  id: fix.dom\n",
+    ".yml": "domain:\n  id: fix.dom\n",
+    ".json": '{"domain": {"id": "fix.dom"}}\n',
+}
+
+
+def _non_lts_profile(root, suffix):
+    prof = root / f"fixdom-profile{suffix}"
+    prof.write_text(_NON_LTS_PROFILES[suffix], encoding="utf-8")
+    return prof
+
+
+@pytest.mark.parametrize("suffix", sorted(_NON_LTS_PROFILES))
+def test_a_registered_non_lts_profile_that_loads_raises_no_disagreement(tmp_path, suffix):
+    root = tmp_path / "y"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    prof = _non_lts_profile(root, suffix)
+    # the control for "that loads": the registered file really is a usable profile
+    if suffix == ".json" or pytest.importorskip("yaml"):
+        assert load_profile(str(prof)).raw["domain"]["id"] == "fix.dom"
+    res = audit_profile_registration(_store_for(root, "y"), config=_config(
+        y={"roots": [{"path": str(root)}], "profile": str(prof)}))
+    assert res["findings"] == [], res["findings"]
+    # ...and the check SAW the registration, so this is not clean-by-blindness
+    assert [(r["path"], r["exists"]) for r in res["registered_profiles"]] == [(str(prof), True)]
+
+
+def test_a_registered_lts_profile_without_the_profile_tag_still_raises_the_disagreement(tmp_path):
+    """The control: the extension exemption is for non-.lts files only."""
+    root = tmp_path / "z"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    bad = root / "fixdom-profile.lts"
+    bad.write_text(MISTAGGED_LTS, encoding="utf-8")
+    res = audit_profile_registration(_store_for(root, "z"), config=_config(
+        z={"roots": [{"path": str(root)}], "profile": str(bad)}))
+    assert _kinds(res) == [KIND_REGISTERED_NOT_TAGGED]
+
+
+@pytest.mark.parametrize("suffix", sorted(_NON_LTS_PROFILES))
+def test_a_missing_registered_non_lts_profile_still_raises_registered_profile_missing(tmp_path, suffix):
+    root = tmp_path / "m"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    res = audit_profile_registration(_store_for(root, "m"), config=_config(
+        m={"roots": [{"path": str(root)}], "profile": str(tmp_path / f"nope{suffix}")}))
+    assert _kinds(res) == [KIND_REGISTERED_PROFILE_MISSING]
+
+
+def _list_corpora_stderr(tmp_path, registry):
+    """`python -m factlattice_engine call lts_list_corpora` through the real command line, in a scratch HOME,
+    from a cwd with no package in it; returns (returncode, stderr). The `package :` line is asserted so an
+    old-versus-new comparison cannot silently import the wrong tree."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    repo = Path(__file__).resolve().parent.parent
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    cwd = tmp_path / "cwd"
+    cwd.mkdir(exist_ok=True)
+    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(home),
+           "FACTLATTICE_CORPUS_CONFIG": str(registry), "PYTHONPATH": str(repo)}
+    r = subprocess.run([sys.executable, "-m", "factlattice_engine", "call", "lts_list_corpora"],
+                       cwd=str(cwd), env=env, capture_output=True, text=True, timeout=120)
+    assert f"package  : {repo}" in r.stderr, r.stderr
+    return r.returncode, r.stderr
+
+
+
+def test_the_command_line_prints_no_disagreement_for_a_yaml_profile_and_one_for_a_mistagged_lts(tmp_path):
+    ry = tmp_path / "ry"
+    ry.mkdir()
+    (ry / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    yml = _non_lts_profile(ry, ".yaml")
+    rl = tmp_path / "rl"
+    rl.mkdir()
+    (rl / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    bad = rl / "fixdom-profile.lts"
+    bad.write_text(MISTAGGED_LTS, encoding="utf-8")
+
+    reg_y = tmp_path / "yaml.json"
+    reg_y.write_text(json.dumps({"cy": {"roots": [{"path": str(ry), "area": "specs"}],
+                                        "domain_suffix": "proj.cy", "profile": str(yml)}}))
+    reg_l = tmp_path / "lts.json"
+    reg_l.write_text(json.dumps({"cl": {"roots": [{"path": str(rl), "area": "specs"}],
+                                        "domain_suffix": "proj.cl", "profile": str(bad)}}))
+    (tmp_path / "l").mkdir()
+    (tmp_path / "y").mkdir()
+    rc_l, err_l = _list_corpora_stderr(tmp_path / "l", reg_l)
+    rc_y, err_y = _list_corpora_stderr(tmp_path / "y", reg_y)
+    # the control first: the mis-tagged .lts case prints the line, so the yaml silence means something
+    assert rc_l == 0 and "PROFILE REGISTRATION DISAGREEMENT (registered_profile_not_tagged_profile)" in err_l, err_l
+    assert rc_y == 0 and "DISAGREEMENT" not in err_y, err_y
+
+def test_an_lts_named_symlink_to_a_yaml_profile_still_raises_the_disagreement(tmp_path):
+    """Review F1: a registered `.lts` symlink inside the root is walked as content by its own name, whatever it points
+    at, so the not-tagged finding must still fire even though the real path ends `.yaml`."""
+    root = tmp_path / "s"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    target = tmp_path / "fixdom-profile.yaml"
+    target.write_text(_NON_LTS_PROFILES[".yaml"], encoding="utf-8")
+    link = root / "fixdom-profile.lts"
+    link.symlink_to(target)
+    res = audit_profile_registration(_store_for(root, "s"), config=_config(
+        s={"roots": [{"path": str(root)}], "profile": str(link)}))
+    assert _kinds(res) == [KIND_REGISTERED_NOT_TAGGED]
+
+
+@pytest.mark.parametrize("name", ["fixdom-profile", "fixdom-profile.lts.bak", "fixdom-profile.txt"])
+def test_a_registered_profile_with_no_data_extension_still_raises_the_disagreement(tmp_path, name):
+    """Review F2: only `.yaml`, `.yml` and `.json` are exempt. A registered profile with no extension, `.lts.bak` or
+    any other suffix keeps the boot signal instead of booting silent."""
+    root = tmp_path / "n"
+    root.mkdir()
+    (root / "doc.lts").write_text(DOC_LTS, encoding="utf-8")
+    prof = tmp_path / name
+    prof.write_text(_NON_LTS_PROFILES[".yaml"], encoding="utf-8")
+    res = audit_profile_registration(_store_for(root, "n"), config=_config(
+        n={"roots": [{"path": str(root)}], "profile": str(prof)}))
+    assert _kinds(res) == [KIND_REGISTERED_NOT_TAGGED]

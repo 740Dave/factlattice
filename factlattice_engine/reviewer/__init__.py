@@ -18,7 +18,10 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
-from typing import Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Dict, List, NamedTuple, Optional, Tuple
+
+from factlattice import registry
 
 from ..privacy import private_reason
 
@@ -28,11 +31,11 @@ from ..privacy import private_reason
 # and `tests/test_reviewer_contracts.py` pins them against the shipped corpus, the profile and the agent def.
 HOOK_CONTRACT_VERSION = 1
 REVIEW_FORMAT_VERSION = 2          # 2: REVIEW/UNREVIEWED gain `registry-mcp` and `registry-cli` (SPEC-U1a)
-CORE_HOOKS: Tuple[str, ...] = ("REVHOOK-STRUCTURE", "REVHOOK-DETERMINISTIC", "REVHOOK-JUDGEMENT",
+CORE_HOOKS: tuple[str, ...] = ("REVHOOK-STRUCTURE", "REVHOOK-DETERMINISTIC", "REVHOOK-JUDGEMENT",
                                "REVHOOK-CROSS-DOCUMENT", "REVHOOK-REPORT")
 CORPUS_ID = "factlattice-reviewer"
 SITE_CONFIG_NODE = "REVIEWER-SITE-CONFIG"
-CONFIG_KEYS: Tuple[str, ...] = ("default-output-root", "corpus-output-overrides", "default-root-corpora")
+CONFIG_KEYS: tuple[str, ...] = ("default-output-root", "corpus-output-overrides", "default-root-corpora")
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(PACKAGE_DIR, "shipped")
@@ -59,7 +62,7 @@ class SiteConfig:
     for an `ok` config and `none` otherwise (the literal the REVIEW node's `site-config` property carries).
     """
 
-    def __init__(self, status: str = "none", ref: str = "none", default_output_root: Optional[str] = None,
+    def __init__(self, status: str = "none", ref: str = "none", default_output_root: str | None = None,
                  default_root_corpora: Sequence[str] = (), overrides: Sequence[Override] = (),
                  unparsed_overrides: Sequence[str] = (), found: Sequence[str] = ()):
         self.status = status
@@ -71,19 +74,19 @@ class SiteConfig:
         self.found = tuple(found)
 
     @classmethod
-    def none(cls) -> "SiteConfig":
+    def none(cls) -> SiteConfig:
         return cls("none")
 
     @classmethod
-    def ambiguous(cls, found: Sequence[str]) -> "SiteConfig":
+    def ambiguous(cls, found: Sequence[str]) -> SiteConfig:
         return cls("ambiguous", found=found)
 
     @classmethod
-    def unreadable(cls) -> "SiteConfig":
+    def unreadable(cls) -> SiteConfig:
         return cls("unreadable")
 
 
-def _items(value: object) -> List[str]:
+def _items(value: object) -> list[str]:
     """A property value as a list of strings: a nested list verbatim, an inline string comma-split; the word
     `none` (and empties) mean 'not set'."""
     if value is None:
@@ -98,11 +101,11 @@ def _items(value: object) -> List[str]:
     return out
 
 
-def parse_site_config(props: Dict[str, object], *, source: str) -> SiteConfig:
+def parse_site_config(props: dict[str, object], *, source: str) -> SiteConfig:
     """Project a config node's properties onto a `SiteConfig`. `source` is the ref string for the REVIEW node."""
     root_items = _items(props.get("default-output-root"))
-    overrides: List[Override] = []
-    bad: List[str] = []
+    overrides: list[Override] = []
+    bad: list[str] = []
     for item in _items(props.get("corpus-output-overrides")):
         parts = _ARROW.split(item, maxsplit=1)
         if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
@@ -115,15 +118,20 @@ def parse_site_config(props: Dict[str, object], *, source: str) -> SiteConfig:
                       _items(props.get("default-root-corpora")), overrides, bad)
 
 
+_COMPLETE_READ_BUDGET = 10 ** 15   # the gate and the config lookup read whole sets, never a context-window page
+
+
 def lookup_site_config(find: Callable[..., dict]) -> SiteConfig:
     """Addendum C3(a): `find(prefix="REVIEWER-SITE-CONFIG")`, corpus-OMITTED (so private corpora are skipped by the
     engine's own fan-out rule), and EXACTLY ONE node must exist. Zero is `none`; two or more is `ambiguous`; a
     failed or raising lookup is `unreadable`. Every non-`ok` outcome supplies no value (fail closed)."""
     try:
-        res = find(prefix=SITE_CONFIG_NODE)
+        # An unbounded budget: `find` skips (and reports) a match larger than the budget, and a skipped config node
+        # must never read as "no config". If anything is still reported skipped, the lookup fails closed.
+        res = find(prefix=SITE_CONFIG_NODE, token_budget=_COMPLETE_READ_BUDGET)
     except Exception:                                    # noqa: BLE001 — an unreadable lookup fails closed
         return SiteConfig.unreadable()
-    if not isinstance(res, dict) or not res.get("success"):
+    if not isinstance(res, dict) or not res.get("success") or res.get("oversize_skipped"):
         return SiteConfig.unreadable()
     nodes = [n for n in (res.get("nodes") or []) if isinstance(n, dict) and n.get("id") == SITE_CONFIG_NODE]
     if not nodes:
@@ -136,7 +144,7 @@ def lookup_site_config(find: Callable[..., dict]) -> SiteConfig:
 
 
 # ---------------------------------------------------------------------------------------------- folder names
-def output_folder(corpus_id: Optional[str]) -> str:
+def output_folder(corpus_id: str | None) -> str:
     """Addendum C4(d): the corpus id AS GIVEN, sanitised to `[a-z0-9-]` (lower-cased; every other run of characters
     becomes one `-`; leading and trailing `-` dropped; at most 120 characters). Nothing usable (or no corpus
     given) is `_no-corpus`. A path-shaped id cannot escape the output root: `..` and `/` are not in the alphabet."""
@@ -154,11 +162,11 @@ def output_folder(corpus_id: Optional[str]) -> str:
 REVIEW_KEY_RE = re.compile(r"^[A-Z0-9]+(?:-[A-Z0-9]+)*-[0-9]{8}T[0-9]{6}Z-[0-9A-F]{4}$")
 
 
-def review_key(corpus_id: Optional[str], now=None, rand: Optional[int] = None) -> str:
+def review_key(corpus_id: str | None, now=None, rand: int | None = None) -> str:
     """A fresh review key. `now` (a datetime, UTC) and `rand` (0..65535) are test seams."""
     import datetime
     import secrets
-    t = now or datetime.datetime.now(datetime.timezone.utc)
+    t = now or datetime.datetime.now(datetime.UTC)
     slug = re.sub(r"[^A-Z0-9]+", "-", output_folder(corpus_id).upper()).strip("-") or "NO-CORPUS"
     r = secrets.randbelow(65536) if rand is None else int(rand) % 65536
     return f"{slug}-{t.strftime('%Y%m%dT%H%M%SZ')}-{r:04X}"
@@ -178,6 +186,9 @@ RESOLVE_REFUSALS = {
                                       "or a path elsewhere), so it is not routed",
     "document-outside-override-prefix": "the document is not under a root of the corpus and the corpus has path-prefix overrides: "
                                         "it cannot be shown to be outside them, so it is not routed",
+    "document-in-private-corpus": "the document lies inside a registered corpus that is private to the engine, and no override keyed "
+                                  "to that private corpus routes it: a private document never takes a shared root (the default "
+                                  "root, a profile output, or the override of another corpus)",
     "conflicting-overrides": "overrides for the corpus at the same prefix length name different output roots; a root is a path "
                              "and is not echoed",
     "profile-review-output-relative": "the review-output of the profile is relative and the profile has no directory",
@@ -190,6 +201,21 @@ RESOLVE_REFUSALS = {
     "private-corpus-needs-override": "the corpus is private to the engine and a private corpus never uses the default root: it needs "
                                     "an override or its own profile review-output",
     "corpus-not-on-default-root-list": "the corpus is not on default-root-corpora, and no override or profile review-output applies",
+    "registry-entry-unknown-key": "a registry entry carries a key the registry schema does not know, so that corpus is not served and "
+                                  "its location cannot be trusted: it may hold this document, so no output root is chosen for any "
+                                  "document until the registry is fixed (a misspelt private key must never route a review to a "
+                                  "shared root)",
+    "registry-root-unknown-key": "a root of a registry entry carries a key the registry schema does not know, so that corpus is not served "
+                                 "and its location cannot be trusted: it may hold this document, so no output root is chosen for any "
+                                 "document until the registry is fixed",
+    "named-root-unknown": "a registry entry refers to a root name the named_roots table does not hold, so that corpus is not served and "
+                          "its location is unknown: it may hold this document, so no output root is chosen for any document until "
+                          "the registry is fixed",
+    "named-roots-malformed": "a registry entry uses a root name and the named_roots table is malformed, so that corpus is not served and "
+                             "its location is unknown: it may hold this document, so no output root is chosen for any document until "
+                             "the registry is fixed",
+    "private-corpus-location-unknown": "a private corpus in the registry has no root that can be read, so it may hold this document: no output "
+                                       "root is chosen for any document until its root is restored or the registry is corrected",
     "no-output-root-configured": "no override, no profile review-output and no default root applies (see site_config and site_overrides)",
 }
 
@@ -204,7 +230,7 @@ class Resolution(tuple):
     and no override was loaded).
     """
 
-    def __new__(cls, root: Optional[str], rule_used: str, **attrs) -> "Resolution":
+    def __new__(cls, root: str | None, rule_used: str, **attrs) -> Resolution:
         self = super().__new__(cls, (root, rule_used))
         self.reason = attrs.get("reason", "")
         self.explanation = attrs.get("explanation", "")
@@ -216,7 +242,7 @@ class Resolution(tuple):
         return self
 
     @property
-    def root(self) -> Optional[str]:
+    def root(self) -> str | None:
         return self[0]
 
     @property
@@ -234,21 +260,91 @@ class Resolution(tuple):
         return out
 
 
-def _spec_roots(registry_spec: Optional[dict]) -> List[str]:
-    out: List[str] = []
-    for r in (registry_spec or {}).get("roots") or []:
-        p = r.get("path") if isinstance(r, dict) else r
-        if p:
-            out.append(os.path.realpath(os.path.expanduser(str(p))))
-    return out
+def _declared_roots(spec: dict | None) -> list[str]:
+    """Container search ONLY: the declared superset of an entry's roots (`membership.declared_root_paths`)."""
+    from ..membership import declared_root_paths
+    return declared_root_paths(spec)          # a malformed SHAPE raises (class only): an exception is never turned into "no roots"
 
 
-def corpora_containing(document: str, corpora: Dict[str, dict]) -> List[str]:
+def _declared_roots_or_none(spec: dict | None) -> list[str] | None:
+    """`_declared_roots`, or None when the entry's SHAPE cannot state a location: a caller that must go on says what None means for it."""
+    try:
+        return _declared_roots(spec)
+    except TypeError:
+        return None
+
+
+def _served_roots(spec: dict | None) -> list[str]:
+    """What the engine serves for the NAMED corpus (`config.served_root_paths`): used for 'is the document under it'."""
+    from ..config import served_root_paths
+    return served_root_paths(spec)
+
+
+def corpora_containing(document: str, corpora: dict[str, dict]) -> list[str]:
     """The ids of the registered corpora one of whose roots contains `document` (the engine's own containment test:
     realpath, case-fold and filesystem identity). Sorted; more than one means nested or overlapping roots."""
     from ..tools import _path_in_any_root
     real = os.path.realpath(os.path.expanduser(str(document)))
-    return sorted(cid for cid, spec in (corpora or {}).items() if _path_in_any_root(real, _spec_roots(spec)))
+    out = []
+    for cid, spec in (corpora or {}).items():
+        roots = _declared_roots_or_none(spec)
+        # an entry whose shape cannot state a location MAY hold the document: it is listed as a container (fail safe), never read as "contains nothing"
+        if roots is None or _path_in_any_root(real, roots):
+            out.append(cid)
+    return sorted(out)
+
+
+def _private_location_unreadable(corpus_id, spec) -> bool:
+    """A clean entry the engine treats as private, with no root it can read: `config.every_root_missing`, or no root declared at all."""
+    if not isinstance(spec, dict) or private_reason(str(corpus_id), spec) is None:
+        return False
+    from ..config import declared_root_entries, every_root_missing
+    try:
+        return not declared_root_entries(spec) or every_root_missing(spec)
+    except (TypeError, AttributeError):
+        return True                      # a shape nothing can read a location from
+
+
+def _untrusted_strings(value) -> list[str]:
+    """Every string anywhere in a registry entry: dict keys and values, and list items, recursively (a misspelt entry may write
+    its path as a key)."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [s for k, v in value.items() for s in _untrusted_strings(k) + _untrusted_strings(v)]
+    if isinstance(value, (list, tuple)):
+        out = [s for v in value for s in _untrusted_strings(v)]
+        parts = [v for v in value if isinstance(v, str)]
+        if len(parts) > 1:                                # a path split into components (r8 P1-R8-1)
+            out += ["/".join(parts), "/" + "/".join(p.strip("/") for p in parts)]
+        return out
+    return []
+
+
+def _path_in_untrusted_entry(document: str, spec) -> bool:
+    """True when any string in an entry that failed key validation, read as a path, contains `document` (the engine's own
+    containment test). Used only to REFUSE, and only by the `dangles` verb, which routes and writes nothing: a best-effort LEXICAL
+    scan that a location spelt some other way passes. `resolve_output` does not use it: it refuses for any failed entry at all. An
+    entry that failed on a named root has no location, and neither does one with a `${...}` string (a misspelt key is not expanded):
+    each may hold any document, so each answers True for all of them."""
+    from ..tools import _path_in_any_root
+    if registry.named_failure(spec) is not None:
+        return True
+    strings = _untrusted_strings(spec)
+    if any(x.strip().startswith("${") for x in strings):
+        return True
+    if any("\x00" in x for x in strings):
+        # A NUL cannot be in a path, so we cannot know which root it hid. An entry already failing key validation AND holding
+        # a NUL refuses EVERY document (fail-safe; ends the NUL-position class, r7 P2-R7-1).
+        return True
+    cands = []
+    for x in strings:
+        for form in dict.fromkeys((x, x.strip())):      # a stray space must not hide a root (r5 P2-R5-1)
+            if not form:
+                continue
+            cands.append(os.path.realpath(os.path.expanduser(form)))
+    real = os.path.realpath(os.path.expanduser(str(document)))
+    return bool(cands) and _path_in_any_root(real, cands)
 
 
 def _fold(text: str) -> str:
@@ -258,11 +354,11 @@ def _fold(text: str) -> str:
     return unicodedata.normalize("NFC", text).casefold()
 
 
-def _components(path: str) -> List[str]:
+def _components(path: str) -> list[str]:
     return [c for c in path.replace("\\", "/").split("/") if c not in ("", ".")]
 
 
-def _doc_rel(document: Optional[str], roots: Sequence[str]) -> Optional[List[str]]:
+def _doc_rel(document: str | None, roots: Sequence[str]) -> list[str] | None:
     """The document's path components, folded, relative to the (first) root that contains it (compared on the
     realpath of both sides, folded); None if no root contains it."""
     if not document:
@@ -281,12 +377,13 @@ def _doc_rel(document: Optional[str], roots: Sequence[str]) -> Optional[List[str
 def _inside_reviewed_corpus(candidate_dirs: Iterable[str], roots: Sequence[str]) -> bool:
     if not roots:
         return False
-    from ..tools import _path_in_any_root    # the engine's own containment test: realpath, case-fold, st_ino ancestry
+    from ..tools import _path_in_any_root  # the engine's own containment test: realpath, case-fold, st_ino ancestry
     return any(_path_in_any_root(c, roots) for c in candidate_dirs)
 
 
-def resolve_output(corpus_id: Optional[str], document_realpath: Optional[str], registry_spec: Optional[dict],
-                   profile, site_config: Optional[SiteConfig]) -> Resolution:
+def resolve_output(corpus_id: str | None, document_realpath: str | None, registry_spec: dict | None,
+                   profile, site_config: SiteConfig | None,
+                   *, all_corpora: dict[str, dict]) -> Resolution:
     """Addendum C3(c). Pure and read-only. Precedence, highest first:
 
       1. `site_config.overrides` keyed `corpus[:path-prefix]` (longest matching prefix wins; a corpus-wide key is the
@@ -296,18 +393,40 @@ def resolve_output(corpus_id: Optional[str], document_realpath: Optional[str], r
          engine treats as private (`privacy.private_reason`), whether or not it is listed.
       Otherwise `no-output-root` with a named `reason`. An ambiguous site config (two nodes) stops everything.
 
+    PRIVACY OF EVERY CONTAINER (`all_corpora`, the registry's id -> spec map). Before any rule above may choose a root, every
+    registered corpus one of whose roots contains the document's realpath is found (`corpora_containing`), not only the
+    named one. A container that is private (`privacy.private_reason`: the registry flag and the id suffix) and is not the
+    named corpus makes the document private: only an explicit override keyed to THAT private corpus may route it
+    (its own `corpus[:prefix]` keys against ITS roots); otherwise `document-in-private-corpus`. The named corpus's own
+    override, profile output and default root are never used for it, because a root not configured for the document's own
+    corpus is a shared root. Several private containers must all route, to one root. A private corpus that is itself the
+    named one keeps the rules above unchanged. Callers MUST pass `all_corpora`: omitting it means no container can be
+    found and only the named corpus's privacy is checked (a unit-test convenience; a test pins every production call).
+
     Every chosen root must be absolute (after `~`), and neither it nor `<root>/<folder>` may lie inside a root of the
     reviewed corpus (realpath, case-folded and inode-ancestry compared, never a string prefix). A chosen root that
     fails a guard is `no-output-root`, NOT a fall-through to a lower rule: a guard that falls through is a guard
     the next rule can be used to defeat.
     """
+    if not isinstance(all_corpora, Mapping):
+        raise TypeError("resolve_output: all_corpora must be the registry's id -> spec mapping (pass {} for none); "
+                        "a missing registry would skip the privacy check of every other container")
     folder = output_folder(corpus_id)
     cfg = site_config if site_config is not None else SiteConfig.none()
     ok = cfg.status == "ok"
     ref = cfg.ref if ok else "none"
     n_over = len(cfg.overrides) if ok else 0
     over_text = f"{n_over} loaded" if n_over else "MISSING"
-    roots = _spec_roots(registry_spec)
+    roots = _served_roots(registry_spec)
+    # every OTHER private corpus whose roots contain the document (the named corpus is judged by the rules below)
+    private_containers = []
+    if all_corpora and document_realpath:
+        private_containers = [c for c in corpora_containing(document_realpath, all_corpora)
+                              if c != corpus_id and private_reason(str(c), all_corpora.get(c)) is not None]
+    # a private container whose shape states no location contributes no root HERE; the loop below ends the resolution for it
+    # (`_private_location_unreadable` -> `private-corpus-location-unknown`) before any root is chosen
+    private_roots = [r for c in private_containers for r in (_declared_roots_or_none(all_corpora.get(c)) or [])]
+    guard_roots = roots + [r for r in private_roots if r not in roots]
 
     def refuse(code: str, **terminal_only) -> Resolution:
         return Resolution(None, "no-output-root", reason=code, explanation=RESOLVE_REFUSALS[code], folder=folder,
@@ -318,7 +437,7 @@ def resolve_output(corpus_id: Optional[str], document_realpath: Optional[str], r
         if not os.path.isabs(r):
             return refuse(f"{rule}-root-not-absolute")
         real = os.path.realpath(r)
-        if _inside_reviewed_corpus((real, os.path.join(real, folder)), roots):
+        if _inside_reviewed_corpus((real, os.path.join(real, folder)), guard_roots):
             return refuse(f"{rule}-root-inside-corpus")
         checks = []
         if rule == "default" and not n_over:
@@ -327,6 +446,27 @@ def resolve_output(corpus_id: Optional[str], document_realpath: Optional[str], r
                            "reason": "default-root-used-without-overrides", "site_config": ref})
         return Resolution(real, rule, folder=folder, site_config=ref, site_overrides=over_text, checks=checks)
 
+    # the SAME validation `config.build_store` applies: a corpus whose entry or roots carry an unknown key is not served, and
+    # nothing about it (a near-miss of `private` above all) may route a review anywhere. FIRST, before any rule can choose a root.
+    key_problems = registry.entry_key_problems(registry_spec)
+    if key_problems:
+        return refuse(key_problems[0]["code"])
+    # ...and the same for EVERY other corpus whose entry failed. Its location cannot be trusted: a misspelt key is not expanded and may
+    # be spelt any way at all, a failed reference has none, and a scan of its strings can never be complete (rounds of review each
+    # found the next spelling). Routing a review to a shared root cannot be undone, so nothing about that entry is consulted: it may
+    # hold this document, and no root is chosen for any document until the registry is fixed. Nothing is named.
+    # The same for a clean PRIVATE entry with no root that can be read: the document it was meant to hold would otherwise be judged by
+    # the public corpus around it. With no document at all the answer is still a root, so this does not wait for one.
+    if all_corpora:
+        for c in sorted(all_corpora, key=str):
+            if c == corpus_id:
+                continue
+            container_problems = registry.entry_key_problems(all_corpora.get(c))
+            if container_problems:
+                return refuse(container_problems[0]["code"])
+            if _private_location_unreadable(c, all_corpora.get(c)):
+                return refuse("private-corpus-location-unknown")
+
     if cfg.status == "ambiguous":
         return refuse("ambiguous-site-config", site_config_found=list(cfg.found))
 
@@ -334,6 +474,38 @@ def resolve_output(corpus_id: Optional[str], document_realpath: Optional[str], r
     # (one with no overrides of its own) would otherwise take that corpus's default root.
     if registry_spec is not None and roots and document_realpath and _doc_rel(document_realpath, roots) is None:
         return refuse("document-not-under-corpus-root")
+    # An entry that DECLARES a root the engine does not serve (`roots` present but empty or null, with a `root` beside it)
+    # serves nothing at all: no document is under it, so the guard cannot be skipped. (An entry declaring no root anywhere
+    # keeps its older behaviour: it is not refused on this ground.)
+    if registry_spec is not None and not roots and document_realpath and _declared_roots(registry_spec):
+        return refuse("document-not-under-corpus-root")
+    # A private document is routed only by an override keyed to the private corpus that contains it. This runs BEFORE the
+    # named corpus's rules, so no shared root (default, profile, the named corpus's override) can be chosen for it.
+    if private_containers:
+        picked = set()
+        for c in private_containers:
+            rel_c = _doc_rel(document_realpath, _declared_roots(all_corpora.get(c)))
+            best_c, best_len_c = [], -1
+            for o in (cfg.overrides if ok else []):
+                if o.corpus != c:
+                    continue
+                pre = [_fold(x) for x in _components(o.prefix)]
+                if pre and (rel_c is None or rel_c[:len(pre)] != pre):
+                    continue
+                if len(pre) > best_len_c:
+                    best_c, best_len_c = [o], len(pre)
+                elif len(pre) == best_len_c:
+                    best_c.append(o)
+            if not best_c:
+                return refuse("document-in-private-corpus")
+            roots_c = {os.path.expanduser(o.root) for o in best_c}
+            if len(roots_c) > 1:
+                return refuse("conflicting-overrides")
+            picked |= roots_c
+        if len(picked) > 1:
+            return refuse("conflicting-overrides")
+        return accept(next(iter(picked)), "override")
+
     # 1. overrides
     if ok and corpus_id is not None:
         rel = _doc_rel(document_realpath, roots)
@@ -386,7 +558,7 @@ SEVERITIES = ("info", "minor", "major", "blocker")
 _SEVERITY_COUNTS = re.compile(r"(info|minor|major|blocker)=(\d+)")
 
 
-def parse_severity_counts(text: object) -> Optional[Dict[str, int]]:
+def parse_severity_counts(text: object) -> dict[str, int] | None:
     """`info=0 minor=1 major=0 blocker=0` -> counts; None unless every severity appears exactly once."""
     found = _SEVERITY_COUNTS.findall(str(text))
     out = {k: int(v) for k, v in found}
@@ -395,7 +567,7 @@ def parse_severity_counts(text: object) -> Optional[Dict[str, int]]:
     return out
 
 
-def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path: Optional[str] = None) -> dict:
+def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path: str | None = None) -> dict:
     """Spec section 4.5 and addendum C4(b), as CODE. `call(tool, arguments) -> result` is the engine door.
 
     The gate PASSES only if every one of these holds, each reported in `checks`:
@@ -417,7 +589,7 @@ def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path:
     failed check.
     """
     prof = profile_path or PROFILE_PATH
-    checks: List[dict] = []
+    checks: list[dict] = []
 
     def add(name: str, ok: bool, detail: str = "") -> None:
         checks.append({"name": name, "ok": bool(ok), "detail": detail})
@@ -447,12 +619,14 @@ def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path:
     except Exception as exc:                              # noqa: BLE001
         add("no-lost-properties", False, type(exc).__name__)
 
-    def path_find(prefix: str) -> Optional[dict]:
+    def path_find(prefix: str) -> dict | None:
         try:
-            r = call("lts_find", {"path": review_path, "prefix": prefix})
+            r = call("lts_find", {"path": review_path, "prefix": prefix, "token_budget": _COMPLETE_READ_BUDGET})
         except Exception:                                 # noqa: BLE001
             return None
+        # a node skipped as oversize, or any further page, is an incomplete read: the proof fails, never a silent pass
         ok = (isinstance(r, dict) and r.get("success") is True and "file_source" in r
+              and not r.get("oversize_skipped") and not r.get("truncated")
               and ((r.get("extent") or {}).get("scope") or {}).get("corpus") == "(one file, by path)")
         return r if ok else None
 
@@ -463,7 +637,8 @@ def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path:
     rchecks = path_find("REVCHECK-")
     proof = all(x is not None for x in (review_nodes, findings, unreviewed, provs, rchecks))
     add("path-find-proof", proof, "" if proof else "a path find lacked file_source or the one-file scope "
-                                                   "(a server that predates `path` ignores it)")
+                                                   "(a server that predates `path` ignores it), or did not read the "
+                                                   "whole file (a node skipped as oversize, or a truncated result)")
     if proof and review_nodes.get("nodes"):
         claimed = parse_severity_counts((review_nodes["nodes"][0].get("properties") or {}).get("findings-by-severity"))
         actual = {k: 0 for k in SEVERITIES}
@@ -505,7 +680,7 @@ def self_gate(review_path: str, call: Callable[[str, dict], dict], profile_path:
     return {"passed": all(c["ok"] for c in checks), "checks": checks}
 
 
-def check_extension_paths(ext_paths: Iterable[str], document_realpath: str) -> List[dict]:
+def check_extension_paths(ext_paths: Iterable[str], document_realpath: str) -> list[dict]:
     """v3 section 4.4: an extension path equal to the reviewed document is refused (compared by realpath, and by
     inode when both exist, so a symlink or a `..` spelling is the same file). Returns findings, `[]` if fine."""
     doc = os.path.realpath(os.path.expanduser(str(document_realpath)))
@@ -531,13 +706,13 @@ def check_extension_paths(ext_paths: Iterable[str], document_realpath: str) -> L
 # `no-output-root`, and the helpers exit 2 on it (the configuration class, as `call`).
 # Every other stop writes an UNREVIEWED document. A new no-document stop cannot appear without changing this tuple,
 # which `tests/test_reviewer_post_review.py` pins and which the definition and the procedure both quote.
-NO_DOCUMENT_STOPS: Tuple[str, ...] = ("no-route", "no-output-root", "server-too-old", "no-corpus-given",
+NO_DOCUMENT_STOPS: tuple[str, ...] = ("no-route", "no-output-root", "server-too-old", "no-corpus-given",
                                       "first-create-refused-or-unknown", "registry-not-found")
 NO_DOCUMENT_MARKER = "NO-REVIEW-DOCUMENT"
 _DETAIL_RE = re.compile(r"^[a-z0-9_.-]{1,80}$")
 
 
-def no_document_reply(reason: str, detail: Optional[str] = None, inspect_path: Optional[str] = None) -> str:
+def no_document_reply(reason: str, detail: str | None = None, inspect_path: str | None = None) -> str:
     """The reply when NO document exists: `NO-REVIEW-DOCUMENT: <reason>[ (<detail>)]`, never path-shaped, so a caller
     cannot mistake it for the path a successful run returns. The ONE exception is the first-create stop, which carries
     the single path a person must inspect, labelled `inspect-path: <path>` (it MAY be partial or absent)."""
@@ -574,7 +749,7 @@ def _short(text: object, limit: int = 120) -> str:
     return " ".join(str(text).split())[:limit]
 
 
-def compare_registries(mcp: object, cli: Dict[str, object]) -> Dict[str, object]:
+def compare_registries(mcp: object, cli: dict[str, object]) -> dict[str, object]:
     """`{registry_mcp, registry_cli, mcp_used, mismatch, stale, reason}`.
 
     * the CLI route is always used by the procedure's helper commands; its value is `{source, path, sha256}`;
@@ -586,7 +761,7 @@ def compare_registries(mcp: object, cli: Dict[str, object]) -> Dict[str, object]
       `reason` is the code `registry-mismatch` and `explanation` a fixed sentence (the run stops, UNREVIEWED). ONLY sha256 decides; source and path are recorded.
     """
     reg_cli = registry_value(cli.get("source"), cli.get("path"), cli.get("sha256"))
-    out: Dict[str, object] = {"registry_cli": reg_cli, "registry_mcp": "", "mcp_used": False,
+    out: dict[str, object] = {"registry_cli": reg_cli, "registry_mcp": "", "mcp_used": False,
                               "mismatch": False, "stale": False, "reason": None}
     if mcp is False:
         out["registry_mcp"] = "not-used (no MCP route)"
@@ -625,11 +800,11 @@ def count_registrations(profile_path: str) -> int:
     """How many review-extension registrations the RAW profile file declares, whatever its format: `- ext-id:` lines in
     a `.lts` profile, `ext_id` / `ext-id` keys in YAML and JSON. A raw text count on purpose: it must not go through
     the loader whose projection it exists to check."""
-    from factlattice.hashing import safe_read_text      # a FIFO/socket/device is a CorpusFileError, never a block
+    from factlattice.hashing import safe_read_text  # a FIFO/socket/device is a CorpusFileError, never a block
     return len(_REG_KEY.findall(safe_read_text(profile_path, os.path.basename(profile_path), errors="replace")))
 
 
-def check_registrations(profile_path: str, audit_answer: Optional[dict]) -> dict:
+def check_registrations(profile_path: str, audit_answer: dict | None) -> dict:
     """The stale-server tripwire (see REVPROC-CORE). `lts_profile_audit` OMITS `review_extensions` when nothing is
     registered, so a server that predates the section looks exactly like "no extensions". Compare what the file
     declares with what the answer reports; the answer reporting FEWER is a stop, `registrations-not-projected`."""
@@ -663,10 +838,10 @@ def _count(summary: dict, name: str) -> int:
     return int(v if isinstance(v, int) else summary.get(name + "_observed") or 0)
 
 
-def _lint_pages(path: str, call: Callable[[str, dict], dict], profile: Optional[str] = None) -> Tuple[List[dict], dict, bool]:
+def _lint_pages(path: str, call: Callable[[str, dict], dict], profile: str | None = None) -> tuple[list[dict], dict, bool]:
     """Every finding of `lts_lint(source=path, dangle=true)`, paged to the end. `(findings, summary, complete)`:
     `complete` is False if any page could not be read or the cursor never reached the end."""
-    found: List[dict] = []
+    found: list[dict] = []
     summary: dict = {}
     offset, complete = 0, True
     for _ in range(500):
@@ -697,7 +872,7 @@ def lint_groups(path: str, call: Callable[[str, dict], dict], examples: int = LI
     and the caller must then treat the structure gate as failed."""
     found, summary, complete = _lint_pages(path, call)
     warns = [f for f in found if f.get("severity") == "warning"]
-    groups: Dict[tuple, dict] = {}
+    groups: dict[tuple, dict] = {}
     for f in warns:
         g = groups.setdefault((f.get("origin"), f.get("kind")), {
             "origin": f.get("origin"), "kind": f.get("kind"), "severity": "warning", "count": 0, "examples": []})
@@ -728,8 +903,8 @@ UNVERIFIABLE_PRIVATE = "unverifiable-private"     # the status `resolve` gives a
 DANGLE_LIST_LIMIT = 50           # items listed per section; the true count is always stated beside them
 
 
-def dangle_check(path: str, call: Callable[[str, dict], dict], resolve: Callable[[str, Optional[str]], Tuple[bool, str]],
-                 profile: Optional[str] = None, limit: int = DANGLE_LIST_LIMIT) -> dict:
+def dangle_check(path: str, call: Callable[[str, dict], dict], resolve: Callable[[str, str | None], tuple[bool, str]],
+                 profile: str | None = None, limit: int = DANGLE_LIST_LIMIT) -> dict:
     """The structure gate's lint at DOCUMENT scope, with each forward dangle resolved against the CORPUS.
 
     A file-scope lint cannot see sibling files, so it reports every reference into one as a forward dangle (measured on a
@@ -740,13 +915,13 @@ def dangle_check(path: str, call: Callable[[str, dict], dict], resolve: Callable
     the end or its error count disagrees with the findings read; the caller must then treat the gate as failed."""
     found, summary, complete = _lint_pages(path, call, profile)
     errors = [f for f in found if f.get("severity") == "error"]
-    true_dangles: List[dict] = []
+    true_dangles: list[dict] = []
     elsewhere_targets: set = set()
     elsewhere = 0
     private_targets: set = set()
     private_domains: set = set()
     private_n = 0
-    other: List[dict] = []
+    other: list[dict] = []
     for f in errors:
         if f.get("origin") == "dangle" and f.get("kind") == "forward":
             det = f.get("detail") or {}
@@ -788,7 +963,7 @@ def plan_findings(findings: Sequence[dict], other_nodes: int = 0, ceiling: int =
     room = max(0, int(ceiling) - int(other_nodes))
     keep = [f for _, f in ordered[:room]]
     drop = [f for _, f in ordered[room:]]
-    by: Dict[str, int] = {}
+    by: dict[str, int] = {}
     for f in drop:
         by[f.get("severity")] = by.get(f.get("severity"), 0) + 1
     return {"write": keep, "omitted": {"count": len(drop), "by_severity": by},
@@ -846,7 +1021,7 @@ def review_verdict_inputs(path: str) -> dict:
 
 # Checks about the SITE CONFIGURATION, not about a rule: recorded as REVCHECKs (C3b's visibility, and the `site-overrides`
 # property) but outside the verdict. A customer with no overrides by design must not get `inconclusive` on every review.
-CONFIG_CHECKS: Tuple[str, ...] = ("site-overrides-missing",)
+CONFIG_CHECKS: tuple[str, ...] = ("site-overrides-missing",)
 
 
 def decide_verdict(findings: Sequence[dict], checks: Sequence[dict], frame_exceeded: bool = False,
@@ -954,7 +1129,7 @@ _GIT_CONTEXT_KEYS = {"commit", "sha", "sha1", "head", "rev", "revision", "tree",
 _GIT_CONTEXT_TEXT = re.compile(r"(?i)(?<![A-Za-z0-9])(?:commit|sha1?|head|rev(?:ision)?|tree)(?:[-_ ]?sha)?(?:\s+(?:is|was|at|of))?[\s:=#@(\[]*$")
 
 
-def _names_a_commit(key: Optional[str], before: str) -> bool:
+def _names_a_commit(key: str | None, before: str) -> bool:
     """Does the key, or the text just before the value, NAME it a commit / sha / head / rev / tree?"""
     if key:
         k = re.sub(r"([a-z])([A-Z])", r"\1-\2", str(key)).lower()
@@ -963,7 +1138,7 @@ def _names_a_commit(key: Optional[str], before: str) -> bool:
     return bool(_GIT_CONTEXT_TEXT.search(before[-24:]))
 
 
-def secret_reason(text: object, key: Optional[str] = None) -> Optional[str]:
+def secret_reason(text: object, key: str | None = None) -> str | None:
     """Why `text` (a property value or a line of body) must NOT be quoted, or None.
 
     Over-inclusive on SHAPES that carry credentials (PEM blocks of any kind, cloud and payment keys, tokens, URL
@@ -1002,7 +1177,7 @@ def secret_reason(text: object, key: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def scan_secrets(path: str) -> List[dict]:
+def scan_secrets(path: str) -> list[dict]:
     """GEN-7: every line of the document that the S5 detector would withhold, as `{node, key, line, reason}`. NEVER the
     value. A bullet `- key: value` is judged with its key; any other line as body text."""
     from factlattice.hashing import safe_read_text

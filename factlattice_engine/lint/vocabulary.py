@@ -23,8 +23,6 @@ the map below is a FALLBACK for a finding that somehow carries none, never a pol
 """
 from __future__ import annotations
 
-from typing import Dict, List
-
 import factlattice
 
 ORIGIN = "vocabulary"
@@ -34,17 +32,26 @@ KIND_UNDECLARED_KEY = "undeclared_key"
 KIND_UNREGISTERED_VERB = "unregistered_verb"
 KIND_UNRECOGNIZED_VERB_LINE = "unrecognized_verb_line"
 
+# Spec 39 (normative content, source statements, confirmations): findings about the keys that decide a
+# node's state and about the shape of a source statement or a confirmation. The parser raises them
+# beside the grammar and sets the severity from the document's mode, like the others here.
+NORMATIVE_KINDS = frozenset({
+    "normative_bad_value", "normative_override", "normative_in_frontmatter", "reserved_key_authored",
+    "source_statement_missing_key", "source_kind_bad_value", "source_option_author_missing",
+    "confirmation_missing_key", "confirmation_bad_value", "node_is_both_kinds", "normative_quote_run", "normative_alias_spelling",
+})
+
 VOCABULARY_KINDS = frozenset({
     KIND_LEGACY_DOCUMENT, KIND_UNDECLARED_KEY, KIND_UNREGISTERED_VERB,
     KIND_UNRECOGNIZED_VERB_LINE,
     "format_version_empty", "format_version_malformed", "format_version_unsupported",
-})
+}) | NORMATIVE_KINDS
 
 # FALLBACK ONLY — see the module docstring. The document's mode is the authority.
-VOCABULARY_SEVERITY: Dict[str, str] = {k: "warning" for k in VOCABULARY_KINDS}
+VOCABULARY_SEVERITY: dict[str, str] = {k: "warning" for k in VOCABULARY_KINDS}
 
 
-def find_vocabulary_findings(corpus: "factlattice.ParsedCorpus") -> List:
+def find_vocabulary_findings(corpus: factlattice.ParsedCorpus) -> list:
     """Every vocabulary ParseFinding in `corpus`, in parse order."""
     return [f for f in getattr(corpus, "vocabulary_findings", ())
             if f.kind in VOCABULARY_KINDS]
@@ -56,8 +63,8 @@ def severity_for(finding) -> str:
         VOCABULARY_SEVERITY.get(finding.kind, "warning")
 
 
-def vocabulary_stats(findings: List) -> Dict[str, object]:
-    by_kind: Dict[str, int] = {}
+def vocabulary_stats(findings: list) -> dict[str, object]:
+    by_kind: dict[str, int] = {}
     strict_files = set()
     legacy_files = set()
     for f in findings:
@@ -79,7 +86,7 @@ def vocabulary_stats(findings: List) -> Dict[str, object]:
     }
 
 
-def summary_line(stats: Dict[str, object]) -> str:
+def summary_line(stats: dict[str, object]) -> str:
     return (f"-- vocabulary: {stats['vocabulary_findings']} finding(s) "
             f"({stats['legacy_documents']} document(s) still in LEGACY mode — no "
             f"`lts: \"1.1\"` marker; SPEC §1.5.1) -- by kind: {stats['by_kind']}")

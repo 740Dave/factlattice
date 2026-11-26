@@ -73,7 +73,6 @@ import glob
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Tuple
 
 from .parser import CANONICAL_LAYERS
 
@@ -85,7 +84,7 @@ _EDGE_ROW_RE = re.compile(
 
 # Notes on aspects of the profile format that are deliberately NOT used as the
 # authoritative source for edge-namespace registration (surfaced for the D1 firm-up).
-KNOWN_FORMAT_NOTES: Tuple[str, ...] = (
+KNOWN_FORMAT_NOTES: tuple[str, ...] = (
     "§1 'Domain Identity' declares `| Namespace | DEC |` in UPPERCASE, but edge types "
     "are authored lowercase (`dec.SUPERSEDES`); the lowercase edge-type prefix is used "
     "for registration so it matches the parser's own `_type_flags` derivation exactly.",
@@ -109,25 +108,25 @@ class ProfileEdgeConfig:
     - `sources`: profile file paths that contributed at least one declaration.
     """
 
-    edge_layers: Dict[str, str] = field(default_factory=dict)
-    namespaces: FrozenSet[str] = frozenset()
-    ambiguities: List[dict] = field(default_factory=list)
-    sources: List[str] = field(default_factory=list)
+    edge_layers: dict[str, str] = field(default_factory=dict)
+    namespaces: frozenset[str] = frozenset()
+    ambiguities: list[dict] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
 
     @property
-    def registered_ns(self) -> FrozenSet[str]:
+    def registered_ns(self) -> frozenset[str]:
         return frozenset({"core"}) | set(self.namespaces)
 
 
-def read_profile_edges(path: str) -> Tuple[Dict[str, str], List[dict]]:
+def read_profile_edges(path: str) -> tuple[dict[str, str], list[dict]]:
     """Read ONE `.lts` profile's edge-type declarations.
 
     Returns `({namespaced_type -> layer}, ambiguities)`. `ambiguities` holds rows that
     matched the edge-row SHAPE but carried a non-canonical layer (best-effort; the row
     is skipped, never guessed, and never crashes the load).
     """
-    edges: Dict[str, str] = {}
-    ambiguities: List[dict] = []
+    edges: dict[str, str] = {}
+    ambiguities: list[dict] = []
     from .hashing import safe_read_text
     for lineno, line in enumerate(safe_read_text(path).split("\n"), start=1):
         m = _EDGE_ROW_RE.match(line.rstrip("\n"))
@@ -147,14 +146,18 @@ def read_profile_edges(path: str) -> Tuple[Dict[str, str], List[dict]]:
     return edges, ambiguities
 
 
-def discover_profiles(profile_dir: str) -> List[str]:
-    """All `.lts` domain-profile files in `profile_dir`, sorted for determinism."""
-    if not profile_dir or not os.path.isdir(profile_dir):
-        return []
-    return sorted(glob.glob(os.path.join(profile_dir, "*.lts")))
+def discover_profiles(profile_dir) -> list[str]:
+    """All `.lts` domain-profile files in `profile_dir` (one directory, or a sequence of them), sorted within each directory
+    for determinism; a missing directory contributes nothing."""
+    dirs = [profile_dir] if isinstance(profile_dir, (str, os.PathLike)) or profile_dir is None else list(profile_dir)
+    found: list[str] = []
+    for d in dirs:
+        if d and os.path.isdir(d):
+            found.extend(sorted(glob.glob(os.path.join(d, "*.lts"))))
+    return found
 
 
-def load_profile_edge_config(profile_dir: str) -> ProfileEdgeConfig:
+def load_profile_edge_config(profile_dir) -> ProfileEdgeConfig:
     """Build ONE merged `ProfileEdgeConfig` from every `.lts` profile in `profile_dir`.
 
     Missing/empty dir -> an EMPTY config (`registered_ns == {'core'}`, no edge layers),
@@ -169,11 +172,11 @@ def load_profile_edge_config(profile_dir: str) -> ProfileEdgeConfig:
     """
     from .profile import ProfileCollisionError  # local: keeps the import graph acyclic
 
-    edge_layers: Dict[str, str] = {}
-    ambiguities: List[dict] = []
-    sources: List[str] = []
+    edge_layers: dict[str, str] = {}
+    ambiguities: list[dict] = []
+    sources: list[str] = []
     namespaces: set = set()
-    owner: Dict[str, str] = {}
+    owner: dict[str, str] = {}
 
     for path in discover_profiles(profile_dir):
         edges, amb = read_profile_edges(path)
@@ -190,7 +193,7 @@ def load_profile_edge_config(profile_dir: str) -> ProfileEdgeConfig:
                     f"'{etype}' but disagree about its layer: '{prior}' vs '{layer}'. "
                     f"Refusing to build an edge-layer table whose meaning depends on "
                     f"profile filename sort order — every layer-scoped traversal over "
-                    f"the losing profile's corpus would silently return a subset.")
+                    f"the losing profile's corpus would silently return a subset.", names=(etype,))
             edge_layers[etype] = layer
             owner.setdefault(etype, path)
     return ProfileEdgeConfig(
@@ -215,11 +218,28 @@ def default_profile_dir() -> str:
     return os.path.join(pkg_parent, "domain-profiles")
 
 
+def default_profile_dirs() -> tuple[str, ...]:
+    """Every directory the engine reads profiles from by default: `default_profile_dir()`, plus the deployment overlay's
+    `domain-profiles/` when an overlay is in force (see `factlattice/overlay.py`).
+
+    An explicit `FACTLATTICE_PROFILE_DIR` is AUTHORITATIVE: it names the whole set, and the overlay adds nothing to it
+    (an operator who points the engine at one directory has said which profiles apply). With no overlay the result is
+    exactly `(default_profile_dir(),)`, so a public checkout is unchanged."""
+    from . import overlay  # local: the overlay module imports nothing from the engine
+
+    primary = default_profile_dir()
+    if os.environ.get("FACTLATTICE_PROFILE_DIR"):
+        return (primary,)
+    extra = overlay.overlay_profile_dir()
+    return (primary, extra) if extra else (primary,)
+
+
 __all__ = [
     "ProfileEdgeConfig",
     "read_profile_edges",
     "discover_profiles",
     "load_profile_edge_config",
     "default_profile_dir",
+    "default_profile_dirs",
     "KNOWN_FORMAT_NOTES",
 ]

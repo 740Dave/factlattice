@@ -1,7 +1,7 @@
 """Invariants for agent definitions ported into agents/ from another family (SPEC-D-ports-v2 §5).
 
-Part D of the factlattice-reviewer build: smd-first-bringup, smd-qa-tester and
-smd-refactoring-analyst are ported to factlattice-*.  A later port joins by ONE LINE in
+Part D of the factlattice-reviewer build: three agent definitions from another family
+are ported to factlattice-*.  A later port joins by ONE LINE in
 PORTED_DEFS (checklist rule c1).  The marker sentences pinned here are stated in the spec and
 change only together with this test (rule c3).  The gap analyzer's Step 0 block is copied into
 each port and pinned byte-identical (rule c2).
@@ -28,7 +28,7 @@ PORTED_DEFS = (
 # (e) Domain-agnostic denylist, matched case-insensitively.  Extend here.
 # Deployment-specific names are policed by tools/disclosure_guard.py --tree (private vocabulary), not listed in this public file.
 DENYLIST = (
-    "smd-densifier", "smd-linter", "smd-", "Don",
+    "smd-", "Don",
 )
 
 # Terms matched as a whole word (a following apostrophe continues the word), so "don't" does not hit "Don".

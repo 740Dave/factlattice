@@ -1,0 +1,630 @@
+{
+ "control: root": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad"
+ },
+ "control: roots": {
+  "roots": [
+   {
+    "path": "{BAD}"
+   }
+  ],
+  "domain_suffix": "x.bad"
+ },
+ "roots string": {
+  "roots": "nope"
+ },
+ "roots int": {
+  "roots": 5
+ },
+ "roots true": {
+  "roots": true
+ },
+ "roots dict": {
+  "roots": {
+   "path": "{BAD}"
+  }
+ },
+ "roots null": {
+  "roots": null
+ },
+ "roots empty list": {
+  "roots": []
+ },
+ "roots null + root": {
+  "roots": null,
+  "root": "{BAD}"
+ },
+ "roots [] + root": {
+  "roots": [],
+  "root": "{BAD}"
+ },
+ "root int": {
+  "root": 5
+ },
+ "root list": {
+  "root": [
+   "x"
+  ]
+ },
+ "root empty": {
+  "root": ""
+ },
+ "root blank": {
+  "root": "  "
+ },
+ "root null": {
+  "root": null
+ },
+ "root elem int": {
+  "roots": [
+   7
+  ]
+ },
+ "root elem null": {
+  "roots": [
+   null
+  ]
+ },
+ "root elem list": {
+  "roots": [
+   [
+    "x"
+   ]
+  ]
+ },
+ "root elem empty str": {
+  "roots": [
+   ""
+  ]
+ },
+ "root elem blank str": {
+  "roots": [
+   " "
+  ]
+ },
+ "root elem str ok": {
+  "roots": [
+   "{BAD}"
+  ]
+ },
+ "path int": {
+  "roots": [
+   {
+    "path": 7
+   }
+  ]
+ },
+ "path null": {
+  "roots": [
+   {
+    "path": null
+   }
+  ]
+ },
+ "path empty": {
+  "roots": [
+   {
+    "path": ""
+   }
+  ]
+ },
+ "path blank": {
+  "roots": [
+   {
+    "path": "  "
+   }
+  ]
+ },
+ "path list": {
+  "roots": [
+   {
+    "path": [
+     "{BAD}"
+    ]
+   }
+  ]
+ },
+ "root obj empty": {
+  "roots": [
+   {}
+  ]
+ },
+ "root obj area only": {
+  "roots": [
+   {
+    "area": "specs"
+   }
+  ]
+ },
+ "root obj note only": {
+  "roots": [
+   {
+    "_note": "x"
+   }
+  ]
+ },
+ "area int": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "area": 3
+   }
+  ]
+ },
+ "only_file int": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "only_file": 1
+   }
+  ]
+ },
+ "area blank": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "area": " "
+   }
+  ]
+ },
+ "domain_suffix int": {
+  "root": "{BAD}",
+  "domain_suffix": 5
+ },
+ "domain_suffix null": {
+  "root": "{BAD}",
+  "domain_suffix": null
+ },
+ "private yes": {
+  "root": "{BAD}",
+  "private": "yes"
+ },
+ "private 1": {
+  "root": "{BAD}",
+  "private": 1
+ },
+ "private 0": {
+  "root": "{BAD}",
+  "private": 0
+ },
+ "private list": {
+  "root": "{BAD}",
+  "private": []
+ },
+ "private null": {
+  "root": "{BAD}",
+  "private": null
+ },
+ "private true": {
+  "root": "{BAD}",
+  "private": true
+ },
+ "private false": {
+  "root": "{BAD}",
+  "private": false
+ },
+ "profile int": {
+  "root": "{BAD}",
+  "profile": 5
+ },
+ "profile missing file": {
+  "root": "{BAD}",
+  "profile": "{BAD}/nope.json"
+ },
+ "profile null": {
+  "root": "{BAD}",
+  "profile": null
+ },
+ "prefixes int": {
+  "root": "{BAD}",
+  "external_id_prefixes": 5
+ },
+ "prefixes list int": {
+  "root": "{BAD}",
+  "external_id_prefixes": [
+   "A-",
+   3
+  ]
+ },
+ "prefixes ok": {
+  "root": "{BAD}",
+  "external_id_prefixes": [
+   "A-"
+  ]
+ },
+ "entry string": "{BAD}",
+ "entry list": [
+  "{BAD}"
+ ],
+ "entry null": null,
+ "entry int": 5,
+ "entry true": true,
+ "entry empty dict": {},
+ "unknown key": {
+  "root": "{BAD}",
+  "privat": true
+ },
+ "unknown root key pth": {
+  "roots": [
+   {
+    "pth": "{BAD}"
+   }
+  ]
+ },
+ "unknown entry key rooots": {
+  "rooots": [
+   "{BAD}"
+  ]
+ },
+ "string roots + privat": {
+  "roots": "nope",
+  "privat": true
+ },
+ "int path + privat": {
+  "roots": [
+   {
+    "path": 7
+   }
+  ],
+  "privat": true
+ },
+ "roots 5 + unknown": {
+  "roots": 5,
+  "privat": true
+ },
+ "blank root + unknown": {
+  "root": "",
+  "privat": true
+ },
+ "pth + blank other": {
+  "roots": [
+   {
+    "pth": "{BAD}"
+   },
+   {
+    "path": ""
+   }
+  ]
+ },
+ "note key": {
+  "root": "{BAD}",
+  "x_note": "hi"
+ },
+ "only_file int, root missing": {
+  "roots": [
+   {
+    "path": "/nonexistent-zz/x",
+    "only_file": 1
+   }
+  ]
+ },
+ "only_file list": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "only_file": [
+     "a"
+    ]
+   }
+  ]
+ },
+ "only_file empty str": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "only_file": ""
+   }
+  ]
+ },
+ "only_file str ok": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "only_file": "bad.lts"
+   }
+  ]
+ },
+ "path int + root ok": {
+  "roots": [
+   {
+    "path": 7
+   },
+   {
+    "path": "{BAD}"
+   }
+  ]
+ },
+ "path true": {
+  "roots": [
+   {
+    "path": true
+   }
+  ]
+ },
+ "root true": {
+  "root": true
+ },
+ "root zero": {
+  "root": 0
+ },
+ "root dict": {
+  "root": {
+   "a": 1
+  }
+ },
+ "roots two shapes": {
+  "roots": [
+   "{BAD}",
+   7
+  ]
+ },
+ "roots str + int": {
+  "roots": [
+   7,
+   "{BAD}"
+  ]
+ },
+ "domain_suffix list": {
+  "root": "{BAD}",
+  "domain_suffix": [
+   "x"
+  ]
+ },
+ "private str, root ok": {
+  "root": "{BAD}",
+  "private": "yes"
+ },
+ "profile int, root ok": {
+  "root": "{BAD}",
+  "profile": 5
+ },
+ "prefixes int, root ok": {
+  "root": "{BAD}",
+  "external_id_prefixes": 5
+ },
+ "area int, root ok": {
+  "roots": [
+   {
+    "path": "{BAD}",
+    "area": 3
+   }
+  ]
+ },
+ "root list, root ok": {
+  "root": [
+   "{BAD}"
+  ]
+ },
+ "roots dict-of-path": {
+  "roots": {
+   "path": "{BAD}"
+  }
+ },
+ "pth + only_file int": {
+  "roots": [
+   {
+    "pth": "{BAD}",
+    "only_file": 1
+   }
+  ]
+ },
+ "pth, root int": {
+  "roots": [
+   {
+    "pth": "{BAD}"
+   }
+  ],
+  "root": 5
+ },
+ "pth bare word": {
+  "roots": [
+   {
+    "pth": "bad"
+   }
+  ]
+ },
+ "pth dot": {
+  "roots": [
+   {
+    "pth": "."
+   }
+  ]
+ },
+ "pth abs ok": {
+  "roots": [
+   {
+    "pth": "{BAD}"
+   }
+  ]
+ },
+ "unknown entry key + path ok": {
+  "root": "{BAD}",
+  "rooot": "x"
+ },
+ "private int + root ok": {
+  "root": "{BAD}",
+  "private": 1
+ },
+ "domain_suffix int + root ok": {
+  "root": "{BAD}",
+  "domain_suffix": 5
+ },
+ "private yes + pth blank": {
+  "private": "yes",
+  "pth": ""
+ },
+ "r000 (seed 12)": {
+  "private": "{BAD}",
+  "pth": ""
+ },
+ "r022 (seed 12)": {
+  "private": 1.5,
+  "rooot": [
+   "{BAD}"
+  ],
+  "pth": 7
+ },
+ "r026 (seed 12)": {
+  "roots": null,
+  "private": [
+   "{BAD}"
+  ],
+  "rooot": {}
+ },
+ "pth covers the healthy folder": {
+  "roots": [
+   {
+    "pth": "{OK}"
+   }
+  ]
+ },
+ "path + stray key, path is the healthy folder": {
+  "roots": [
+   {
+    "path": "{OK}",
+    "pth2": "x"
+   }
+  ]
+ },
+ "rooot covers the healthy folder": {
+  "root": "{BAD}",
+  "rooot": "{OK}"
+ },
+ "named unknown (root)": {
+  "root": "${nosuch}/thing"
+ },
+ "named unknown (roots path)": {
+  "roots": [
+   {
+    "path": "${nosuch}/thing"
+   }
+  ]
+ },
+ "named unknown, typo key": {
+  "pth": "${nosuch}/thing"
+ },
+ "named unknown beside a table": {
+  "$registry": {
+   "named_roots": {
+    "proj": {
+     "path": "{OK}"
+    }
+   }
+  },
+  "root": "${nosuch}/thing"
+ },
+ "named table malformed": {
+  "$registry": {
+   "named_roots": "nope"
+  },
+  "root": "${proj}/thing"
+ },
+ "profile clean (control)": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "property_keys": [
+    "an-unrelated-key"
+   ]
+  }
+ },
+ "profile collision: property key": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "property_keys": [
+    "see-also"
+   ]
+  }
+ },
+ "profile collision: edge type": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "edge_types": [
+    {
+     "type": "PART_OF",
+     "layer": "semantic"
+    }
+   ]
+  }
+ },
+ "profile invalid: property_keys": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "property_keys": "notalist"
+  }
+ },
+ "profile invalid: layer": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "edge_types": [
+    {
+     "type": "ns.X",
+     "layer": "bogus"
+    }
+   ]
+  }
+ },
+ "profile collision: property key, roots list": {
+  "roots": [
+   {
+    "path": "{BAD}"
+   }
+  ],
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "property_keys": [
+    "see-also"
+   ]
+  }
+ },
+ "profile invalid: layer, roots list": {
+  "roots": [
+   {
+    "path": "{BAD}"
+   }
+  ],
+  "domain_suffix": "x.bad",
+  "$profile": {
+   "domain": {
+    "id": "d"
+   },
+   "edge_types": [
+    {
+     "type": "ns.X",
+     "layer": "bogus"
+    }
+   ]
+  }
+ },
+ "engine profile directory: layer disagreement": {
+  "root": "{BAD}",
+  "domain_suffix": "x.bad",
+  "$profile_dir": {
+   "a.lts": "| zz.THING | semantic | one |\n",
+   "b.lts": "| zz.THING | causal | two |\n"
+  }
+ }
+}

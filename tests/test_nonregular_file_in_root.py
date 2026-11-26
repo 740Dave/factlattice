@@ -1,6 +1,6 @@
 """A non-regular, broken or unreadable `.lts` inside a corpus root: fail LOUD with a precise code, never hang.
 
-Ticket ISSUE-NONREGULAR-MEMBER (measured 2026-10-08):
+Ticket DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS (measured 2026-10-08):
   (1) a FIFO named `*.lts` made the corpus build block FOREVER at `hashing.file_content_hash`;
   (2) a broken symlink / unreadable file failed the whole registry and callers said `registry-not-found`.
 
@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import socket
-import stat
 import subprocess
 import sys
 import time
@@ -134,7 +133,7 @@ from factlattice import registry
 choice = registry.resolve_registry()
 store = config.build_store(choice.corpora)
 print(json.dumps({"loaded": sorted(p.corpus_id for p in store.partitions()),
-                  "failed": getattr(store, "failed_corpora", None)}))
+                  "failed": store.tables()[1]}))
 """
 
 

@@ -23,8 +23,7 @@ import pytest
 
 from factlattice import ledger
 from factlattice.authoring import edit
-from factlattice.authoring.edit import (EditRefused, add_node, repair_property, set_property,
-                                        write_whole_file)
+from factlattice.authoring.edit import EditRefused, add_node, repair_property, set_property, write_whole_file
 from factlattice.parser import parse_text
 
 REPO = str(Path(__file__).resolve().parents[1])
@@ -472,8 +471,8 @@ def test_negative_control_skipping_the_append_turns_L1_and_L5_red(env, monkeypat
 
 # =============================================================================== ROUND 2 (review)
 def _wd_env():
-    from tests.test_atomic_write_round2 import _doc_obj, _fake_preview
     from factlattice.authoring.schema import write_document
+    from tests.test_atomic_write_round2 import _doc_obj, _fake_preview
     return write_document, _doc_obj, _fake_preview
 
 
@@ -641,6 +640,7 @@ def _writer_recipes(f: Path, tmp_path: Path):
 
 def _discovered_writers() -> set:
     import inspect
+
     from factlattice.authoring import schema
     found = {n for n, fn in inspect.getmembers(edit, inspect.isfunction)
              if fn.__module__ == edit.__name__ and not n.startswith("_")

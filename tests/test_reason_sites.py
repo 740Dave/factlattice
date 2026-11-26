@@ -17,8 +17,6 @@ import ast
 import re
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parent.parent
 PKG = ROOT / "factlattice_engine"
 
@@ -198,8 +196,8 @@ def test_property_loss_classifier_only_returns_registered_reasons():
 
 
 def test_stale_marker_reason_is_a_code_and_the_message_is_live_only(tmp_path):
-    from factlattice_engine.store import FreshnessResult, Partition
     from factlattice_engine import tools
+    from factlattice_engine.store import FreshnessResult
     fr = FreshnessResult("c", False, "a", None, "live-rehash-failed", f"live re-hash failed: OSError('{tmp_path}/zq it\\'s')")
     m = tools._stale_marker(fr)
     assert m["reason"] == "live-rehash-failed" and str(tmp_path) in m["live_detail"] and "NEVER persist" in m["live_detail_note"]
@@ -229,9 +227,9 @@ def test_report_miss_reasons_are_codes():
 
 def test_the_stale_marker_codes_are_pinned_where_they_are_produced(tmp_path):
     """Kills the mutant that puts a sentence into FreshnessResult's positional `reason` (55 tests survived it)."""
-    from factlattice_engine.store import Partition
     from factlattice_engine import store as store_mod
     from factlattice_engine.reason_codes import is_code
+    from factlattice_engine.store import Partition
     p = Partition.__new__(Partition)
     p.corpus_id, p.files_hash, p.root_paths, p._kernel = "c", "h", [], None
     fr = p.freshness()
@@ -275,13 +273,15 @@ def test_the_reason_codes_docstring_says_tripwire_like_the_rest():
 
 
 def test_heal_codes_are_pinned_as_a_set():
-    from factlattice_engine.selfheal import HEAL_REASONS, HEAL_REASON_CODES
-    assert set(HEAL_REASON_CODES) == set(HEAL_REASONS) and len(HEAL_REASONS) == 14
-    assert len(set(HEAL_REASON_CODES.values())) == 14, "two heal reasons share one code (a merge)"
+    from factlattice_engine.selfheal import HEAL_REASON_CODES, HEAL_REASONS
+    assert set(HEAL_REASON_CODES) == set(HEAL_REASONS) and len(HEAL_REASONS) == 16
+    assert len(set(HEAL_REASON_CODES.values())) == 16, "two heal reasons share one code (a merge)"
     assert set(HEAL_REASON_CODES.values()) == {
         "self-heal-raised", "already-fresh", "no-rebuild-recipe", "no-readable-roots", "reverify-fresh", "rebuild-cooldown",
         "corpus-changed-during-reindex", "reindex-failed", "reindex-no-readable-roots", "corpus-moved-during-reindex",
-        "corpus-changed-while-reindexing", "still-stale-after-rebuild", "rebuild-already-attempted", "reindexed-fresh"}
+        "corpus-changed-while-reindexing", "still-stale-after-rebuild", "rebuild-already-attempted", "reindexed-fresh",
+        "root-vanished",   # [ROOT-SET-CHANGE] a seated root vanished: refused fail-closed (round-2 Diamond P2-B1)
+        "root-unresponsive"}   # [FL-BOUNDED-ROOTS] a root of the corpus is not answering: not healed, nothing read (the heal choke point)
     # every code is a code, and every outcome the healer can build round-trips through to_dict without falling to the default
     from factlattice_engine.reason_codes import is_code
     from factlattice_engine.selfheal import HealOutcome

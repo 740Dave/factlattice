@@ -7,7 +7,7 @@ set -u
 tooldir="$(cd "$(dirname "$0")" && pwd)"   # resolved BEFORE cd "$tree", so a relative invocation works
 tree="$1"; shift
 cd "$tree" || exit 2
-log=$(mktemp -t commit-if-green)
+log=$(mktemp "${TMPDIR:-/tmp}/commit-if-green.XXXXXX")
 # Wall-clock bound (default 900 s; a normal run is ~50 s): a HUNG suite is a refusal, never a wait.
 python3 "$tooldir/run_bounded.py" "${CIG_TIMEOUT_S:-900}" -- \
   python3 -m pytest tests -q -p no:cacheprovider ${EXTRA_PYTEST_ARGS:-} >"$log" 2>&1

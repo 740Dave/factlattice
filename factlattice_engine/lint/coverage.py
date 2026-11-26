@@ -38,15 +38,13 @@ that is the ratchet.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 import factlattice
 from factlattice.coverage import LineVerdict, account_file
 
 ORIGIN = "coverage"
 
 # Per-kind severity. All warnings at introduction -- see the module docstring.
-COVERAGE_SEVERITY: Dict[str, str] = {
+COVERAGE_SEVERITY: dict[str, str] = {
     "near_miss_property": "warning",
     "near_miss_triple": "warning",
     "near_miss_causal": "warning",
@@ -69,15 +67,15 @@ COVERAGE_SEVERITY: Dict[str, str] = {
 }
 
 
-def find_unaccounted(corpus: "factlattice.ParsedCorpus",
-                     kinds: Optional[List[str]] = None) -> List[LineVerdict]:
+def find_unaccounted(corpus: factlattice.ParsedCorpus,
+                     kinds: list[str] | None = None) -> list[LineVerdict]:
     """Every structure-shaped line in `corpus` that no parser branch consumed.
 
     Deterministic: files in parse order, lines in file order. `kinds` optionally
     narrows to a subset of `factlattice.coverage.UNACCOUNTED_KINDS`.
     """
     keep = set(kinds) if kinds else None
-    out: List[LineVerdict] = []
+    out: list[LineVerdict] = []
     for cov in corpus.coverage:
         for v in account_file(cov):
             if not v.unaccounted:
@@ -88,7 +86,7 @@ def find_unaccounted(corpus: "factlattice.ParsedCorpus",
     return out
 
 
-def coverage_stats(corpus: "factlattice.ParsedCorpus") -> Dict[str, int]:
+def coverage_stats(corpus: factlattice.ParsedCorpus) -> dict[str, int]:
     """Whole-corpus line accounting: how many lines were read, ignored, or lost.
 
     Reported alongside the findings because the RATIO is the honest framing -- a rule

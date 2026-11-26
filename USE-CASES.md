@@ -10,10 +10,11 @@ fixed-install gateway controller, and **Atlas**, a hosted service that ingests r
 both. Every id, path, and quantity below is invented.
 
 > These cases describe what FactLattice is *for*. For evidence that the central claim holds —
-> four reproducible experiments measuring how ambiguity turns into wrong code, and how a graph
-> prevents it — see the companion study
+> four small experiments measuring how ambiguity turns into wrong code, and how a graph
+> prevents it (rounds 1-2 reproducible from this repository, rounds 3-4 reported) — see the companion study
 > [`case-studies/specification-ambiguity/`](case-studies/specification-ambiguity/README.md).
-> It is runnable: each round ships the actual implementations and a `compare.py` you can execute.
+> Each round ships its implementations and a script you can run (`compare.py`, `check.py` or
+> `compare2.py`).
 
 ---
 
@@ -45,15 +46,17 @@ guideline that implements it is a traversal, and so is the reverse.
 
 ## [GUIDE-CONNECTORS] Connectors must be commodity-sourced
 - implements: [PRIN-SERVICEABLE]
-- rationale-ref: [DEC-NO-PROPRIETARY-CONNECTOR]
-- applies-to: [PORT-FIELD-HARDWARE]
+- see-also: [DEC-NO-PROPRIETARY-CONNECTOR]
+- relates-to: [PORT-FIELD-HARDWARE]
 
 ## [PROD-GC4] GC-4 gateway controller
 - part-of: [PORT-FIELD-HARDWARE]
 - depends-on: [TECH-SENSOR-BUS]
 ```
 
-Two queries close the loop in both directions.
+Two queries close the loop in both directions. (The snippets are fragments: the queries assume
+the nodes they reference, such as `PORT-FIELD-HARDWARE`, are defined in the corpus; a traversal
+does not pass through an undefined node.)
 
 *Downward — what does this principle constrain?*
 
@@ -67,14 +70,14 @@ lts_traverse(corpus="miw", start_node="PRIN-SERVICEABLE",
 
 ```
 lts_traverse(corpus="miw", start_node="PROD-GC4",
-             edge_types=["PART_OF", "IMPLEMENTS"],
-             direction="forward", max_depth=4)
+             edge_types=["PART_OF", "RELATED_TO", "IMPLEMENTS"],
+             direction="both", max_depth=4)
 ```
 
 *Coverage — which guidelines implement nothing?*
 
 ```
-lts_aggregate(op="orphans", corpus="miw", prefix="GUIDE")
+lts_find(corpus="miw", prefix="GUIDE-", where=[{"key": "implements", "lacks": True}])
 ```
 
 An unattached guideline is a guideline nobody derived from a principle. An unimplemented
@@ -84,7 +87,7 @@ rather than intuitions.
 ### Constructs involved
 
 Node prefixes `STRAT-`, `PRIN-`, `GUIDE-`, `TECH-`, `PORT-`, `PROD-`; `part-of` and
-`implements` edges; semantic-layer traversal; the `orphans` aggregate; a domain profile
+`implements` edges; semantic-layer traversal; `lts_find` with a `where` condition; a domain profile
 registering the prefix taxonomy.
 
 ### Where support is partial
@@ -92,7 +95,7 @@ registering the prefix taxonomy.
 - **The profile does not enforce the shape.** Nothing currently stops a `GUIDE-` node from
   being authored with no `implements` edge, or with an `implements` edge pointing at another
   guideline instead of a principle. Prefix-aware validation exists in the linter (warning
-  severity) but is inert with the shipped reference profiles. The `orphans` query finds the gap after
+  severity) but is inert with the shipped reference profiles. The `lacks` query finds the gap after
   the fact; a linter rule would prevent it.
 - **No policy engine.** FactLattice tells you the guideline exists and what it governs. It
   does not evaluate a design against it. Compliance remains a review activity; the graph makes
@@ -121,7 +124,7 @@ it constrains, and either has a verification node or is visibly missing one.
 - status: accepted
 - priority: must
 - testable: true
-- constrains: [API-INGEST-V2]
+- relates-to: [API-INGEST-V2]
 - tested-by: [TEST-INGEST-DUPLICATE]
 
 ## [REQ-INGEST-LATENCY] Ingest acknowledges within 200 ms at p99
@@ -133,16 +136,16 @@ it constrains, and either has a verification node or is visibly missing one.
 
 ## [INV-NO-SILENT-DROP] A reading is never dropped without an error record
 - status: accepted
-- applies-to: [API-INGEST-V2]
+- relates-to: [API-INGEST-V2]
 - tested-by: [TEST-DROP-AUDIT]
 ```
 
 The agent's build loop becomes a set of queries rather than a reading task:
 
 ```
-# the complete, exact set of must-requirements for this interface
+# every requirement and invariant linked to this interface (read `priority` for the musts)
 lts_traverse(corpus="miw-atlas", start_node="API-INGEST-V2",
-             edge_types=["CONSTRAINS", "IMPLEMENTS"],
+             edge_types=["RELATED_TO", "IMPLEMENTS"],
              direction="reverse", max_depth=2)
 
 # what is specified but unverified — the test strategy's work list
@@ -151,22 +154,22 @@ lts_aggregate(op="count", corpus="miw-atlas", prefix="REQ", group_by="status")
 ```
 
 A test strategy is then derivable rather than invented: every `testable: true` requirement
-with no inbound `TESTED_BY` edge is a required test; every invariant is a property test; the
+with no `tested-by` is a required test; every invariant is a property test; the
 priority field orders the work. Because the query is deterministic and complete, "did we test
 everything we specified" has an exact answer instead of an estimate.
 
 Divergence is detectable in the other direction too. When the implementation is recorded as
-its own node population, an implementation node that realizes nothing, or a requirement with
-no implementation, is a query result:
+its own node population, an implementation node that realizes nothing is a query result (a requirement with no
+implementation needs `lts_reverse` on each requirement):
 
 ```
-lts_aggregate(op="orphans", corpus="miw-atlas", prefix="MOD")
+lts_find(corpus="miw-atlas", prefix="MOD-", where=[{"key": "implements", "lacks": True}])
 ```
 
 ### Constructs involved
 
 `REQ-`, `INV-`, `API-`, `TEST-`, `MOD-` prefixes; `implements`, `tested-by`, `depends-on`
-edges; status and priority properties; the `count`/`group_by`/`orphans` aggregates; the
+edges; status and priority properties; the `count`/`group_by` aggregates; `where` conditions; the
 forward-dangle lint as a gate on half-written specs.
 
 ### Where support is partial
@@ -299,7 +302,7 @@ to the specification sections it shaped, and inward to the premise it depends on
 - status: accepted
 - decision-date: 2026-03-11
 - see-also: [INSIGHT-AUDIT-2026]
-- affects: [REQ-FS1-STORAGE], [REQ-FS1-SYNC], [INV-NO-SYSTEM-OF-RECORD]
+- relates-to: [REQ-FS1-STORAGE], [REQ-FS1-SYNC], [INV-NO-SYSTEM-OF-RECORD]
 - change: "Local retention capped at 48 hours."
 - context_for_change:
     prior_state: "Retention was unbounded, limited only by flash capacity."
@@ -328,7 +331,7 @@ lts_node(corpus="miw", node_id="DEC-NO-LOCAL-RETENTION")
 
 # blast radius: what depends on the sections this decision affects?
 lts_traverse(corpus="miw", start_node="REQ-FS1-STORAGE",
-             edge_types=["DEPENDS_ON", "IMPLEMENTS", "CONSTRAINS"],
+             edge_types=["DEPENDS_ON", "IMPLEMENTS"],
              direction="reverse", max_depth=3)
 ```
 
@@ -350,11 +353,11 @@ lineage.
 
 ### Where support is partial
 
-- **`context_for_change` is prose, not structured fields.** The block is authored as indented
-  YAML-style text inside the node and is stored as document content, not as individually
-  queryable sub-properties. You cannot today run "find every decision whose
+- **`context_for_change` is not field-queryable.** The block is authored as indented
+  YAML-style text inside the node and is stored as one nested property (`lts_node` returns it
+  as a mapping), but `lts_find` does not search inside it. You cannot today run "find every decision whose
   `invalidating_assumption` mentions retention policy" as a structured query — free-text
-  `lts_find(text=...)` is the available approximation. Promoting these to first-class
+  `lts_find_in_prose(text=...)` is the available approximation. Promoting these to first-class
   queryable fields is a known, straightforward extension.
 - **Blast radius is a traversal, not a ranked impact analysis.** The result is a bounded set
   of reachable nodes. It does not weigh them, and depth 3 versus depth 4 is a judgement the
@@ -437,7 +440,7 @@ products that live in separate corpora.
   determinism trade.** `find(text="threshold")` finds "threshold". It does not find "limit
   alarm", "trip point", or "excursion detection". If the existing specification used different
   words, this query misses it. The mitigations are real but they are mitigations: register
-  domain vocabulary in a profile so terms are normalized at authoring time; use `aliases` on
+  domain vocabulary in a profile so terms are normalized at authoring time; use `alias` on
   nodes; probe with several terms. Nothing in FactLattice does synonym expansion, and adding
   it would mean adding inference to the query path, which is exactly what the deterministic
   guarantee excludes. **A semantic search tool alongside the engine is the right answer for
@@ -456,8 +459,8 @@ products that live in separate corpora.
 
 | Use case | Primary constructs | Support |
 |----------|--------------------|---------|
-| [UC-STRATEGY] Strategy to design guideline | `part-of`, `implements`, `orphans` | Good; profile-driven shape validation missing |
-| [UC-SPEC-TO-CODE] Specs driving agent-built software | `tested-by`, status/priority, orphan queries | Good; no CI result write-back |
+| [UC-STRATEGY] Strategy to design guideline | `part-of`, `implements`, `where` lacks | Good; profile-driven shape validation missing |
+| [UC-SPEC-TO-CODE] Specs driving agent-built software | `tested-by`, status/priority, `where` lacks queries | Good; no CI result write-back |
 | [UC-FLOW] Process flow documentation | flow properties, `lts_flow` | Strong; Mermaid flowcharts only |
 | [UC-DECISION] Decisions linked to insight and impact | `context_for_change`, reverse traversal | Good; `context_for_change` not yet field-queryable |
 | [UC-OVERLAP] Finding existing overlap | `capabilities`, multi-corpus `find` | Partial; lexical matching only |

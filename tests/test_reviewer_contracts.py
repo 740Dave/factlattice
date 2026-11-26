@@ -93,9 +93,10 @@ def test_the_pinned_lists_are_not_vacuous():
 def test_reviewer_config_keys_are_pinned_declared_and_hold_no_site_values():
     assert reviewer.CONFIG_KEYS == C.CONFIG_KEYS
     node = _nodes("reviewer-config.lts")["REVIEWER-CONFIG"]
-    assert tuple(sorted(node.properties)) == tuple(sorted(C.CONFIG_KEYS))
+    authored = {k: v for k, v in node.properties.items() if k != "normative_effective"}   # the minted state is not authored
+    assert tuple(sorted(authored)) == tuple(sorted(C.CONFIG_KEYS))
     assert set(C.CONFIG_KEYS) <= set(load_profile(reviewer.PROFILE_PATH).declared_property_keys)
-    for k, v in node.properties.items():
+    for k, v in authored.items():
         assert str(v).strip().lower() == "none", f"{k}: the shipped config holds a site value ({v!r})"
     parsed = reviewer.parse_site_config(node.properties, source="x")
     assert parsed.default_output_root is None and parsed.overrides == () and parsed.default_root_corpora == ()
@@ -108,7 +109,7 @@ def test_the_shipped_site_config_node_is_not_the_site_lookup_target():
 
 
 # ----------------------------------------------------------------------------------------- REVIEW-KEY-GRAMMAR
-NOW = datetime.datetime(2026, 10, 7, 12, 30, 5, tzinfo=datetime.timezone.utc)
+NOW = datetime.datetime(2026, 10, 7, 12, 30, 5, tzinfo=datetime.UTC)
 
 
 def test_review_key_grammar():
@@ -120,7 +121,7 @@ def test_review_key_grammar():
         assert re.fullmatch(r"[A-Z][A-Z0-9_-]*", nid), nid
 
 
-@pytest.mark.parametrize("given,slug", [("Sample Corpus_LTS", "SAMPLE-CORPUS-LTS"), (None, "NO-CORPUS"), ("..", "NO-CORPUS"),
+@pytest.mark.parametrize("given,slug", [("Zero Context_LTS", "ZERO-CONTEXT-LTS"), (None, "NO-CORPUS"), ("..", "NO-CORPUS"),
                                         ("../../etc", "ETC"), ("a/b", "A-B")])
 def test_review_key_slug_is_sanitised(given, slug):
     k = reviewer.review_key(given, now=NOW, rand=1)

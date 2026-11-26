@@ -10,6 +10,11 @@
       Read-only unless --allow-write. States which registry, package and build it ran against.
       Exit 0 ok | 1 tool error / failed verdict | 2 usage, unknown tool, cannot import | 3 writer
       refused. See factlattice_engine/callcli.py and docs/TRY-BEFORE-YOU-DEPLOY.md.
+
+  registry resolved --file <path>
+      Print a registry file's corpus entries as JSON: expanded, with the named_roots table stripped
+      (the same as `factlattice.registry.resolved_entries`). Exit 0 ok | 1 an entry could not be expanded,
+      or the table is malformed (said on stderr; the entries are still printed) | 2 the file cannot be read.
 """
 from __future__ import annotations
 
@@ -19,10 +24,11 @@ import sys
 
 
 def _semantic(args) -> int:
-    from . import config
-    from .tools import LtsEngine
-    from .semantic.suggest import SemanticService
     from factlattice import registry
+
+    from . import config
+    from .semantic.suggest import SemanticService
+    from .tools import LtsEngine
     try:
         choice = registry.resolve_registry()        # THE lookup; a broken configured registry is a stop
         corpora = choice.corpora
@@ -39,7 +45,7 @@ def _semantic(args) -> int:
     eng.semantic = SemanticService(build_mode="sync")
     part = store.get_partition(args.corpus)
     if part is not None and not args.json:
-        from .semantic.index import SemanticIndex, IndexIncompatible
+        from .semantic.index import IndexIncompatible, SemanticIndex
         try:
             SemanticIndex(eng.semantic.state_root, args.corpus, eng.semantic._get_embedder())._load()
         except IndexIncompatible:
@@ -86,6 +92,23 @@ def _call(args) -> int:
                        list_only=args.list)
 
 
+def _registry_resolved(args) -> int:
+    from factlattice import registry
+    try:
+        entries = registry.resolved_entries(args.file)
+        problem = registry.read_table(args.file)["problem"]
+    except registry.RegistryError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    print(json.dumps(entries, indent=2))
+    bad = sorted(c for c, spec in entries.items() if registry.named_failure(spec))
+    for cid in bad:
+        print(f"{cid}: {registry.named_failure(entries[cid])}", file=sys.stderr)
+    if problem:
+        print(f"{registry.NAMED_ROOTS_KEY}: {problem}", file=sys.stderr)
+    return 1 if bad or problem else 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m factlattice_engine")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -103,11 +126,17 @@ def main(argv=None) -> int:
                    help="permit WRITE tools (typed writers, corpus registry, miss log); refused without it")
     c.add_argument("--json", action="store_true", help="print one JSON envelope (result + call_context)")
     c.add_argument("--list", action="store_true", help="list the tools `call` covers and exit")
+    r = sub.add_parser("registry", help="read a registry file as the engine reads it")
+    rs = r.add_subparsers(dest="registry_cmd", required=True)
+    rr = rs.add_parser("resolved", help="print the corpus entries of a registry file, expanded")
+    rr.add_argument("--file", required=True)
     args = ap.parse_args(argv)
     if args.cmd == "semantic":
         return _semantic(args)
     if args.cmd == "call":
         return _call(args)
+    if args.cmd == "registry":
+        return _registry_resolved(args)
     return 2
 
 

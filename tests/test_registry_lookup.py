@@ -418,7 +418,6 @@ def test_membership_propagates_a_registry_error_instead_of_swallowing_it(world, 
 
 def test_a_write_receipt_survives_a_broken_registry_and_says_so(world, monkeypatch):
     """Membership propagates, but a write that LANDED must not be reported as an error after the fact."""
-    from factlattice_engine import membership
     (world.tmp / "wdir").mkdir()
     target = world.tmp / "wdir" / "w.lts"      # NOT beside the state dir: the write lock refuses a lock dir inside the corpus dir
     target.write_text("# W [W-DOC]\n\n## T [W-1]\n\n- status: active\n", encoding="utf-8")
@@ -434,8 +433,8 @@ def test_a_write_receipt_survives_a_broken_registry_and_says_so(world, monkeypat
 
 
 def test_register_corpus_refuses_with_the_code_on_a_broken_registry(world, monkeypatch):
-    from factlattice_engine.server import build_tools
     from factlattice_engine import tools
+    from factlattice_engine.server import build_tools
     monkeypatch.setenv("FACTLATTICE_CORPUS_CONFIG", str(world.cfg))
     eng = build_tools(watch=False)
     world.cfg.write_text("{ torn")
@@ -697,7 +696,7 @@ def test_error_mode_ends_only_by_restart_even_after_the_file_is_fixed(world, mon
     body, is_err = _handle(eng, "tools/call", {"name": "lts_find", "arguments": {"corpus": "pubcorp", "prefix": "PUB"}})
     assert is_err is True and body["reason"] == "registry-not-found" and not body.get("nodes")
     assert "restart" in body["error"].lower()
-    from factlattice_engine import server                                    # ...and a RESTART serves it
+    from factlattice_engine import server  # ...and a RESTART serves it
     fresh = server.boot_engine(retry_delay_s=0.01, watch=False)
     body, is_err = _handle(fresh, "tools/call", {"name": "lts_find", "arguments": {"corpus": "pubcorp", "prefix": "PUB"}})
     assert is_err is False and body["success"] is True and body["nodes"]
@@ -932,8 +931,8 @@ def test_mcp_and_call_in_the_same_environment_report_the_same_source_path_and_ha
     rc, env, _ = call_json("lts_selfcheck", {}, capsys)
     cc = env["call_context"]["corpus_config"]
     assert (rc_mcp["source"], rc_mcp["path"], rc_mcp["sha256_now"]) == (cc["source"], cc["path"], cc["sha256"])
-    from factlattice_engine.reviewer import compare_registries
     from factlattice import registry
+    from factlattice_engine.reviewer import compare_registries
     cmp = compare_registries(rc_mcp, registry.resolve_registry().statement())
     assert cmp["mcp_used"] and not cmp["mismatch"] and cmp["registry_mcp"] == cmp["registry_cli"]
 

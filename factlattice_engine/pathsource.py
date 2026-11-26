@@ -16,15 +16,12 @@ from __future__ import annotations
 
 import hashlib
 import os
-from typing import Optional, Tuple
 
 from factlattice.hashing import safe_read_bytes
-from factlattice.parser_config import ParserConfig
 
 from .config import parser_config_for
 from .incremental import CorpusMoved, RootIndex
 from .store import Partition
-
 
 _AFTER_READ_HOOK = None      # test seam only
 
@@ -41,7 +38,7 @@ def describe(path: object) -> str:
     return f"path (type {type(path).__name__})"
 
 
-def load_partition(path: object) -> Tuple[Partition, dict]:
+def load_partition(path: object) -> tuple[Partition, dict]:
     """Parse ONE `.lts` file into a throwaway `Partition`. Returns `(partition, file_source)` where
     `file_source` is `{"sha256", "bytes"}` of the exact bytes parsed. Raises `PathRefusal`."""
     if not isinstance(path, str) or not path.strip():

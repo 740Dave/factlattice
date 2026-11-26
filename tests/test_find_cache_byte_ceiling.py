@@ -15,7 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from factlattice_engine import config, query_surface as qs, tools
+from factlattice_engine import config, tools
+from factlattice_engine import query_surface as qs
 from tests import qs_fixture as F
 
 ENV = "LTS_FIND_CACHE_MAX_MB"

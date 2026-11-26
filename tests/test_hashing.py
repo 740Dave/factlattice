@@ -4,7 +4,9 @@ import os
 import time
 
 from factlattice.hashing import (
-    content_hash, file_content_hash, files_hash,
+    content_hash,
+    file_content_hash,
+    files_hash,
 )
 
 

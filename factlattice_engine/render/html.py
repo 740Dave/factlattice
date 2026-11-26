@@ -39,11 +39,11 @@ from __future__ import annotations
 
 import html as _html_stdlib
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Union
 
-Block = Dict[str, object]
+Block = dict[str, object]
 
 _SLUG_UNSAFE_RE = re.compile(r"[^a-z0-9]+")
 
@@ -58,7 +58,7 @@ def escape_html(text: object) -> str:
     return _html_stdlib.escape(str(text), quote=True)
 
 
-def slugify(value: object, *, used: Optional[Dict[str, str]] = None) -> str:
+def slugify(value: object, *, used: dict[str, str] | None = None) -> str:
     """Arbitrary id/title -> a filesystem/URL-safe slug (`lower-case-hyphenated`).
 
     `used` (slug -> original) disambiguates two distinct inputs that would
@@ -103,7 +103,7 @@ def _inline_md(text: str) -> str:
     return escaped
 
 
-def _split_table_row(line: str) -> List[str]:
+def _split_table_row(line: str) -> list[str]:
     row = line.strip()
     if row.startswith("|"):
         row = row[1:]
@@ -123,9 +123,9 @@ def render_markdown_lite(text: str) -> str:
     raises on unfamiliar Markdown.
     """
     lines = (text or "").replace("\r\n", "\n").split("\n")
-    out: List[str] = []
+    out: list[str] = []
     i, n = 0, len(lines)
-    para: List[str] = []
+    para: list[str] = []
 
     def flush_para() -> None:
         if para:
@@ -138,7 +138,7 @@ def render_markdown_lite(text: str) -> str:
         if line.strip().startswith("```"):
             flush_para()
             i += 1
-            code_lines: List[str] = []
+            code_lines: list[str] = []
             while i < n and not lines[i].strip().startswith("```"):
                 code_lines.append(lines[i])
                 i += 1
@@ -167,7 +167,7 @@ def render_markdown_lite(text: str) -> str:
                 flush_para()
                 headers = _split_table_row(line)
                 i += 2
-                rows: List[List[str]] = []
+                rows: list[list[str]] = []
                 while i < n and lines[i].strip().startswith("|"):
                     rows.append(_split_table_row(lines[i]))
                     i += 1
@@ -233,7 +233,7 @@ def _list_html(items: Sequence[object], *, ordered: bool) -> str:
     return f"<{tag}>{lis}</{tag}>"
 
 
-def _properties_html(data: Dict[str, object]) -> str:
+def _properties_html(data: dict[str, object]) -> str:
     rows = []
     for key, value in data.items():
         if isinstance(value, (list, tuple)):
@@ -355,8 +355,8 @@ class HtmlPage:
 
 
 def render_page(*, title: str, tagline: str, blocks: Sequence[Block],
-                nav: Optional[Sequence[dict]] = None,
-                active_href: Optional[str] = None,
+                nav: Sequence[dict] | None = None,
+                active_href: str | None = None,
                 inline_css: str = DEFAULT_CSS) -> HtmlPage:
     """Render ONE self-contained static HTML page from generic content blocks.
 
@@ -368,9 +368,10 @@ def render_page(*, title: str, tagline: str, blocks: Sequence[Block],
     nav = nav or []
     nda = "nda" in tagline.lower() or "nda-only" in tagline.lower()
     tagline_class = "tagline nda" if nda else "tagline"
+    active_attr = ' class="active"'
     nav_html = "".join(
         f'<a href="{escape_html(item.get("href"))}"'
-        f'{" class=\"active\"" if active_href and item.get("href") == active_href else ""}>'
+        f'{active_attr if active_href and item.get("href") == active_href else ""}>'
         f'{escape_html(item.get("label"))}</a>'
         for item in nav
     )
@@ -398,16 +399,16 @@ def render_page(*, title: str, tagline: str, blocks: Sequence[Block],
 
 
 def render_index(*, title: str, tagline: str, sections: Sequence[dict],
-                 nav: Optional[Sequence[dict]] = None,
-                 active_href: Optional[str] = None,
-                 intro: Optional[str] = None) -> HtmlPage:
+                 nav: Sequence[dict] | None = None,
+                 active_href: str | None = None,
+                 intro: str | None = None) -> HtmlPage:
     """A listing page: `sections` = `[{"heading", "items": [card-dict, ...], "empty_note"?}, ...]`.
 
     An empty `items` list renders `empty_note` (or a generic placeholder) via the
     `notice-empty` block instead of an empty `<div class="card-grid">` — a sparse
     section says so, rather than looking like a rendering failure.
     """
-    blocks: List[Block] = []
+    blocks: list[Block] = []
     if intro:
         blocks.append({"type": "prose", "text": intro})
     for section in sections:
@@ -425,15 +426,15 @@ def render_index(*, title: str, tagline: str, sections: Sequence[dict],
 @dataclass
 class SiteResult:
     output_dir: str
-    written: List[str] = field(default_factory=list)
+    written: list[str] = field(default_factory=list)
 
 
-def write_site(pages: Dict[str, HtmlPage], output_dir: Union[str, Path]) -> SiteResult:
+def write_site(pages: dict[str, HtmlPage], output_dir: str | Path) -> SiteResult:
     """Write every `{relative_path: HtmlPage}` under `output_dir`. Pure I/O, no
     templating decisions live here. Creates parent directories as needed."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    written: List[str] = []
+    written: list[str] = []
     for rel_path, page in pages.items():
         dest = out / rel_path
         dest.parent.mkdir(parents=True, exist_ok=True)

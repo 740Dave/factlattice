@@ -42,6 +42,11 @@ import tempfile
 import pytest
 
 import factlattice
+from factlattice_engine.lifecycle import (
+    is_bare_lifecycle_token,
+    lifecycle_token,
+    status_matches,
+)
 from factlattice_engine.lint import (
     PROFILE_SEVERITY,
     VALIDATORS,
@@ -53,11 +58,6 @@ from factlattice_engine.lint import (
 from factlattice_engine.lint.profile_rules import (
     CORE_DOCUMENT_TAGS,
     REQUIRED_FRONTMATTER,
-)
-from factlattice_engine.lifecycle import (
-    is_bare_lifecycle_token,
-    lifecycle_token,
-    status_matches,
 )
 
 # ⛔ NO LIVE CORPUS IS READ FROM THIS FILE. The receipts taken against a real
@@ -571,10 +571,10 @@ V8_FIXTURE = FRONTMATTER + """\
 - rationale: r
 - lifecycle-position: committed
 - importance: high
-- change: The limit moved from 12 to 15
+- change: The gate moved from 0.40 to 0.48
 - context_for_change:
-  - prior_state: the limit was 12
-  - invalidating_assumption: that the load distribution stays where v2 put it
+  - prior_state: the gate was 0.40
+  - invalidating_assumption: that the impostor distribution stays where 2.7 put it
 
 ## [DEC-V8-NO-ASSUMPTION] b
 - rationale: r
@@ -582,8 +582,8 @@ V8_FIXTURE = FRONTMATTER + """\
 - importance: high
 - change: The extractor changed
 - context_for_change:
-  - prior_state: 4.1
-  - reasoning: 4.2 ships
+  - prior_state: 2.7
+  - reasoning: 3.14 ships
 
 ## [DEC-V8-NO-CONTEXT] c
 - rationale: r
@@ -617,9 +617,9 @@ def test_v8_nested_subfield_is_a_string_not_a_queryable_field(workspace):
     node = next(n for n in corpus.nodes if n.id == "DEC-V8-COMPLETE")
     value = node.properties["context_for_change"]
     assert isinstance(value, list)
-    assert value == ["prior_state: the limit was 12",
-                     "invalidating_assumption: that the load distribution stays "
-                     "where v2 put it"]
+    assert value == ["prior_state: the gate was 0.40",
+                     "invalidating_assumption: that the impostor distribution stays "
+                     "where 2.7 put it"]
     result = lint(corpus_dir, profile=profile_path)
     assert all(f.detail["queryable"] is False for f in _of(result, "V8"))
 

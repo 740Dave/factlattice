@@ -24,7 +24,6 @@ exists each test fails FOR THE MISSING FEATURE, one by one, not as one collectio
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -35,7 +34,6 @@ from pathlib import Path
 import pytest
 
 from factlattice import ledger
-from factlattice_engine import querylog
 from factlattice_engine.server import TOOLS, Server, build_tools
 
 REPO = Path(__file__).resolve().parent.parent
@@ -110,7 +108,7 @@ def call_json(name, args, capsys, *extra):
     return rc, json.loads(out), err
 
 
-_VOLATILE_KEYS = {"elapsed_ms", "embedded_on_query"}
+_VOLATILE_KEYS = {"elapsed_ms", "embedded_on_query", "resolved_at"}
 
 
 def scrub(o):
@@ -737,7 +735,6 @@ def test_F1_store_free_tools_keep_their_result_but_carry_a_top_level_warning(too
 
 def test_F1_the_no_config_example_registry_path_is_unchanged(world, capsys, monkeypatch):
     monkeypatch.delenv("FACTLATTICE_CORPUS_CONFIG")
-    from factlattice_engine import config
     monkeypatch.setenv("FACTLATTICE_CORPUS_ROOT", str(world / "empty-root"))   # example registry -> 0 corpora
     rc, env, err = call_json("lts_selfcheck", {}, capsys)
     assert rc == 0 and "warnings" not in env
@@ -758,6 +755,7 @@ def test_F1_table_of_corpus_free_tools_names_only_real_tools():
 
 def test_F2_stamp_covers_the_core_package_and_names_both_import_paths(world, capsys, tmp_path):
     import shutil
+
     import factlattice
     import factlattice_engine
     from factlattice_engine import callcli
@@ -891,3 +889,14 @@ def test_a_tool_added_to_an_existing_layer_tuple_is_still_refused_by_default(tmp
                        capture_output=True, text=True, cwd=str(tmp_path), env=env)
     out = json.loads(p.stdout)
     assert p.returncode == 3 and out["refused"] is True and "--allow-write" in out["error"], (p.returncode, p.stdout[:300])
+
+
+def test_scrub_ignores_the_wall_time_a_process_sets_at_its_start_and_nothing_else_of_the_registry_choice():
+    """`registry_choice.resolved_at` is a wall time each process sets when it starts, so the CLI and the server it is compared with can straddle a
+    second under load. The scrub drops it; path, source and both sha256 values stay compared."""
+    def choice(**kw):
+        base = {"source": "env", "path": "/r.json", "sha256_at_boot": "a" * 64, "sha256_now": "a" * 64, "resolved_at": "2026-11-05T15:00:00Z"}
+        return {"registry_choice": {**base, **kw}}
+    assert scrub(choice()) == scrub(choice(resolved_at="2026-11-05T15:00:01Z")), "a one-second difference in resolved_at is not a difference"
+    for k, v in (("path", "/other.json"), ("source", "user-config"), ("sha256_at_boot", "b" * 64), ("sha256_now", "b" * 64)):
+        assert scrub(choice()) != scrub(choice(**{k: v})), f"a difference in {k} must still show"

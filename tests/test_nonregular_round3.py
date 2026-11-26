@@ -1,4 +1,4 @@
-"""Round 3 of ISSUE-NONREGULAR-MEMBER (delta Diamond at 88b9ef3: F-1, F-2, P3 stale reply).
+"""Round 3 of DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS (delta Diamond at 88b9ef3: F-1, F-2, P3 stale reply).
 
 F-1  no reader may hang on a FIFO: the reviewer's `scan_secrets`, `gen6_scan`, `count_registrations` (and the CLI verbs that call
      them) answer the existing coded refusal. Each case runs in a child with a hard timeout, so a hang FAILS the test.
@@ -12,11 +12,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from pathlib import Path
 
 import pytest
 
-from tests.test_nonregular_file_in_root import GOOD, KINDS, NOT_REGULAR, REPO, UNREADABLE, plant, sub_run
+from tests.test_nonregular_file_in_root import KINDS, NOT_REGULAR, REPO, UNREADABLE, plant, sub_run
 from tests.test_nonregular_round2 import _unexempt, w  # noqa: F401  (w: the registry fixture)
 
 FUNCS = {

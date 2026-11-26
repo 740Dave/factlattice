@@ -111,7 +111,11 @@ def test_the_writers_success_path_does_not_raise_on_a_method_that_does_not_exist
     completion. A gate whose accept branch is dead has only ever been observed rejecting,
     which is precisely how it kept a good reputation while being unusable."""
     from factlattice.authoring.schema import (
-        Document, Node, Property, _render, write_document,
+        Document,
+        Node,
+        Property,
+        _render,
+        write_document,
     )
     doc = Document(frontmatter=_fm(), document_tag="SPEC", section="Body",
                    nodes=[Node(node_id="D-ITEM", title="An item with a long title",
@@ -124,7 +128,8 @@ def test_the_writers_success_path_does_not_raise_on_a_method_that_does_not_exist
                            "document_tag": pf.document_tag},
                 "resolution": {"profile": {"available": True}}, "lost": []}
 
-    import tempfile, os
+    import os
+    import tempfile
     out = os.path.join(tempfile.mkdtemp(), "written.lts")
     receipt = write_document(doc, out, fake_preview)
     assert receipt["written"] == out
@@ -140,7 +145,11 @@ def test_the_writer_refuses_when_the_parser_read_a_different_doctype():
     old two-bracket bug, because the bytes were exactly what the renderer intended and the
     renderer was wrong."""
     from factlattice.authoring.schema import (
-        Document, Node, Property, WriteRefused, write_document,
+        Document,
+        Node,
+        Property,
+        WriteRefused,
+        write_document,
     )
     doc = Document(frontmatter=_fm(), document_tag="PROFILE", section="Body",
                    nodes=[Node(node_id="D-ITEM", title="An item with a long title",
@@ -185,8 +194,8 @@ def test_the_detector_names_both_the_minted_and_the_intended_id():
 @pytest.mark.parametrize("heading", [
     # ID-FIRST is a first-class declaration form. Measured: a first cut of this rule
     # fired on THREE of these across 178 live files and every one was correct authoring.
-    "[ACME-WIDGET-CONFIRM] See It Run (the confirmation half of [ACME-GADGET-REPORT])",
-    "[ACME-SAMPLE-UNIQUE-ENTRY] The launcher's singleton — a re-ratification of [ACME-SAMPLE-UNIQUE]",
+    "[ACME-FLAUTH-CONFIRM] See It Run (the confirmation half of [ACME-HW-INTROSPECT])",
+    "[ACME-ICL-SINGLETON-YIELD] The launcher's singleton — a re-ratification of [ACME-IC-SINGLETON]",
     # An ordinal is numbering, not content: this is still ID-FIRST.
     "8. [SOME-ID] Title citing [OTHER-ID]",
     # Two ids mid-sentence: neither reading is more likely, and a detector that guesses
@@ -231,8 +240,9 @@ def test_the_rule_is_demotable_for_a_corpus_that_means_the_first_id(tmp_path):
 
 def test_the_grammar_is_the_parsers_own_not_a_second_copy():
     """A linter carrying its own idea of "id-shaped" drifts from the grammar it lints."""
-    import factlattice_engine.lint.id_hijack as mod
     import inspect
+
+    import factlattice_engine.lint.id_hijack as mod
     src = inspect.getsource(mod)
     assert "detect_id_hijack" in src
     assert "re.compile" not in src, "the lint layer grew its own bracket grammar"

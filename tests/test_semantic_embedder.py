@@ -1,6 +1,6 @@
 """[SEM-EMBEDDER] S1: the offline, hash-pinned embedder and its failure contract.
 
-The contract under test (ISSUE-SEMANTIC-DESIGN honesty rules 4, 7, 8):
+The contract under test (LTS-SEMANTIC-QUERY-DESIGN-AND-BUILD-MODEL honesty rules 4, 7, 8):
   * weights load ONLY from a pinned local path, and only if BOTH the ONNX file and the vocab
     match their sha256 pins; a mismatch is REFUSED (rule 7: a drifted model is refused,
     never mixed);
@@ -15,7 +15,6 @@ weights runs only where they are staged, and SKIPS loudly elsewhere.
 """
 from __future__ import annotations
 
-import hashlib
 import os
 import socket
 
@@ -26,8 +25,7 @@ ort = pytest.importorskip("onnxruntime")
 onnx = pytest.importorskip("onnx")
 
 from factlattice_engine.semantic import embedder as E  # noqa: E402
-
-from tests.semantic_helpers import VOCAB, DIM, _sha, _tiny_model  # noqa: E402
+from tests.semantic_helpers import DIM, _tiny_model  # noqa: E402
 
 
 @pytest.fixture()
@@ -38,7 +36,7 @@ def tiny(tmp_path):
 def test_loads_and_embeds_unit_norm(tiny):
     root, pin = tiny
     emb = E.load_embedder(pin, root)
-    v = emb.embed(["hello world", "tile map version field"], query=False)
+    v = emb.embed(["hello world", "zero map version field"], query=False)
     assert v.shape == (2, DIM) and v.dtype == np.float32
     assert np.allclose(np.linalg.norm(v, axis=1), 1.0, atol=1e-5)
     assert emb.model_id == f"tiny@{pin.onnx_sha256[:12]}"
@@ -114,7 +112,8 @@ def test_no_network_during_load_and_embed(tiny, monkeypatch):
 def test_core_engine_imports_without_the_semantic_extra():
     """[DEC-NO-LLM] as amended: the core engine has zero model dependencies. Importing the
     engine must not import numpy or onnxruntime."""
-    import subprocess, sys
+    import subprocess
+    import sys
     code = ("import sys; import factlattice_engine.tools, factlattice_engine.server; "
             "bad=[m for m in ('onnxruntime','numpy') if m in sys.modules]; "
             "print(','.join(bad)); sys.exit(1 if bad else 0)")

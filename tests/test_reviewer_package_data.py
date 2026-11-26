@@ -1,4 +1,4 @@
-"""A-E6 / X8 SHIPPED-ISSUE-PACKAGE-DATA: the reviewer corpus is in the WHEEL, not only in the checkout.
+"""A-E6 / X8 SHIPPED-LTS-IS-PACKAGE-DATA: the reviewer corpus is in the WHEEL, not only in the checkout.
 
 The reviewer's fetch order is (1) the engine serves `factlattice-reviewer`, else (2) a file read of the
 shipped copy at `<package>/reviewer/`. Step (2) is the whole point of shipping it: a customer who installed the

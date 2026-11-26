@@ -282,7 +282,7 @@ Thresholds:
 | Source File | Reference | Domain | Issue |
 |------------|-----------|--------|-------|
 | ... | [gov.example:SYSTEM:OLD-NODE] | gov.example | Node not found |
-| ... | [ops.example:SPEC:EX-OLD-NODE] | ops.example | Node not found |
+| ... | [bio.example:SPEC:EX-OLD-NODE] | bio.example | Node not found |
 
 ### Broken Intra-Domain References
 

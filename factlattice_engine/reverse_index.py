@@ -102,7 +102,6 @@ referrers: it is reported as `stale_corpora` and the response's `complete` flag 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 from factlattice.parser import FLOW_PROPERTY_EDGES, _property_refs, rel_property_edge_map
 
@@ -129,8 +128,8 @@ class Referrer:
     corpus: str
     node_id: str
     how: str                       # "edge:<TYPE>" | "property:<key>"
-    layer: Optional[str] = None    # edge layer, when `how` is an edge
-    source_line: Optional[int] = None
+    layer: str | None = None    # edge layer, when `how` is an edge
+    source_line: int | None = None
 
     def to_dict(self) -> dict:
         d = {"corpus": self.corpus, "node_id": self.node_id, "how": self.how}
@@ -141,29 +140,45 @@ class Referrer:
         return d
 
 
-def _sort_key(r: Referrer) -> Tuple[str, str, str]:
+def _sort_key(r: Referrer) -> tuple[str, str, str]:
     return (r.corpus, r.node_id, r.how)
 
 
-def build_domain_index(parts: List[Partition]) -> Dict[str, List[str]]:
+def build_domain_index(parts: list[Partition]) -> dict[str, list[str]]:
     """domain_suffix -> [corpus_id, ...] over the partitions being folded in. A
     resolution helper independent of `LtsStore.filter_by_domain` so this module can be
     unit-tested over an arbitrary partition LIST (a subset of a store, or a synthetic
     fixture) without a real `LtsStore` — the same shape `Router._resolve_corpus`
     resolves against, just addressable without constructing a store."""
-    idx: Dict[str, List[str]] = {}
+    idx: dict[str, list[str]] = {}
     for p in parts:
         idx.setdefault(p.domain_suffix, []).append(p.corpus_id)
     return idx
 
 
-def snapshot_key(parts: List[Partition]) -> Tuple[Tuple[str, str], ...]:
+def snapshot_key(parts: list[Partition]) -> tuple[tuple[str, str], ...]:
     """The cache-invalidation key: one `(corpus_id, freshness_key)` pair per partition,
     sorted for a stable comparison. Identical to the key `Partition.adjacency()` already
     validates per-partition, just folded over every partition the index spans (a
     cross-corpus edge can point into any of them, so any one of them changing must
     invalidate the whole index)."""
     return tuple(sorted((p.corpus_id, p._freshness_key()) for p in parts))
+
+
+def snapshot_sources(parts: list[Partition]) -> dict[str, tuple[dict, dict]]:
+    """`{corpus_id: (nodes, layers)}`: ONE read of the objects each partition is currently serving.
+    `snapshot_key` says when the freshness root moved; this says WHAT an index was built from. The two
+    differ in the gap between a file changing (root moves) and the heal publishing (nodes/layers are
+    replaced), so an index kept under the key alone can hold old content under the new key."""
+    return {p.corpus_id: (p.nodes, p.layers) for p in parts}
+
+
+def sources_current(built_from: dict[str, tuple[dict, dict]] | None,
+                    now: dict[str, tuple[dict, dict]]) -> bool:
+    """True iff every partition still serves the very objects `built_from` recorded (identity)."""
+    if built_from is None or built_from.keys() != now.keys():
+        return False
+    return all(built_from[c][0] is now[c][0] and built_from[c][1] is now[c][1] for c in now)
 
 
 class ReverseIndex:
@@ -175,20 +190,20 @@ class ReverseIndex:
     """
 
     def __init__(self) -> None:
-        self._by_target: Dict[Tuple[str, str], List[Referrer]] = {}
+        self._by_target: dict[tuple[str, str], list[Referrer]] = {}
         # Cross-corpus refs whose domain qualifier did not resolve to EXACTLY one
         # partition among those folded in — surfaced for diagnostics, never guessed
         # into a bucket. `reason` is "unresolved_domain" (zero candidates) or
         # "ambiguous_domain" (more than one) — the same two Router.`_resolve_corpus`
         # names, so a caller comparing the two never sees two names for one idea.
-        self.unresolved: List[dict] = []
+        self.unresolved: list[dict] = []
 
-    def _add(self, key: Tuple[str, str], ref: Referrer) -> None:
+    def _add(self, key: tuple[str, str], ref: Referrer) -> None:
         self._by_target.setdefault(key, []).append(ref)
 
     def _file_reference(self, *, referrer_corpus: str, referrer_node: str,
-                        domain_index: Dict[str, List[str]],
-                        target_domain: Optional[str], own_domain: Optional[str],
+                        domain_index: dict[str, list[str]],
+                        target_domain: str | None, own_domain: str | None,
                         target_id: str, ref: Referrer) -> None:
         """Resolve ONE reference to its target bucket (same-corpus fast path, or a
         domain lookup) and file it there, or into `unresolved` if the domain does not
@@ -207,8 +222,9 @@ class ReverseIndex:
         })
 
     @classmethod
-    def build(cls, parts: List[Partition],
-             domain_index: Optional[Dict[str, List[str]]] = None) -> "ReverseIndex":
+    def build(cls, parts: list[Partition],
+             domain_index: dict[str, list[str]] | None = None,
+             sources: dict[str, tuple[dict, dict]] | None = None) -> ReverseIndex:
         """Build over a snapshot of already-freshness-verified partitions.
 
         `domain_index` defaults to `build_domain_index(parts)` — pass an explicit one
@@ -221,8 +237,11 @@ class ReverseIndex:
             domain_index = build_domain_index(parts)
         for part in parts:
             own_domain = part.domain_suffix
+            # The (nodes, layers) objects this partition is read from: the caller's captured pair when
+            # it keeps the result under them (`snapshot_sources`), else one read now.
+            nodes, layers = (sources or {}).get(part.corpus_id) or (part.nodes, part.layers)
             # --- channel 1: typed edges already in the graph -------------------
-            for edge in part.iter_edges():
+            for edge in (e for ld in layers.values() for e in ld.get("edges", [])):
                 target_domain = edge.get("target_domain")
                 target_id = edge.get("target")
                 if target_id is None:
@@ -237,7 +256,7 @@ class ReverseIndex:
                     own_domain=own_domain, target_id=target_id, ref=ref)
 
             # --- channel 2: non-minting property-VALUE id references -----------
-            for nid, nd in part.nodes.items():
+            for nid, nd in nodes.items():
                 props = nd.get("properties") or {}
                 for key, value in props.items():
                     if key in _CORE_MINTING_KEYS:
@@ -254,7 +273,7 @@ class ReverseIndex:
             bucket.sort(key=_sort_key)
         return idx
 
-    def referrers(self, corpus_id: str, node_id: str) -> List[Referrer]:
+    def referrers(self, corpus_id: str, node_id: str) -> list[Referrer]:
         """ALL referrers of `corpus_id:node_id`, sorted and complete — callers apply
         their own budget/limit slice; this method never truncates."""
         return list(self._by_target.get((corpus_id, node_id), ()))
@@ -263,4 +282,5 @@ class ReverseIndex:
         return len(self._by_target.get((corpus_id, node_id), ()))
 
 
-__all__ = ["Referrer", "ReverseIndex", "build_domain_index", "snapshot_key"]
+__all__ = ["Referrer", "ReverseIndex", "build_domain_index", "snapshot_key", "snapshot_sources",
+           "sources_current"]

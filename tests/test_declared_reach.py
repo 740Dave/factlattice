@@ -195,6 +195,10 @@ CLEAN_ORIGINS = CLEAN_ORIGINS | frozenset({"canonical"})
 # `attaches-to-hook` nor `applies-rule`, so it is a genuinely clean origin.
 CLEAN_ORIGINS = CLEAN_ORIGINS | frozenset({"review-edges"})
 
+# spec 39 (normative content): the corpus-wide `normative` lint origin (restates and confirmation-of targets, the correction warning) is a
+# genuinely clean origin on `specs/`. The quote tripwire (`normative_quote_run`) is raised by the parser, so it arrives under `vocabulary` (below).
+CLEAN_ORIGINS = CLEAN_ORIGINS | frozenset({"normative"})
+
 # Era 1 (PARSER-ENGINEERING-SPEC.md rev 2, A1/A2/A3) landed 2026-08-16: one new origin,
 # `vocabulary`. ⛔ IT IS A DECLARED EXCEPTION AND NOT A CLEAN ORIGIN, and the reason is
 # the whole point of the era: `legacy_document` fires on EVERY document with no `lts:`
@@ -212,7 +216,8 @@ DECLARED_EXCEPTIONS = {
         "the worklist A2 exists to make visible). ⛔ NOT SILENCED by stamping the specs "
         "or by declaring the keys: doing either here would be Era 2 work smuggled into "
         "Era 1, and the count is the honest starting measurement. It must FALL, and it "
-        "must not grow."),
+        "must not grow. (Spec 39's quote tripwire, `normative_quote_run`, runs only in strict-mode documents, so these legacy specs gain nothing from it; "
+        "it reaches them when they upgrade, OPEN-NS-MIGRATION.)"),
 }
 
 
@@ -345,8 +350,9 @@ def test_a_declared_cursor_always_has_a_resume_path():
     no `offset` argument at all — a truncation declared with no way to act on it, which
     is under-reporting wearing the costume of honesty. Behavioural, not schema-level:
     the argument must actually MOVE the window."""
-    from factlattice_engine.tools import LtsEngine
     import inspect
+
+    from factlattice_engine.tools import LtsEngine
     for method in (LtsEngine.find, LtsEngine.traverse,
                    LtsEngine.capabilities, LtsEngine.flow, LtsEngine.reverse):
         params = inspect.signature(method).parameters

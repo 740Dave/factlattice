@@ -129,7 +129,6 @@ def test_a_whole_session_passes_when_the_write_is_for_a_live_looking_path(tmp_pa
 def test_foreign_temp_path_records_are_not_this_sessions_leak_but_are_counted(tmp_path):
     """Another process's tests (pytest-of-<user>/pytest-<other N>, foreign-preflight-* mkdtemps) write
     records for THEIR temp paths into the real ledger while we run. Not ours: no failure, but counted."""
-    import tempfile
     d = _fake_real(tmp_path)
     snap = G.snapshot(d)
     foreign = [os.path.join(G.OS_TEMP, "pytest-of-someone", "pytest-99999", "t0", "c.lts"),

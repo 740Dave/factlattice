@@ -6,10 +6,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
-import sys
 import threading
-import time
 from pathlib import Path
 
 import pytest
@@ -119,8 +116,8 @@ def test_the_querylog_docstring_states_the_schema(w):
 # ------------------------------------------------------------------ the reviewer persists structure only
 def test_the_reviewer_never_persists_a_raw_error_message(w):
     from factlattice_engine.reviewer import compare_registries
-    hostile = {"source": "env", "path": "/Users/x/zq space dir/Application Support/reg.json",
-               "error": "registry-not-found: the registry '/Users/x/zq space dir/Application Support/reg.json' failed (zq it's dir)"}
+    hostile = {"source": "env", "path": "/opt/x/zq space dir/Application Support/reg.json",
+               "error": "registry-not-found: the registry '/opt/x/zq space dir/Application Support/reg.json' failed (zq it's dir)"}
     r = compare_registries(hostile, {"source": "env", "path": "/p/reg.json", "sha256": "0" * 64})
     blob = json.dumps(r, ensure_ascii=False)
     assert "zq" not in blob and "Application Support" not in blob

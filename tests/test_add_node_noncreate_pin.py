@@ -2,7 +2,8 @@
 path. Every `lts_add_node` call WITHOUT create/create_parent returns exactly the replies recorded at 8861625
 (tests/fixtures/add_node_noncreate_base.json, recorded by tests/fixtures/record_add_node_base.py on that
 commit): success and refusal cases, wrong-typed arguments, a core OSError and a raw core exception. Field by
-field, normalised only for the temp root, backup stamps and times."""
+field, normalised only for the temp root, backup stamps and times. Two replies have moved on purpose since: dup_id gained
+its refusal code, in the fixture, and properties_wrong_type is refused, in CHANGED_ON_PURPOSE below."""
 from __future__ import annotations
 
 import importlib.util
@@ -41,9 +42,24 @@ def replay(tmp_path_factory):
 BASE = json.loads((FIX / "add_node_noncreate_base.json").read_text(encoding="utf-8"))
 
 
+# One case only. The recording holds a raw ValueError for `properties=["kind", "z"]`, and `dict()` of such a list could
+# also write a wrong property: tests/test_writer_non_string_values.py. Not a create rule reaching this path.
+CHANGED_ON_PURPOSE = {"properties_wrong_type": {"refusal": "bad_argument", "field": "properties", "type": "list"}}
+
+
 @pytest.mark.parametrize("name", sorted(BASE))
 def test_noncreate_reply_is_identical_to_8861625(replay, name):
-    assert replay[name] == BASE[name], name
+    """Apart from what [MECH-NR-LEDGER] x-absence adds on a file's first record, on every receipt shape that carries the ledger."""
+    def without_new_chain(reply):
+        if isinstance(reply, dict) and isinstance(reply.get("ledger"), dict):
+            return {**reply, "ledger": {k: v for k, v in reply["ledger"].items() if k not in ("new_chain", "new_chain_reason")}}
+        return reply
+    if name in CHANGED_ON_PURPOSE:
+        assert BASE[name].get("error", "").startswith("ValueError"), "the recorded reply this exception replaces"
+        assert replay[name]["success"] is False and replay[name]["evidence"] == CHANGED_ON_PURPOSE[name], name
+        assert replay[name]["file_unchanged"] is True
+        return
+    assert without_new_chain(replay[name]) == BASE[name], name
 
 
 def test_no_create_only_key_appears_on_any_noncreate_reply(replay):
@@ -57,3 +73,8 @@ def test_no_create_only_key_appears_on_any_noncreate_reply(replay):
 
 def test_the_pin_covers_enough():
     assert len(BASE) >= 24
+
+
+def test_a_duplicate_node_carries_a_stable_code_and_only_that_differs_from_the_pin(replay):
+    """A consumer must not read a duplicate from words. The reply is the pinned one plus `evidence.refusal`, the writers' existing name."""
+    assert replay["dup_id"]["evidence"] == {"refusal": "duplicate_node_id"}

@@ -1,0 +1,684 @@
+---
+title: "Domain Profile: External Company Intelligence"
+id: "DOMAIN:EXT"
+domain: MET.FACTLATTICE
+scope: "Domain conventions for encoding structured knowledge about third-party companies — a factbase from which any analysis (forecasts, competitive assessments, risk evaluations, investment theses) can be projected on demand"
+created: 2026-04-01
+updated: 2026-04-01
+---
+# Domain Profile: External Company Intelligence [DOMAIN:EXT]
+
+> The first FactLattice domain built on third-party epistemology. Every other domain encodes knowledge the author controls. This one encodes knowledge the author observes, infers, and models — where confidence, provenance, staleness, and spin resistance are load-bearing infrastructure.
+
+> The factbase is the substrate. Forecasts, competitive analyses, investment theses, and risk assessments are projections of it — different views for different questions, generated on demand from the same authoritative facts. The facts don't change depending on what question you ask.
+
+---
+
+## 1. Domain Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Namespace | EXT |
+| Sub-Namespaces | EXT.FACT (factbase layer), EXT.PAT (pattern engine layer), EXT.PROJ (projection surface) |
+| Files | 0 .lts (new domain) |
+| Location | ~/{ticker}/ per company |
+| Conventions File | This profile |
+| Maturity | Initial — first instantiation with AUID test case |
+
+---
+
+## 2. Three-Layer Architecture
+
+### 2.1 Layer 1: Factbase (EXT.FACT)
+
+The factbase encodes **what is provably true** with full provenance. Every node carries source tier, confidence, and staleness window. No interpretation, no opinion, no spin. Raw, cited, time-stamped facts.
+
+Contents:
+- Company identity, corporate history, governance structure
+- Financial statements with period and source attribution
+- Product and technology capabilities (observable, not claimed)
+- Market and sector data from independent sources
+- Comparable company historical trajectories (facts, not projections)
+- Management communications (encoded as claims, not as truths)
+- Capital structure, fundraising history, insider transactions
+
+### 2.2 Layer 2: Pattern Engine (EXT.PAT)
+
+The pattern engine encodes **what the facts mean** — recurring sector behaviors, anti-patterns, leading indicators, management credibility assessments, and messaging analysis. Every pattern node cites its evidence from Layer 1 and carries an `invalidating_assumption`.
+
+Contents:
+- Sector patterns (observable behaviors that predict outcomes)
+- Anti-patterns (signals that look positive but are structurally misleading)
+- Leading indicators (future-observable events that confirm or disconfirm trajectories)
+- Management credibility score (rolling, evidence-based)
+- Messaging analysis (frame control detection, narrative drift, claim-vs-reality tracking)
+- Comparative trajectory alignment (where this company sits relative to comps at the same stage)
+
+### 2.3 Layer 3: Projection Surface (EXT.PROJ)
+
+Projections are **on-demand artifacts** generated from Layer 1 and Layer 2. They are authored when a question is asked, not maintained as standing documents. Every projection node carries `derived-from` edges back to its factbase and pattern sources.
+
+Possible projections (non-exhaustive):
+- Revenue forecast (scenario-based)
+- Competitive positioning analysis
+- Investment thesis (bull/bear/base)
+- Risk/catalyst assessment
+- Technology maturity evaluation
+- Breakout probability assessment
+- Acquisition target analysis
+
+Projections are the most perishable layer. When Layer 1 facts change, affected projections are invalidated automatically via `ext.INVALIDATES` edges.
+
+---
+
+## 3. Foundational Design Decisions
+
+### 3.1 DD-EXT-1: Third-Party Epistemology as Primary Constraint
+
+- decision: Every node in this domain encodes knowledge the author does not control and cannot independently verify through the company's own systems. Source provenance, confidence assessment, and staleness detection are mandatory — not optional metadata.
+- rationale: First-party domains (ExampleCorp, Example) can omit confidence because the author IS the source of truth. External company analysis has no ground truth access — the SEC filing is the closest proxy, and even that is management's representation.
+- status: foundational
+- invalidating_assumption: That the author is a fully external observer. If the author has a financial relationship with the subject company (partnership, rev-share, investment), the analysis carries inherent conflict of interest that must be declared and structurally managed. See DD-EXT-7.
+
+### 3.2 DD-EXT-2: Source Hierarchy as Formal Taxonomy
+
+- decision: Every assertion carries a `source-tier` property from a fixed hierarchy. This replaces ad-hoc provenance.
+- rationale: "Revenue was $400K" from a 10-K filing and "Revenue was $400K" from a blog post are epistemologically different facts. The tier determines default confidence and staleness window.
+- status: foundational
+
+Source tier hierarchy:
+
+| Tier | Label | Examples | Default Confidence | Staleness Window |
+|------|-------|----------|-------------------|-----------------|
+| T1 | `audited` | 10-K, 10-Q, audited financial statements | 0.95 | 12 months (annual), 3 months (quarterly) |
+| T2 | `regulatory` | S-1, DEF 14A, 8-K, SPAC merger proxy, Form 4, 13F | 0.90 | Event-specific |
+| T3 | `management` | Earnings calls, investor presentations, press releases | 0.75 | 3 months |
+| T4 | `analyst` | Sell-side coverage, consensus estimates | 0.60 | 3 months |
+| T5 | `industry` | Market research reports (Gartner, MarketsAndMarkets), trade publications | 0.55 | 6–12 months |
+| T6 | `derived` | Author's own calculations, comparisons, models | 0.50 | Until invalidating assumption changes |
+| T7 | `informal` | LinkedIn headcount, Glassdoor, job postings, social media | 0.30 | 1 month |
+| T8 | `rumor` | Human-network intelligence, industry chatter, unverifiable claims | Human-set | Human-set |
+
+### 3.3 DD-EXT-3: Scenario Modeling as Projection, Not Factbase
+
+- decision: Revenue forecasts and valuation models are Layer 3 projections — authored on demand, derived from Layer 1 facts and Layer 2 patterns, with explicit `derived-from` edges. They use a three-scenario structure (underperform / perform / outperform) with explicit comp basis and invalidating assumptions per scenario.
+- rationale: Point estimates for early-stage companies are fiction. Scenario ranges with stated assumptions are honest and auditable. But scenarios are not facts — they are interpretations of facts. Separating them prevents forecasts from contaminating the factbase with opinion.
+- status: foundational
+
+### 3.4 DD-EXT-4: Per-Ticker Corpus Isolation
+
+- decision: Each company gets its own directory (e.g. `~/acme-corp/`). Cross-company references use the standard cross-domain ref syntax: `[ext.acme:FACT:REV-FY2026]`.
+- rationale: Prevents node ID collision across companies. Enables per-company lts-engine traversal policies. Allows archiving/deleting a company's corpus without blast radius.
+- status: foundational
+
+### 3.5 DD-EXT-5: Spin Resistance as Structural Guarantee
+
+- decision: Management communications are encoded as **claims**, not as facts. A press release announcing "revenue doubled" produces a claim node in the factbase, not a revenue node. The claim is then linked to (or contradicted by) verifiable financial data. The pattern engine performs frame control analysis on every communication.
+- rationale: External company analysis has an adversarial source problem — management is selling a narrative. The factbase must structurally separate what was *said* from what is *true*. Individual claims may be literally true while the selection and framing of claims is designed to prevent the audience from asking the right questions.
+- status: foundational
+- invalidating_assumption: That management communications are adversarial. For companies with established credibility track records, this assumption may be relaxed — but the relaxation itself is a pattern engine conclusion that must be earned, not assumed.
+
+### 3.6 DD-EXT-6: Rumor Epistemology
+
+- decision: Market rumors (T8) are a distinct epistemological category from informal data (T7). Rumors have human-set confidence, require explicit verification vectors, and never auto-graduate to verified status. Confidence adjustments to rumor nodes require human approval.
+- rationale: Rumors carry potentially high signal value but cannot be directly verified by the observer at the time of encoding. The initial confidence can only be set by the human who received the information, because only they know the source's reliability. The system's role is to identify verification vectors and execute corroboration searches — not to assess the original claim.
+- status: foundational
+
+### 3.7 DD-EXT-7: Analyst Conflict of Interest Declaration
+
+- decision: Every per-ticker corpus MAY include a conflict-of-interest declaration file that is structurally isolated from the factbase but disclosed to any consumer of the analysis. This file is excluded from lts-engine traversal and factbase linting. Its purpose is A/B epistemological firewall testing: can a context-clean agent reach the same conclusions without the conflicted knowledge?
+- rationale: An analyst with a financial relationship to the subject company (partnership, rev-share, investment, employment at a partner) has access to information and incentives that external analysts do not. This is simultaneously the analysis's greatest strength (deeper insight) and greatest bias risk (motivated reasoning). The structural guarantee is that the factbase must be reproducible by an analyst without the conflict — the conflicted knowledge sharpens, but must not be required.
+- status: foundational
+
+---
+
+## 4. ID Prefix Registry
+
+### 4.1 Layer 1: Factbase Prefixes
+
+#### Company Identity & Governance
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| CO- | Company identity nodes | [CO-OVERVIEW], [CO-HISTORY] |
+| MGT- | Management/leadership | [MGT-CEO], [MGT-CFO] |
+| BOD- | Board of directors | [BOD-CHAIR], [BOD-MEMBER-1] |
+| SH- | Shareholder structure | [SH-INSIDER], [SH-INSTITUTIONAL] |
+| CORP- | Corporate actions (SPAC, M&A, offerings) | [CORP-SPAC-MERGER], [CORP-ATM-OFFERING] |
+
+#### Financials
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| REV- | Revenue nodes (period-specific) | [REV-FY2026], [REV-Q1-2026] |
+| COST- | Cost structure nodes | [COST-SGA-FY2026], [COST-COMPLIANCE] |
+| BS- | Balance sheet items | [BS-CASH-Q4-2025], [BS-DEBT] |
+| CF- | Cash flow nodes | [CF-BURN-RATE], [CF-RUNWAY] |
+| VAL- | Valuation metrics | [VAL-MCAP], [VAL-EV-REV-MULTIPLE] |
+| CAP- | Capital structure | [CAP-SHARES-OUT], [CAP-DILUTION] |
+| RAISE- | Capital raise events | [RAISE-ATM-2025], [RAISE-PIPE-2024] |
+
+#### Products & Technology
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| PROD- | Product nodes | [PROD-PRIVACYKEY], [PROD-MANDATE] |
+| TECH- | Technology/IP | [TECH-FACIAL-BIO], [TECH-PATENT-1] |
+| CUST- | Customer segments/relationships | [CUST-ENTERPRISE], [CUST-PIPELINE] |
+| PTNR- | Partnership and integration agreements | [PTNR-CHANNEL-1], [PTNR-TECH-1] |
+| DEP- | Technology/partnership dependencies | [DEP-IDENTITY-PROVIDER] |
+
+#### Market & Sector
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| MKT- | Market/TAM nodes | [MKT-IDV-TAM], [MKT-AGENT-AUTH] |
+| SECTOR- | Sector dynamics | [SECTOR-WINNER-TAKE-ALL], [SECTOR-NICHE-VIABLE] |
+| TREND- | Industry trends | [TREND-AI-FRAUD], [TREND-KYC-MANDATE] |
+| REG- | Regulatory developments | [REG-NIST-NCCOE], [REG-EU-AI-ACT] |
+
+#### Management Communications (Claims, Not Facts)
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| CLM- | Management claim nodes | [CLM-REV-DOUBLED], [CLM-ENTERPRISE-PIPELINE] |
+| PR- | Press release nodes | [PR-2026-03-15], [PR-2026-01-10] |
+| EC- | Earnings call nodes | [EC-Q4-2025], [EC-Q1-2026] |
+| MEDIA- | Press coverage nodes | [MEDIA-ARTICLE-2026-03] |
+
+#### Comparable Companies
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| COMP- | Comparable company profiles | [COMP-SOCURE], [COMP-PERSONA], [COMP-MITEK] |
+| TRAJ- | Historical trajectory data points | [TRAJ-SOCURE-FY2018], [TRAJ-PERSONA-FY2020] |
+
+#### Rumors
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| RMR- | Rumor nodes | [RMR-CONCENTRATED-INVESTORS], [RMR-ACQUISITION-INTEREST] |
+
+### 4.2 Layer 2: Pattern Engine Prefixes
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| PAT- | Sector pattern (predictive of outcome) | [PAT-ENTERPRISE-LOGO-VELOCITY] |
+| ANTI- | Anti-pattern (misleading signal) | [ANTI-REVENUE-DOUBLE-SMALL-BASE] |
+| IND- | Leading indicator (future-observable) | [IND-ACV-DEAL-BY-Q3-2027] |
+| CRED- | Management credibility assessment | [CRED-ROLLING-SCORE], [CRED-CLAIM-TRACK] |
+| JMT- | Jedi Mind Trick detection node | [JMT-PR-2026-03-15] |
+| DRIFT- | Narrative drift detection | [DRIFT-MANDATE-MESSAGING-Q1] |
+
+### 4.3 Layer 3: Projection Prefixes
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| FORE- | Forecast nodes | [FORE-REV-FY2027], [FORE-REV-FY2030] |
+| SCN- | Scenario definitions | [SCN-UNDERPERFORM], [SCN-PERFORM], [SCN-OUTPERFORM] |
+| ASMP- | Explicit assumptions | [ASMP-PMF-TIMELINE], [ASMP-COMPLIANCE-COST] |
+| RISK- | Risk factors | [RISK-DELISTING], [RISK-DILUTION], [RISK-CASH-RUNWAY] |
+| CAT- | Catalyst events | [CAT-ENTERPRISE-DEAL], [CAT-REGULATORY-MANDATE] |
+| POS- | Competitive positioning assessment | [POS-DIFFERENTIATION], [POS-WEAKNESS] |
+| THESIS- | Investment thesis nodes | [THESIS-BULL], [THESIS-BEAR], [THESIS-BASE] |
+| BREAKOUT- | Breakout category assessment | [BREAKOUT-AGENT-DELEGATION] |
+
+---
+
+## 5. Property Vocabulary
+
+### 5.1 Provenance Properties (All Layers)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| source-tier | enum (T1–T8) | Source reliability tier from DD-EXT-2 hierarchy |
+| source-ref | string | Specific source citation (filing number, URL, document title) |
+| source-date | date | Date the source was published/filed |
+| as-of | date | Date the assertion was valid (not when it was recorded) |
+| stale-after | date | Computed from source-tier staleness window |
+| filing-type | string | SEC filing type if applicable (10-K, 10-Q, 8-K, S-1, DEF 14A, Form 4, 13F) |
+| layer | enum | factbase, pattern, projection |
+
+### 5.2 Financial Properties (Layer 1)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| period | string | Fiscal period (FY2026, Q1-2026, H1-2026) |
+| currency | string | Currency code (USD default) |
+| amount | number | Dollar amount |
+| growth-yoy | number | Year-over-year growth rate (decimal, e.g. 1.0 = 100%) |
+| growth-qoq | number | Quarter-over-quarter growth rate |
+| run-rate | number | Annualized run rate from partial period |
+| burn-rate | number | Cash consumption per period |
+| runway-months | number | Months of cash remaining at current burn |
+
+### 5.3 Capital Raise Properties (Layer 1)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| raise-type | enum | ATM, PIPE, shelf-registration, rights-offering, convertible-note |
+| raise-amount | number | Gross proceeds |
+| price-per-share | number | Offering price |
+| dilution-pct | number | Percentage dilution to existing shareholders |
+| participants | list | Known participants (from S-1 supplement, prospectus) |
+| repeat-participant | boolean | Whether participant appeared in prior raises |
+| insider-participation | boolean | Whether insiders participated |
+| terms-favorability | enum | market, below-market, deep-discount |
+
+### 5.4 Rumor Properties (Layer 1, T8 Only)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| rumor-origin | enum | human-network, industry-chatter, anonymous-source, pattern-inference |
+| corroboration-status | enum | unverified, partially-corroborated, corroborated, discredited |
+| verification-vectors | list | Specific searches or data pulls that could corroborate or discredit |
+| human-set-confidence | boolean | Always true for T8 — confidence was set by human, not by default |
+| corroboration-evidence | list | Evidence found by verification searches (appended over time) |
+
+### 5.5 Claim Properties (Layer 1, CLM- Nodes)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| claim-text | string | Exact text of the claim as made |
+| claim-date | date | When the claim was made |
+| claim-channel | enum | press-release, earnings-call, investor-deck, linkedin, interview |
+| verifiable | boolean | Whether the claim can be checked against T1/T2 data |
+| verification-status | enum | unverified, confirmed, partially-confirmed, contradicted, quietly-dropped |
+| verified-by | reference | Node ID of the T1/T2 fact that confirms or contradicts |
+
+### 5.6 Pattern Properties (Layer 2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| pattern-type | enum | sector-pattern, anti-pattern, leading-indicator |
+| evidence-basis | list | Node IDs from Layer 1 that support this pattern |
+| comp-basis | list | Comparable companies whose history demonstrates this pattern |
+| historical-hit-rate | number | How often this pattern has predicted correctly (0.0–1.0) |
+| time-horizon | string | Over what period the pattern plays out |
+| invalidating_assumption | string | What premise, if changed, invalidates the pattern |
+
+### 5.7 Messaging Analysis Properties (Layer 2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| stated-frame | string | What the communication directs attention toward |
+| baseline-frame | string | What matters at this company's actual stage and financial position |
+| frame-gap | enum | none, low, moderate, high, extreme |
+| suppressed-questions | list | Specific questions the framing avoids |
+| jmt-score | number | Jedi Mind Trick score (0.0–1.0): degree of frame control detected |
+| narrative-continuity | enum | consistent, drifting, contradictory, pivoted |
+
+### 5.8 Management Credibility Properties (Layer 2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| claims-made | number | Total verifiable claims tracked |
+| claims-confirmed | number | Claims confirmed by subsequent T1/T2 data |
+| claims-contradicted | number | Claims contradicted by subsequent data |
+| claims-dropped | number | Claims quietly never mentioned again |
+| credibility-score | number | Rolling score (0.0–1.0) based on track record |
+| score-trend | enum | improving, stable, declining |
+
+### 5.9 Projection Properties (Layer 3)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| derived-from | list | Node IDs from Layer 1 and Layer 2 that produce this projection |
+| scenario | enum | underperform, perform, outperform |
+| comp-basis | list | Comparable companies this scenario is modeled on |
+| growth-assumption | number | Assumed growth rate for the period |
+| invalidating-signal | string | Observable event that would invalidate this scenario |
+| probability-weight | number | Subjective probability assigned (0.0–1.0) |
+
+### 5.10 Dependency Risk Properties (Layer 1/2)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| dependency-type | enum | technology-license, rev-share, distribution, infrastructure |
+| counterparty | string | Entity the company depends on |
+| termination-risk | enum | low, moderate, high, unknown |
+| revenue-exposure | number | Percentage of revenue attributable to this dependency |
+| cost-exposure | number | Cost obligation as percentage of revenue (e.g. rev-share payments) |
+| scale-risk | string | How dependency economics change as revenue grows |
+
+---
+
+## 6. Domain-Specific Edge Types
+
+### 6.1 Factbase Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| ext.SOURCES_FROM | entity | Assertion derived from a specific source document |
+| ext.CLAIMS | entity | Management communication makes a specific claim |
+| ext.CONTRADICTS_CLAIM | semantic | T1/T2 fact contradicts a management claim |
+| ext.CONFIRMS_CLAIM | semantic | T1/T2 fact confirms a management claim |
+| ext.DEPENDS_ON_PARTNER | causal | Company capability depends on a partnership |
+| ext.RAISED_VIA | entity | Capital entered the company through this raise event |
+| ext.PARTICIPATED_IN | entity | Investor participated in a capital raise |
+| ext.DILUTES | causal | Capital event dilutes existing shareholders |
+| ext.SUPERSEDES_ESTIMATE | temporal | New estimate replaces prior estimate for same metric |
+
+### 6.2 Pattern Engine Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| ext.INDICATES | causal | Leading indicator signals trajectory toward a pattern |
+| ext.ANTI_INDICATES | causal | Anti-pattern signal masks true trajectory |
+| ext.FRAME_CONTROLS | causal | Communication employs frame control on a topic |
+| ext.SUPPRESSES | causal | Communication framing suppresses a relevant question |
+| ext.CREDIBILITY_EVENT | temporal | Claim confirmation/contradiction updates credibility score |
+| ext.COMPARES_TO | semantic | Company benchmarked against a comparable at similar stage |
+| ext.CORROBORATES | semantic | Evidence supports a rumor |
+| ext.DISCREDITS | semantic | Evidence discredits a rumor |
+| ext.NARRATIVE_SHIFT | temporal | Messaging on a topic has changed direction |
+
+### 6.3 Projection Edges
+
+| Type | Layer | Description |
+|------|-------|-------------|
+| ext.FORECASTS | temporal | Projection estimates a future-period metric |
+| ext.ASSUMES | causal | Projection depends on an explicit assumption |
+| ext.INVALIDATES | causal | Observable event invalidates a projection or assumption |
+| ext.RISKS | causal | Risk factor threatens an outcome |
+| ext.CATALYZES | causal | Catalyst event could trigger a scenario shift |
+| ext.DERIVED_FROM | semantic | Projection produced from specific factbase/pattern nodes |
+| ext.COMPETES_WITH | semantic | Company or product competes directly with another |
+
+---
+
+## 7. Document Type Tags
+
+### 7.1 Layer 1 Tags
+
+| Tag | Description |
+|-----|-------------|
+| COMPANY | Company overview / identity document |
+| FINANCIAL | Financial statements, metrics, capital structure |
+| PRODUCT | Product/technology factual documentation |
+| RAISE | Capital raise event analysis |
+| COMMS | Management communications log (press releases, earnings calls) |
+| COMPS | Comparable company historical data |
+| SECTOR | Market sizing, sector dynamics |
+
+### 7.2 Layer 2 Tags
+
+| Tag | Description |
+|-----|-------------|
+| PATTERNS | Sector patterns and anti-patterns |
+| INDICATORS | Leading indicator checklist with time-bound observables |
+| CREDIBILITY | Management credibility tracker |
+| MESSAGING | Messaging analysis and frame control detection |
+
+### 7.3 Layer 3 Tags
+
+| Tag | Description |
+|-----|-------------|
+| FORECAST | Revenue/valuation scenario models |
+| THESIS | Investment thesis (bull/bear/base) |
+| COMPETITIVE | Competitive positioning assessment |
+| BREAKOUT | Breakout category assessment |
+| RISK-CAT | Risk/catalyst catalog |
+
+### 7.4 Meta Tags
+
+| Tag | Description |
+|-----|-------------|
+| SENSITIVE | Conflict-of-interest declaration or privileged information (excluded from standard traversal) |
+| BRIEF | Point-in-time analytical brief (snapshot, may become stale) |
+
+---
+
+## 8. Confidence Methodology
+
+### 8.1 Default Confidence by Source Tier
+
+Confidence is **not optional** in this domain. Every node MUST carry a confidence annotation. The default value is set by source tier (DD-EXT-2), then adjusted.
+
+**Upward adjustments:**
+- Multiple independent sources corroborate (+0.10, max 0.95)
+- Data point is simple and verifiable, e.g. share count from SEC filing (+0.05)
+
+**Downward adjustments:**
+- Source is stale (past stale-after date): confidence decays 0.05/month
+- Management has history of revising guidance: -0.10
+- Metric is a non-GAAP or adjusted figure: -0.10
+- Author's own model with untested assumptions: -0.15
+- Single informal source with no corroboration: -0.20
+- Analyst has declared conflict of interest on this ticker: -0.05 on all T6 nodes (own models)
+
+### 8.2 Rumor Confidence (T8)
+
+T8 nodes do NOT use default confidence. The human sets the initial value based on their assessment of the source. The system:
+1. Proposes verification vectors
+2. Executes corroboration searches via subagents
+3. Proposes confidence adjustments based on evidence found
+4. **Requires human approval** for any confidence change on T8 nodes
+
+A rumor NEVER auto-graduates to a verified tier. Graduation requires:
+- Human review of corroboration evidence
+- Human reclassification to the appropriate T1–T7 tier
+- Creation of a new node at the verified tier with proper provenance
+- Original T8 node retained with `verification-status: graduated` and edge to the new node
+
+### 8.3 Projection Confidence
+
+Projections carry inherently lower confidence. The formula:
+
+```
+projection_confidence = base_confidence × (1 - 0.15 × years_out)
+```
+
+Where `base_confidence` derives from the quality of the Layer 1 facts and Layer 2 patterns the projection rests on. A projection 3 years out with a 0.60 base = 0.60 x 0.55 = 0.33 confidence.
+
+Projection confidence is further modified by:
+- Company maturity: pre-PMF companies get -0.10 (less predictable)
+- Sector volatility: high-volatility sectors get -0.05
+- Analyst conflict of interest: -0.05 on bullish projections (asymmetric — conflicts bias bullish, not bearish)
+
+---
+
+## 9. Monitoring Pipeline (Cron Agent Architecture)
+
+### 9.1 Purpose
+
+The monitoring pipeline is the factbase's immune system. It keeps the factbase current, detects narrative shifts, identifies claim verification opportunities, and flags staleness. It runs on a configurable schedule via cron.
+
+### 9.2 Agent Architecture
+
+| Agent | Model | Schedule | Input | Output |
+|-------|-------|----------|-------|--------|
+| Press Release Encoder | Sonnet/Haiku | On detection | Single press release | CLM- and PR- nodes (.lts) |
+| Earnings Call Encoder | Sonnet | Quarterly | Transcript | EC- nodes, CLM- nodes (.lts) |
+| LinkedIn Monitor | Haiku | Weekly | Executive posts via MCP | Informal signal nodes (.lts) |
+| Press Coverage Analyzer | Sonnet | Weekly | Articles mentioning company | MEDIA- nodes with originality score |
+| Analyst Coverage Tracker | Sonnet | Monthly | Coverage reports, estimates | T4-sourced nodes (.lts) |
+| Competitor Signal Tracker | Sonnet | Biweekly | Competitor announcements | COMP- update nodes (.lts) |
+| SEC Filing Monitor | Sonnet | On filing | EDGAR filings | T1/T2-sourced nodes (.lts) |
+| Rumor Verification Agent | Sonnet | On demand | Verification vectors from T8 nodes | Corroboration evidence (.lts) |
+| Claim Verification Agent | Sonnet | Quarterly | Pending CLM- nodes | Verification status updates |
+
+### 9.3 Context Isolation Invariant
+
+All monitoring agents are **context-clean**. They receive a single source document and the encoding schema. They do NOT receive:
+- Prior factbase state
+- Pattern engine conclusions
+- The analyst's conflict-of-interest file
+- Any projection layer content
+
+Their job is extraction, not analysis. The context-rich Opus session integrates their output against the full factbase.
+
+### 9.4 Messaging Analysis Pipeline
+
+The messaging analysis operates in two stages:
+
+**Stage 1 (Context-clean, Sonnet):** Encode the communication. Extract: claims made, metrics cited, topics discussed, topics absent relative to a stage-appropriate baseline, tone, forward-looking statements.
+
+**Stage 2 (Context-rich, Opus):** Compare against full factbase. Detect:
+- **Narrative drift**: Has the emphasis shifted from prior communications? On what topics?
+- **Claim-vs-reality divergence**: Do verifiable claims match T1/T2 data?
+- **Frame control (Jedi Mind Trick)**: What is the communication asking you to think about? What should a rational analyst at this company's stage want to know? What is the gap? What question is this communication designed to prevent you from asking?
+- **Goalpost movement**: Were specific targets mentioned in prior communications quietly replaced with new ones?
+- **Category substitution**: Is the company presenting itself as belonging to a category it doesn't belong to (e.g. "enterprise platform" for a company with 2 customers)?
+
+### 9.5 Management Credibility Tracking
+
+The credibility score is a **rolling assessment** updated every time a verifiable claim resolves:
+
+```
+credibility_score = confirmed / (confirmed + contradicted + dropped)
+```
+
+Where:
+- `confirmed`: Claims verified by subsequent T1/T2 data
+- `contradicted`: Claims contradicted by subsequent data
+- `dropped`: Claims made prominently and never mentioned again (the quietest form of admission)
+
+Unverified claims with verification deadlines that pass without data produce a `pending-stale` flag. If management could have provided verification (e.g. a customer count claim that the next 10-Q would confirm) and the data is absent, that silence is treated as a `dropped` event.
+
+---
+
+## 10. Temporal Semantics
+
+### 10.1 Financial Periods
+
+Every financial assertion MUST carry `period` and `as-of`:
+- `period: FY2026` — the fiscal period the metric covers
+- `as-of: 2026-12-31` — the date the metric was valid through
+
+### 10.2 Staleness Detection
+
+Nodes carry `stale-after` computed from source tier:
+- T1 (audited): `as-of` + 12 months
+- T2 (regulatory): event-specific
+- T3 (management): `as-of` + 3 months
+- T4 (analyst): `as-of` + 3 months
+- T5 (industry): `as-of` + 6 months
+- T6 (derived): until invalidating assumption changes
+- T7 (informal): `as-of` + 1 month
+- T8 (rumor): human-set
+
+A traversal engine encountering a node past its `stale-after` date SHOULD flag it. The linter SHOULD warn on stale nodes.
+
+### 10.3 Estimate Supersession
+
+When a new estimate replaces an old one:
+- New node created with `ext.SUPERSEDES_ESTIMATE` edge to old node
+- Old node status set to `superseded`
+- Old node retained for audit trail (what was believed, when)
+
+---
+
+## 11. Traversal Policy
+
+```yaml
+traversal:
+  default_entry_points: ["CO-OVERVIEW"]
+  primary_layers: [causal, temporal]
+  focus_areas:
+    factbase:
+      entry: ["CO-OVERVIEW"]
+      layers: [semantic, entity]
+      keywords: ["company", "overview", "basics", "who"]
+    financials:
+      entry: ["REV-LATEST", "CF-BURN-RATE", "CF-RUNWAY"]
+      layers: [temporal, causal]
+      keywords: ["revenue", "burn", "cash", "runway", "financials", "raise"]
+    technology:
+      entry: ["PROD-INDEX"]
+      layers: [semantic, causal]
+      keywords: ["product", "technology", "platform", "IP", "patent"]
+    messaging:
+      entry: ["CRED-ROLLING-SCORE"]
+      layers: [temporal, causal]
+      keywords: ["credibility", "spin", "claims", "press release", "jedi", "frame"]
+    patterns:
+      entry: ["PAT-INDEX"]
+      layers: [causal, semantic]
+      keywords: ["pattern", "anti-pattern", "indicator", "signal", "trajectory"]
+    competitive:
+      entry: ["COMP-INDEX"]
+      layers: [semantic]
+      keywords: ["competitors", "market", "positioning", "comps", "landscape"]
+    forecast:
+      entry: ["SCN-PERFORM"]
+      layers: [causal, temporal]
+      keywords: ["forecast", "projection", "scenario", "model", "predict"]
+    risk:
+      entry: ["RISK-INDEX"]
+      layers: [causal]
+      keywords: ["risk", "threat", "downside", "delisting", "dilution", "runway"]
+    breakout:
+      entry: ["BREAKOUT-INDEX"]
+      layers: [causal, semantic]
+      keywords: ["breakout", "category", "mandate", "agent", "delegation"]
+    rumors:
+      entry: ["RMR-INDEX"]
+      layers: [semantic, causal]
+      keywords: ["rumor", "heard", "unverified", "whisper"]
+```
+
+---
+
+## 12. Corpus Structure (Per-Ticker)
+
+```
+~/{ticker}/
+├── SENSITIVE-*.md                    # Conflict-of-interest declarations, privileged info
+│                                     # (excluded from factbase, used for A/B testing)
+├── factbase/                         # Layer 1
+│   ├── 01-company-overview.lts       # CO-, MGT-, BOD-, SH- nodes
+│   ├── 02-financial-history.lts      # REV-, COST-, BS-, CF-, VAL- nodes
+│   ├── 03-capital-structure.lts      # CAP-, RAISE- nodes
+│   ├── 04-products-technology.lts    # PROD-, TECH-, DEP- nodes
+│   ├── 05-partnerships.lts           # PTNR- nodes
+│   ├── 06-comparable-companies.lts   # COMP-, TRAJ- nodes
+│   ├── 07-sector-market.lts          # MKT-, SECTOR-, TREND-, REG- nodes
+│   ├── 08-rumors.lts                 # RMR- nodes
+│   └── comms/                        # Management communications log
+│       ├── pr-{date}.lts             # Individual press release encodings
+│       ├── ec-{period}.lts           # Earnings call encodings
+│       └── media-{date}.lts          # Press coverage encodings
+├── patterns/                         # Layer 2
+│   ├── 10-sector-patterns.lts        # PAT- nodes
+│   ├── 11-anti-patterns.lts          # ANTI- nodes
+│   ├── 12-leading-indicators.lts     # IND- nodes
+│   ├── 13-credibility-tracker.lts    # CRED- nodes
+│   └── 14-messaging-analysis.lts     # JMT-, DRIFT- nodes
+├── projections/                      # Layer 3 (on-demand, may be regenerated)
+│   ├── 20-revenue-forecast.lts       # FORE-, SCN-, ASMP- nodes
+│   ├── 21-competitive-position.lts   # POS- nodes
+│   ├── 22-investment-thesis.lts      # THESIS- nodes
+│   ├── 23-breakout-assessment.lts    # BREAKOUT- nodes
+│   └── 24-risk-catalyst.lts          # RISK-, CAT- nodes
+├── events/
+│   └── quality.jsonl                 # Quality event stream
+└── deltas/                           # Semantic change records
+    └── DELTA-{date}-{short-sha}.lts
+```
+
+---
+
+## 13. Why This Domain Matters for FactLattice
+
+1. **First third-party epistemology domain.** Every prior domain encodes first-party knowledge. This one proves FactLattice's confidence system is load-bearing, not decorative.
+
+2. **First adversarial-source domain.** Every prior domain has a cooperative source. This one structurally separates claims from facts and detects frame control — a pattern applicable to any domain that ingests external communications (regulatory analysis, media monitoring, competitive intelligence).
+
+3. **Three-layer architecture as reusable pattern.** The factbase → pattern engine → projection surface separation could generalize to any analytical domain. The principle — maintain facts, derive patterns, project on demand — is the NIST submission's core argument applied to a specific domain.
+
+4. **T8 (rumor) tier with human-in-the-loop.** The first FactLattice tier where the human, not the source type, sets confidence. Demonstrates that the confidence system handles cases where the system cannot assess source reliability.
+
+5. **Monitoring pipeline as living factbase.** The cron agent architecture demonstrates that a FactLattice corpus can be a continuously updated knowledge substrate, not just a point-in-time document set. The context-clean encoder / context-rich analyst split is the NIST submission's context isolation principle applied to data ingestion.
+
+6. **Conflict-of-interest as structural mechanism.** The A/B epistemological firewall test demonstrates that FactLattice can structurally manage analytical bias — the analysis must be reproducible without the conflicted knowledge.
+
+7. **Spin resistance as design goal.** The Jedi Mind Trick detection, management credibility tracking, and claim-vs-fact separation demonstrate that FactLattice can encode not just what is true, but what is *designed to mislead* — a capability with applications far beyond company analysis.
+
+---
+
+**Version**: 2.0
+**Created**: 2026-04-01
+**Updated**: 2026-04-01
+**Status**: Draft
+**Intelligence**: Claude Opus 4.6

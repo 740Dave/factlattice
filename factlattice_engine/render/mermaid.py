@@ -45,14 +45,14 @@ inside a label is a syntax error).
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence
 
 from ..reason_codes import ENDPOINT_NOT_IN_NODE_SET_REASON
 
 # Shape name -> (open delimiter, close delimiter). The label always sits between
 # them double-quoted, e.g. rect -> `N_1["text"]`, decision -> `N_1{"text"}`.
-SHAPES: Dict[str, tuple] = {
+SHAPES: dict[str, tuple] = {
     "rect": ("[", "]"),
     "decision": ("{", "}"),
     "round": ("(", ")"),
@@ -95,7 +95,7 @@ def escape_label(text: object) -> str:
     return s
 
 
-def safe_node_id(node_id: object, used: Optional[Dict[str, str]] = None) -> str:
+def safe_node_id(node_id: object, used: dict[str, str] | None = None) -> str:
     """Deterministic .lts id -> Mermaid identifier.
 
     `DEC-1` -> `DEC_1`. `used` (safe_id -> original_id) is consulted so two distinct
@@ -144,7 +144,7 @@ def default_label_fn(node: dict) -> str:
     return str(node.get("id") or "?")
 
 
-def default_edge_label_fn(edge: dict) -> Optional[str]:
+def default_edge_label_fn(edge: dict) -> str | None:
     """The authored branch label ('yes'/'no'/'amber') wins; otherwise the edge TYPE
     is shown unless it is a silent spine type. This is what lets the SAME emitter
     render a legible SUPERSEDES chain with no flow-specific configuration."""
@@ -163,11 +163,11 @@ def default_edge_label_fn(edge: dict) -> Optional[str]:
 @dataclass
 class MermaidDiagram:
     text: str
-    node_ids: Dict[str, str] = field(default_factory=dict)   # corpus id -> mermaid id
+    node_ids: dict[str, str] = field(default_factory=dict)   # corpus id -> mermaid id
     node_count: int = 0
     edge_count: int = 0
-    groups: List[str] = field(default_factory=list)
-    skipped_edges: List[dict] = field(default_factory=list)  # endpoint not in node set
+    groups: list[str] = field(default_factory=list)
+    skipped_edges: list[dict] = field(default_factory=list)  # endpoint not in node set
 
     def __str__(self) -> str:  # so a caller can just print(diagram)
         return self.text
@@ -183,11 +183,11 @@ class MermaidDiagram:
 # ---------------------------------------------------------------------------
 def render_mermaid(nodes: Sequence[dict], edges: Sequence[dict], *,
                    direction: str = "TD",
-                   group_by: Optional[str] = None,
-                   shape_fn: Optional[Callable[[dict], str]] = None,
-                   label_fn: Optional[Callable[[dict], str]] = None,
-                   edge_label_fn: Optional[Callable[[dict], Optional[str]]] = None,
-                   title: Optional[str] = None,
+                   group_by: str | None = None,
+                   shape_fn: Callable[[dict], str] | None = None,
+                   label_fn: Callable[[dict], str] | None = None,
+                   edge_label_fn: Callable[[dict], str | None] | None = None,
+                   title: str | None = None,
                    indent: str = "    ") -> MermaidDiagram:
     """Render ANY node+edge set as a Mermaid `flowchart`. Pure and deterministic.
 
@@ -206,9 +206,9 @@ def render_mermaid(nodes: Sequence[dict], edges: Sequence[dict], *,
     direction = direction if direction in VALID_DIRECTIONS else "TD"
 
     # --- id mapping ---------------------------------------------------------
-    used: Dict[str, str] = {}
-    node_ids: Dict[str, str] = {}
-    ordered: List[dict] = []
+    used: dict[str, str] = {}
+    node_ids: dict[str, str] = {}
+    ordered: list[dict] = []
     for nd in nodes:
         nid = str(nd.get("id"))
         if nid in node_ids:
@@ -219,9 +219,9 @@ def render_mermaid(nodes: Sequence[dict], edges: Sequence[dict], *,
         ordered.append(nd)
 
     # --- grouping (swimlanes) ----------------------------------------------
-    groups: List[str] = []
-    grouped: Dict[str, List[dict]] = {}
-    ungrouped: List[dict] = []
+    groups: list[str] = []
+    grouped: dict[str, list[dict]] = {}
+    ungrouped: list[dict] = []
     for nd in ordered:
         g = None
         if group_by:
@@ -244,7 +244,7 @@ def render_mermaid(nodes: Sequence[dict], edges: Sequence[dict], *,
         open_d, close_d = SHAPES.get(shape, SHAPES[DEFAULT_SHAPE])
         return f'{sid}{open_d}"{escape_label(label_fn(nd))}"{close_d}'
 
-    lines: List[str] = []
+    lines: list[str] = []
     if title:
         # A YAML frontmatter title block is the only Mermaid-native way to title a
         # flowchart; `---` fences are part of the diagram source, not markdown.
@@ -262,7 +262,7 @@ def render_mermaid(nodes: Sequence[dict], edges: Sequence[dict], *,
         lines.append(f"{indent}{_decl(nd)}")
 
     # --- edges --------------------------------------------------------------
-    skipped: List[dict] = []
+    skipped: list[dict] = []
     emitted_edges = 0
     seen_edges: set = set()
     for e in edges:

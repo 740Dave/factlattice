@@ -165,7 +165,8 @@ unregistered namespace preserves the edge and flags it, so a consumer who has no
 profile still gets a complete graph.
 
 The reference profiles shipped in `domain-profiles/` span software engineering, clinical
-records, hardware/maker work, and agentic artifacts and decisions. If a format encodes both
+records, third-party company intelligence, and agentic artifacts and
+decisions. If a format encodes both
 interface contracts and time-indexed clinical assessments, the domain-agnostic claim is
 substantiated rather than asserted.
 
@@ -215,8 +216,8 @@ python3 -m factlattice_engine.lint lint specs/ --dangle
 #   -- profile: NONE IN SCOPE ... profile-driven rules V1-V6 were INERT
 ```
 
-That is "no errors", not "no findings": the specs carry style warnings (legacy-mode documents,
-undeclared keys), and with no domain profile in scope the profile-driven rules do not run.
+That is "no errors", not "no findings": the specs carry warnings (legacy-mode documents,
+undeclared keys, orphan nodes, key-loss findings), and with no domain profile in scope the profile-driven rules do not run.
 
 Then render a flow out of it — the diagram is a query result over `specs/`, not a stored
 picture:

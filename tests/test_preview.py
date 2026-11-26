@@ -38,8 +38,8 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "preview")
 SPEC41 = os.path.join(FIXTURES, "spec41-broken-control.lts")
 SPEC29 = os.path.join(FIXTURES, "spec29-clean-control.lts")
 
-SPEC41_SHA = "82f70e6819129bf015d6c263613d04df37655bff3f9f68ca2c5b843664d66fd9"
-SPEC29_SHA = "0ef3005c263c9131c6741c698bedca0f0cb2cc9efd5f1383f0b4eed5ae9b212e"
+SPEC41_SHA = "3fbdbe0c494617b579e22be4fdd87a7b3094c13c0e08632300cd6ba5a0b4aa31"
+SPEC29_SHA = "a614a36d6c8d384d6aadf3d5ed5bf271309a5fa24f1afde0ecf1f229dcaec216"
 
 # --- the exact facts of the positive control --------------------------------
 SPEC41_NODES = ["LIB-04", "LIB-08", "LIB-09", "LIB-05",
@@ -73,7 +73,7 @@ SPEC41_UNACCOUNTED_LINES = [4, 5, 6, 7, 10, 218, 232, 233, 235]
 
 
 def _read(p: str) -> str:
-    with open(p, "r", encoding="utf-8") as fh:
+    with open(p, encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -121,8 +121,9 @@ def test_spec41_edges_section_yields_zero_properties_and_zero_edges(p41):
     edges. Three authored `- [RULE-*]:` lines produced neither.
     """
     node = next(n for n in p41["became"]["nodes"] if n["id"] == "LIB-20")
-    assert node["property_count"] == 0
-    assert node["properties"] == {}
+    # no AUTHORED property: the only one the node carries is the engine-minted state (spec 39)
+    assert node["property_count"] == 1
+    assert node["properties"] == {"normative_effective": "true"}
     assert [e for e in p41["became"]["edges"] if e["source"] == "LIB-20"] == []
 
 

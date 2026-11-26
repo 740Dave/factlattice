@@ -24,7 +24,9 @@ import sys
 import threading
 import weakref
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
+from factlattice.core_keys import ENGINE_MINTED_KEYS
 
 MATCH_MODES = ("phrase", "word", "prefix")
 WHERE_OPS = ("has", "lacks", "equals", "one_of", "not_equals", "not_one_of")
@@ -52,7 +54,7 @@ class QueryError(ValueError):
     """A refused query. The message names the parameter; it is returned as `error`."""
 
 
-def words_of(s: str) -> List[str]:
+def words_of(s: str) -> list[str]:
     """Word mode's words: `[a-z0-9]+` runs of the lowercased text. No stemming, no stop-words."""
     return WORD_RE.findall(s.lower())
 
@@ -90,11 +92,11 @@ def fallback_enabled() -> bool:
     return False
 
 
-def fallback_words(text: str) -> List[str]:
+def fallback_words(text: str) -> list[str]:
     """The words of a `text` for the fallback: word-mode words minus lexrank's STOP list,
     de-duplicated in order of first appearance."""
     from .semantic.lexrank import STOP
-    out: List[str] = []
+    out: list[str] = []
     for w in words_of(text):
         if w not in STOP and w not in out:
             out.append(w)
@@ -111,10 +113,11 @@ _PUBLISH_LOCK = threading.Lock()   # held only to publish one entry's words (col
 
 class _Entry:
     """One node's structured fields, lowercased once; words derived lazily."""
-    __slots__ = ("lows", "_words", "_union", "_fc")
+    __slots__ = ("lows", "_words", "_union", "_fc", "src")
 
-    def __init__(self, lows, fc=None):
+    def __init__(self, lows, fc=None, src=None):
         self.lows = lows              # tuple of (field_name, lowered_string)
+        self.src = src                # the node dict these were lowered from; an entry serves only that dict
         self._words = None
         self._union = None
         # owning FieldCache (WEAK: a strong ref makes entry<->cache a cycle that outlives eviction until
@@ -168,9 +171,11 @@ _VOCAB_B = 8               # per vocabulary word in the sorted list
 def _build_entry(node: dict, node_id: str, fc=None) -> _Entry:
     lows = [("id", node_id.lower()), ("title", (node.get("title") or "").lower())]
     for k, v in (node.get("properties") or {}).items():
+        if k in ENGINE_MINTED_KEYS:
+            continue          # the engine-minted state is on every node; a word search over it would match them all (filter it with `where`)
         for sv in _string_values(v):
             lows.append((k, sv.lower()))
-    e = _Entry(tuple(lows), fc)
+    e = _Entry(tuple(lows), fc, node)
     if fc is not None:
         n = _ENTRY_B
         for _f, low in lows:
@@ -184,10 +189,11 @@ class FieldCache:
     Keyed on the partition freshness key by the owner (`FieldCaches`). Keeps a running ESTIMATE of its
     retained bytes (`est_bytes`), reported to the owner as it grows so the owner can hold a byte ceiling."""
 
-    def __init__(self, key, owner=None):
+    def __init__(self, key, owner=None, src=None):
         self.key = key
-        self.entries: Dict[str, _Entry] = {}
-        self._vocab: Optional[List[str]] = None
+        self.src = src                # the `nodes` mapping this cache was built from (identity, not equality)
+        self.entries: dict[str, _Entry] = {}
+        self._vocab: list[str] | None = None
         self.est_bytes = 0
         self._owner = owner           # None once detached (evicted / oversize / ceiling 0)
 
@@ -198,11 +204,11 @@ class FieldCache:
 
     def entry(self, node: dict, node_id: str) -> _Entry:
         e = self.entries.get(node_id)
-        if e is None:
+        if e is None or e.src is not node:      # built from a different dict (a publish landed): rebuild
             e = self.entries[node_id] = _build_entry(node, node_id, self)
         return e
 
-    def vocab(self, nodes: Dict[str, dict]) -> List[str]:
+    def vocab(self, nodes: dict[str, dict]) -> list[str]:
         if self._vocab is None:
             v = set()
             for nid, nd in nodes.items():
@@ -243,7 +249,7 @@ class FieldCaches:
     A corpus that alone exceeds the ceiling serves its own call and is then not retained."""
 
     def __init__(self):
-        self._c: "OrderedDict[str, FieldCache]" = OrderedDict()
+        self._c: OrderedDict[str, FieldCache] = OrderedDict()
         self._total = 0
         self.evictions = 0
         self.oversize_skips = 0
@@ -253,12 +259,16 @@ class FieldCaches:
         fc._owner = None
         self._total -= fc.est_bytes
 
-    def for_part(self, part) -> FieldCache:
+    def for_part(self, part, nodes=None) -> FieldCache:
+        """`nodes` is the mapping the caller will read (its own single read of `part.nodes`); the cache
+        is built from, and served only for, that very object. A freshness key alone says nothing about
+        which nodes a cache holds: the key moves when a file changes, `part.nodes` when the heal publishes."""
+        nodes = part.nodes if nodes is None else nodes
         key = part._freshness_key()
         cid = part.corpus_id
         cap = ceiling_bytes()                    # read per call; enforced here as well as on growth
         fc = self._c.get(cid)
-        if fc is not None and fc.key != key:
+        if fc is not None and (fc.key != key or fc.src is not nodes):
             self._detach(cid)
             fc = None
         if cap <= 0:
@@ -266,9 +276,9 @@ class FieldCaches:
                 self._detach(c)
                 self.evictions += 1
             self.oversize_skips += 1
-            return FieldCache(key)               # detached: serves this call only
+            return FieldCache(key, None, nodes)  # detached: serves this call only
         if fc is None:
-            fc = FieldCache(key, self)
+            fc = FieldCache(key, self, nodes)
             self._c[cid] = fc
         self._c.move_to_end(cid)
         while len(self._c) > CACHE_MAX:
@@ -311,13 +321,13 @@ class FieldCaches:
 class Term:
     __slots__ = ("raw", "match", "phrase", "words", "fields", "expansion")
 
-    def __init__(self, raw: str, match: str, fields: Optional[frozenset]):
+    def __init__(self, raw: str, match: str, fields: frozenset | None):
         self.raw = raw
         self.match = match
         self.fields = fields
         self.phrase = raw.lower() if match == "phrase" else None
         self.words = tuple(words_of(raw)) if match != "phrase" else ()
-        self.expansion: Optional[frozenset] = None     # prefix mode: vocabulary words it covers
+        self.expansion: frozenset | None = None     # prefix mode: vocabulary words it covers
 
     def echo(self) -> dict:
         d = {"term": self.raw, "match": self.match}
@@ -351,7 +361,7 @@ class Cond:
         return any(s not in self.values for s in vals)          # not_one_of
 
     def echo(self) -> dict:
-        d: Dict[str, Any] = {"key": self.key, "op": self.op}
+        d: dict[str, Any] = {"key": self.key, "op": self.op}
         if self.op in ("equals", "not_equals"):
             d["value"] = self.value
         elif self.op in ("one_of", "not_one_of"):
@@ -364,34 +374,34 @@ class Cond:
 # --------------------------------------------------------------------------- the query
 class CompiledQuery:
     def __init__(self):
-        self.all_of: Tuple[Term, ...] = ()
-        self.any_of: Tuple[Term, ...] = ()
-        self.none_of: Tuple[Term, ...] = ()
-        self.where: Tuple[Cond, ...] = ()
-        self._wkeys: Tuple[str, ...] = ()
-        self.fields: Optional[frozenset] = None
+        self.all_of: tuple[Term, ...] = ()
+        self.any_of: tuple[Term, ...] = ()
+        self.none_of: tuple[Term, ...] = ()
+        self.where: tuple[Cond, ...] = ()
+        self._wkeys: tuple[str, ...] = ()
+        self.fields: frozenset | None = None
         self.default_match = "phrase"
         self.match_given = False
-        self.source_file: Optional[str] = None
-        self.document_tag: Optional[str] = None
+        self.source_file: str | None = None
+        self.document_tag: str | None = None
         self.explain = False
-        self.date: Optional[tuple] = None            # (since, until, date_property), set by the tool
+        self.date: tuple | None = None            # (since, until, date_property), set by the tool
         self.fallback = False                         # True on the fallback's derived query
-        self._cache: Optional[FieldCache] = None
-        self._nodes: Optional[dict] = None
+        self._cache: FieldCache | None = None
+        self._nodes: dict | None = None
         self.reset_stats()
 
     # -- per-call mutable state (scope counters for the misspelled-key guard) ----------
     def reset_stats(self):
         self.scope_total = 0
-        self.key_present: Dict[str, int] = {}
-        self.untagged_in_scope: Optional[int] = None
+        self.key_present: dict[str, int] = {}
+        self.untagged_in_scope: int | None = None
 
     @property
     def has_terms(self) -> bool:
         return bool(self.all_of or self.any_of or self.none_of)
 
-    def derive_with_all_of(self, extra: List[Term]) -> "CompiledQuery":
+    def derive_with_all_of(self, extra: list[Term]) -> CompiledQuery:
         c = copy.copy(self)
         c.all_of = tuple(self.all_of) + tuple(extra)
         c.fallback = True
@@ -401,13 +411,14 @@ class CompiledQuery:
         return c
 
     # -- binding to a partition (cache + prefix expansion) ------------------------------
-    def bind(self, part, caches: Optional[FieldCaches]):
-        self._nodes = part.nodes
-        self._cache = caches.for_part(part) if caches is not None else None
+    def bind(self, part, caches: FieldCaches | None):
+        nodes = part.nodes                    # ONE read: the cache and the vocabulary are built from this object
+        self._nodes = nodes
+        self._cache = caches.for_part(part, nodes) if caches is not None else None
         for t in self.all_of + self.any_of + self.none_of:
             if t.match == "prefix":
                 if self._cache is not None:
-                    voc = self._cache.vocab(part.nodes)
+                    voc = self._cache.vocab(nodes)
                     p = t.words[0]
                     lo = bisect.bisect_left(voc, p)
                     hi = lo
@@ -497,8 +508,8 @@ class CompiledQuery:
         return True
 
     # -- extent ------------------------------------------------------------------------
-    def keys_consulted(self) -> List[str]:
-        keys: List[str] = []
+    def keys_consulted(self) -> list[str]:
+        keys: list[str] = []
         if self.has_terms:
             seen = set()
             for t in self.all_of + self.any_of + self.none_of:
@@ -521,7 +532,7 @@ class CompiledQuery:
         return keys
 
     def scope_filters(self) -> dict:
-        d: Dict[str, Any] = {}
+        d: dict[str, Any] = {}
         for name in ("all_of", "any_of", "none_of"):
             ts = getattr(self, name)
             if ts and not self.fallback:
@@ -535,7 +546,7 @@ class CompiledQuery:
         return d
 
     # -- validation against the loaded partition(s) --------------------------------------
-    def validate_source_file(self, parts, area) -> Optional[str]:
+    def validate_source_file(self, parts, area) -> str | None:
         """An error string, or None. Unknown file / ambiguous multi-root path are refused."""
         sf = self.source_file
         if sf is None:
@@ -568,8 +579,8 @@ class CompiledQuery:
             self.untagged_in_scope = sum(1 for p in parts for nd in p.nodes.values()
                                          if not nd.get("document_tag"))
 
-    def warnings(self) -> List[str]:
-        out: List[str] = []
+    def warnings(self) -> list[str]:
+        out: list[str] = []
         if self.match_given and not self.has_terms:
             out.append("`match` has no effect: no all_of / any_of / none_of terms were given")
         if self.fields is not None and not self.has_terms:
@@ -594,7 +605,7 @@ class CompiledQuery:
         return out
 
     def echo(self, *, text, filters: dict) -> dict:
-        q: Dict[str, Any] = {
+        q: dict[str, Any] = {
             "text": ({"value": text, "mode": TEXT_MODE} if text else None),
         }
         for name in ("all_of", "any_of", "none_of"):
@@ -639,7 +650,7 @@ def _d(v) -> str:
     return f"a {type(v).__name__}"
 
 
-def _compile_terms(name: str, raw, default: str, fields) -> Tuple[Term, ...]:
+def _compile_terms(name: str, raw, default: str, fields) -> tuple[Term, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list):
@@ -689,7 +700,7 @@ def _str_value(where: str, v) -> str:
     return s
 
 
-def _compile_where(raw) -> Tuple[Cond, ...]:
+def _compile_where(raw) -> tuple[Cond, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list):
@@ -730,7 +741,7 @@ def _compile_where(raw) -> Tuple[Cond, ...]:
 
 def compile_query(*, all_of=None, any_of=None, none_of=None, match=None, where=None,
                   fields=None, source_file=None, document_tag=None, explain=None,
-                  corpus=None, other_positive_filter: bool = False) -> Optional[CompiledQuery]:
+                  corpus=None, other_positive_filter: bool = False) -> CompiledQuery | None:
     """Validate and compile. None = no new parameter in use (the old path, untouched).
     Raises QueryError with a message naming the parameter."""
     used = (all_of is not None or any_of is not None or none_of is not None or match is not None
@@ -780,5 +791,5 @@ def empty_query() -> CompiledQuery:
     return CompiledQuery()
 
 
-def fallback_terms(words: List[str]) -> List[Term]:
+def fallback_terms(words: list[str]) -> list[Term]:
     return [Term(w, "word", None) for w in words]

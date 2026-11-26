@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from tests.test_nonregular_file_in_root import UNREADABLE, sub_run
 from tests.test_nonregular_round2 import w  # noqa: F401
 from tests.test_nonregular_round6 import PRELUDE

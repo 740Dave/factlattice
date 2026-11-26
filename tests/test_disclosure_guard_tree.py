@@ -16,6 +16,8 @@ import pytest
 GUARD = pathlib.Path(__file__).resolve().parents[1] / "tools" / "disclosure_guard.py"
 T = "\t"
 VOCAB_ROW = T.join([r"quillworks", "built by quillworks inc", "a vendor name; use a neutral one", "vendor-name"])
+# a non-empty denylist: since spec 42 R7 an EMPTY private file makes --tree print an "unconfigured" result, never "0 findings"
+DENY_ROW = T.join([r"marblefoundry", "a marblefoundry order", "a synthetic customer name", "customer-name"])
 
 
 def run(tree, *args, vocab=VOCAB_ROW, denylist=None, vocab_name="vocab.tsv"):
@@ -31,7 +33,7 @@ def run(tree, *args, vocab=VOCAB_ROW, denylist=None, vocab_name="vocab.tsv"):
     else:
         env["FACTLATTICE_PUBLISH_VOCAB"] = str(scratch / "does-not-exist.tsv")
     dp = scratch / "deny.tsv"
-    dp.write_text((denylist or "") , encoding="utf-8")
+    dp.write_text(DENY_ROW + "\n" if denylist is None else denylist, encoding="utf-8")
     env["FACTLATTICE_DISCLOSURE_RULES"] = str(dp)
     return subprocess.run([sys.executable, str(GUARD), *args], cwd=str(tree), env=env,
                           capture_output=True, text=True)

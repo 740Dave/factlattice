@@ -1,0 +1,233 @@
+# merge-queue: a small merge queue for this repository. The check that gates a merge is the commit status `merge-queue/tested`, posted by the queue's merge job.
+#
+# WHO RUNS THIS (the maintainers' ruling of 2026-11-23). Only collaborators can open PRs, issues or comments here (an interaction limit the maintainers set), and any
+# collaborator is trusted. Forks are welcome as forks, but a fork cannot open a PR. The rules below are a SECOND LINE, not the first: keeping a non-collaborator's
+# code off the self-hosted runner rests on the interaction limit and the repository's fork-approval setting. This file cannot enforce either, and a collaborator's PR
+# can change its own `pull_request` workflow files; tests/test_public_workflows_lint.py pins what these files can promise, no more.
+#
+# THREE JOBS, one concurrency group. A `queue` label (applied by a person) starts a sweep at once; so do a push to main, a daily run and a manual dispatch.
+#   merge-queue-plan  (read; literal ubuntu-latest) lists the queued PRs per base, at most 3 per base (plan_bases.py), ONE test cell per planned candidate. A queued PR whose
+#                     head is not in this repository is never planned: the plan lists it, and the merge job dequeues it with a comment on the run that finds it (a label
+#                     event runs at once, otherwise the next sweep).
+#   merge-queue-test  (contents: read; PR CODE RUNS ONLY HERE; the only job that may use a self-hosted runner, `vars.CI_RUNNER`) one cell per planned candidate, named
+#                     `merge-queue-test (pr-<n> <40-hex head>)`. Its FIRST step, before any checkout, asks the API for the cell's PR head repository and exits 1 on any
+#                     mismatch or failed call; it holds no secret (the read-only `github.token`). It then builds the merge of the current base and the PR head locally and
+#                     runs the required checks (merge_queue.py test), and exits non-zero unless its one candidate is green: the JOB'S CONCLUSION is the result.
+#   merge-queue       (write; literal ubuntu-latest) RUNS NO PR CODE and checks out the default branch only. It reads GitHub's record of each cell's job (the jobs API of this
+#                     run and attempt, found by the cell name) and decides green or red from the conclusion; the verdict files are metadata only (tested base sha, cause
+#                     tags). It merges a PR only when the exact head, merged onto the current base, went green; it re-reads the base BEFORE posting any success status, and a head
+#                     that ends a sweep unmerged carries `pending` or `failure`, never a success. It holds the queue App token (in the environment `merge-queue`).
+# RULES, each pinned by tests/test_public_workflows_lint.py: every job but the test job has the literal `runs-on: ubuntu-latest`; a job that runs PR code holds no
+# `secrets` reference and `contents: read` only; every job declares its `permissions:`; a job that holds a secret or a write permission uses actions/checkout with no `ref`
+# (two named exceptions: the plan and queue jobs check out the default branch explicitly) and never runs `git fetch`, `git checkout` or `gh pr checkout`; the plan job drops
+# fork heads and the test job's first step is the API re-check (the test job has no job-level head condition: it would skip every cell); no `${{ }}` outside a short
+# allow-list is pasted into a `run:` script (use `env:`), and `matrix.*` is allowed only from a plan output or a literal list.
+# WHAT A REFUSAL IS. A fork-head PR is dropped at planning and dequeued with a comment on the run that finds it, WHATEVER PR the label event was about: a `queue` label on a
+# fork-head PR plans nothing for that PR and does not skip the other candidates' cells. A cell whose API re-check fails (a head elsewhere, or an API error after one retry)
+# goes red and the PR is dequeued as red. Neither stops another candidate's cell.
+# THROUGHPUT COST. Every planned candidate is tested (up to 3 per base, each a full checkout, `uv sync` and suite), so a sweep spends up to 3 suites per merge; the sweep summary
+# lists the greens left unused after a merge. Every cell also downloads its packages again (a fresh UV_CACHE_DIR).
+# THE LIMIT. On a persistent self-hosted runner, separate jobs do NOT isolate one PR's code from another's: a deliberately persisting PR (its home, caches, user site, a
+# surviving process, the runner's own folders) can affect later cells. What the design guarantees is narrower: no PR's verdict FILE decides anything, every merge needs its
+# own planned job's conclusion, and unplanned and fork-head PRs never merge. Isolation from a hostile collaborator needs ephemeral runners. The per-cell fresh
+# HOME/XDG_CACHE|CONFIG|DATA_HOME/UV_CACHE_DIR/TMPDIR (never XDG_STATE_HOME), no user site and the reap after the driver (its own process group, and the session each check runs in) remove ACCIDENTAL carry-over only.
+# SCRIPTS: plan_bases.py, merge_queue.py, ci_step.py and what they import (bases.py, gh_api.py) are in .github/workflows/scripts/.
+name: merge-queue
+
+on:
+  pull_request_target:
+    types: [labeled]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      hop:
+        description: "position in a chain of self re-dispatches (set by the merge job; leave 0 by hand)"
+        required: false
+        default: "0"
+
+permissions: {}
+
+concurrency:
+  group: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch) || (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) || (github.event_name == 'pull_request_target' && github.event.label.name == 'queue' && github.base_ref == github.event.repository.default_branch)) && 'merge-queue' || format('merge-queue-ignored-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  CI_UV_VERSION: "0.11.7"
+
+jobs:
+  plan:
+    name: merge-queue-plan
+    # only the default branch's copy of the queue code may run with these permissions (a dispatch from another branch skips all three jobs);
+    # a label event runs only for `queue` (any other label skips all three jobs); its base is checked against bases.py in the plan step
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'queue')
+    runs-on: ubuntu-latest   # literal, always: this job holds write permissions or runs no PR code (header)
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      candidates: ${{ steps.plan.outputs.candidates }}
+      has_work: ${{ steps.plan.outputs.has_work }}
+      has_drafts: ${{ steps.plan.outputs.has_drafts }}
+      forks: ${{ steps.plan.outputs.forks }}
+      has_forks: ${{ steps.plan.outputs.has_forks }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - id: plan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MQ_PR_BASE: ${{ github.event.pull_request.base.ref }}
+        run: python3 .github/workflows/scripts/plan_bases.py --repo "$GITHUB_REPOSITORY" --pr-base "$MQ_PR_BASE"
+      - if: failure()
+        run: python3 .github/workflows/scripts/ci_step.py report merge-queue-plan
+
+  test:
+    # ONE CELL PER PLANNED CANDIDATE (the plan job's matrix: base, pr, head). The displayed name is `merge-queue-test (pr-<n> <40-hex head>)`, built from the
+    # cell's values (an expression, so GitHub appends nothing to it): the merge job finds each cell's job by this name through the jobs API of this run and
+    # attempt (the API returns names, not matrix values) and decides green or red from the job's CONCLUSION, never from the verdict file. The required
+    # check of the ruleset is the status `merge-queue/tested`, not a check-run name.
+    name: ${{ matrix.pr && format('merge-queue-test (pr-{0} {1})', matrix.pr, matrix.head) }}
+    needs: plan
+    # NO JOB-LEVEL HEAD-REPO CONDITION, on purpose: a condition on the event's PR would skip the WHOLE matrix when a fork PR is the one that was labelled, and the in-repo
+    # candidates would go untested. The two checks are the plan job (a fork-head PR is never planned: it is listed in `forks` and dequeued by the merge job) and the
+    # first step of each cell (below), which asks the API about that cell's PR before anything is checked out.
+    if: needs.plan.outputs.has_work == 'true'
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 240   # = merge_queue.JOB_TIMEOUT_S / 60: the time-budget invariant (a test compares them)
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    permissions:
+      contents: read
+    steps:
+      # FIRST STEP, before any checkout: re-check this cell's PR through the API and refuse a head that is not in this repository (exit 1: the cell goes red, nothing
+      # is checked out, and the merge job dequeues the PR as red). The token is the read-only github.token of this job (contents: read); no secret. An API error is
+      # retried once and then fails the step with its own message (fail closed): it is not reported as a fork.
+      - name: re-check the head repository through the API (refuse a head from another repository)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MQ_REPO: ${{ github.repository }}
+          MQ_PR: ${{ matrix.pr }}
+        run: |
+          set -euo pipefail
+          head_repo="__api_error__"
+          err="$(mktemp)"
+          for attempt in 1 2; do
+            if head_repo="$(gh api "repos/$MQ_REPO/pulls/$MQ_PR" --jq '.head.repo.full_name // ""' 2>"$err")"; then break; fi
+            head_repo="__api_error__"
+            [ "$attempt" = 2 ] || sleep "${MQ_RETRY_SLEEP:-3}"
+          done
+          if [ "$head_repo" = "__api_error__" ]; then
+            echo "::error::could not read the head repository of PR $MQ_PR (API error, retried once: $(head -n 1 "$err" | tr -d '\r' | cut -c1-200)): nothing checked out, the cell fails"
+            exit 1
+          fi
+          if [ "$head_repo" != "$MQ_REPO" ]; then
+            echo "::error::PR $MQ_PR has its head in '$head_repo', not in $MQ_REPO: refused, nothing checked out"
+            exit 1
+          fi
+      # the driver is the code on the default branch (this workflow's own commit), never the PR's copy; PR code is fetched as git objects
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          path: driver
+          persist-credentials: false
+      # setup-uv runs `uv python find --directory <working-directory>` and EXECUTES the interpreter uv finds there, with its github-token input in the
+      # environment. Its working directory is therefore a fresh EMPTY folder, never the checkout (a PR-committed .venv/bin/python must not run here), and
+      # it reads no uv.toml, pyproject [tool.uv] or .python-version of the PR tree. (The version is explicit, so no version file is consulted either.)
+      - run: echo "SETUP_UV_WD=$(mktemp -d "$RUNNER_TEMP/setup-uv-wd.XXXXXX")" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.CI_UV_VERSION }}   # 0.11.7: the uv that made uv.lock; no pipx on a bare self-hosted runner
+          enable-cache: false
+          working-directory: ${{ env.SETUP_UV_WD }}
+          ignore-empty-workdir: true
+      - run: uv python install --no-config "$(cat driver/.python-version)"   # the DEFAULT branch's pin (the driver checkout), passed explicitly; the PR tree's own sync uses the PR's .python-version
+      # A FRESH HOME FOR THE CELL'S PR CODE: the driver gives every process that runs PR code (uv sync, the checks) HOME, XDG_CACHE_HOME, XDG_CONFIG_HOME, XDG_DATA_HOME, UV_CACHE_DIR and TMPDIR inside
+      # MQ_CELL_DIR (merge_queue.cell_env) and no user site; uv's own Python stays where the trusted install above put it. This removes ACCIDENTAL carry-over between
+      # cells on a persistent runner. It does not isolate a deliberately persisting PR (see THE LIMIT in the header).
+      - run: |
+          echo "MQ_PYDIR=$(uv python dir)" >> "$GITHUB_ENV"
+          echo "MQ_CELL_DIR=$(mktemp -d "$RUNNER_TEMP/cell.XXXXXX")" >> "$GITHUB_ENV"
+      - name: test the merged result (local merge onto the current base)
+        env:
+          PYTHONNOUSERSITE: "1"   # the driver itself reads no user site (a usercustomize.py left by an earlier cell is not imported)
+          GITHUB_TOKEN: ${{ github.token }} # read-only (contents: read); used by the driver for `git fetch` only; child_env() strips it from every PR-code process
+          MQ_BASE: ${{ matrix.base }}
+          MQ_CANDIDATES: "${{ format('[{{\"n\": {0}, \"head\": \"{1}\"}}]', matrix.pr, matrix.head) }}"  # the one candidate of this cell, from the plan job
+        run: >
+          python3 driver/.github/workflows/scripts/merge_queue.py test --repo "$GITHUB_REPOSITORY" --base "$MQ_BASE"
+          --candidates "$MQ_CANDIDATES" --driver-dir driver --verdict-file "$RUNNER_TEMP/verdict/verdict.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: mq-verdict-${{ matrix.pr }}   # metadata only (cause tags, tested base); the merge job reads it by this name
+          path: ${{ runner.temp }}/verdict/verdict.json
+          if-no-files-found: ignore
+      - if: failure()
+        run: python3 driver/.github/workflows/scripts/ci_step.py report merge-queue-test
+
+  queue:
+    name: merge-queue
+    needs: [plan, test]
+    if: ${{ !cancelled() && (needs.plan.outputs.has_work == 'true' || needs.plan.outputs.has_drafts == 'true' || needs.plan.outputs.has_forks == 'true') }}
+    runs-on: ubuntu-latest   # literal, always: this job holds write permissions or runs no PR code (header)
+    timeout-minutes: 20
+    environment: merge-queue  # holds the queue App's key (secrets below), limited to the default branch: not a repository secret
+    permissions:
+      contents: write       # these three stay ONLY while the QUEUE_APP switch exists (switch off = the old GITHUB_TOKEN path); the PR that removes the
+      pull-requests: write  # switch reduces them to read, NOT below: the self re-dispatch lists open PRs with the job's own token (pull-requests: read)
+      statuses: write
+      actions: write # the self re-dispatch (workflow_dispatch of this file); no other job has it
+    outputs:
+      merged_sha: ${{ steps.merge.outputs.merged_sha }}
+      merged_prs: ${{ steps.merge.outputs.merged_prs }}
+    steps:
+      # no PR code runs in this job: the scripts are the default branch's, the verdicts are artifacts
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: mq-verdict-*
+          path: verdicts
+      - id: app-token
+        if: ${{ vars.QUEUE_APP == 'true' }}  # the switch: unset/false = the job runs exactly as before, on GITHUB_TOKEN; remove it after two good App merges
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ secrets.QUEUE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.QUEUE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-statuses: write
+      - id: merge
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          MQ_DISPATCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # workflow_dispatch needs actions: write, which the App does not have
+          MQ_HOP: ${{ inputs.hop || '0' }}
+          MQ_CANDIDATES: ${{ needs.plan.outputs.candidates }}  # the plan job's table: the merge is decided only for these (pr, head) pairs
+          MQ_FORKS: ${{ needs.plan.outputs.forks }}  # queued PRs whose head is in another repository: dropped at planning, dequeued here with a comment
+        run: >
+          python3 .github/workflows/scripts/merge_queue.py merge --repo "$GITHUB_REPOSITORY" --verdict-dir verdicts --candidates "$MQ_CANDIDATES" --forks "$MQ_FORKS"
+          --result-file "$RUNNER_TEMP/merge-result.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: merge-result
+          path: ${{ runner.temp }}/merge-result.json
+          if-no-files-found: ignore
+      - if: failure()
+        run: python3 .github/workflows/scripts/ci_step.py report merge-queue

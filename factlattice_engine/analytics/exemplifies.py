@@ -22,12 +22,12 @@ future-proof if the verb is ever promoted to core-bare.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Set
+from collections.abc import Sequence
 
 from ..privacy import is_private_partition
 
 
-def _fresh_partitions(agg, corpus: Optional[str], res: dict):
+def _fresh_partitions(agg, corpus: str | None, res: dict):
     """The non-stale partitions to read edges from — mirrors `LtsAggregator._adjacency`'s
     selection exactly so edge reads share the freshness verdict of the node fetch."""
     tools = agg._get_tools()
@@ -40,14 +40,14 @@ def _fresh_partitions(agg, corpus: Optional[str], res: dict):
             if p.corpus_id not in stale and not is_private_partition(p)]
 
 
-def _matches_verb(edge_type: Optional[str], edge_verb: str) -> bool:
+def _matches_verb(edge_type: str | None, edge_verb: str) -> bool:
     if not edge_type:
         return False
     return edge_type == edge_verb or edge_type.split(".")[-1] == edge_verb
 
 
 def _diagnose(total: int, edge_count: int, edges_seen: int,
-              off_target: Dict[str, int], non_decision_sources: int) -> Optional[str]:
+              off_target: dict[str, int], non_decision_sources: int) -> str | None:
     """Name WHY the coverage is zero, so the reader is not left to guess between three
     indistinguishable causes. Returns None when coverage is non-zero."""
     if edge_count:
@@ -76,11 +76,11 @@ def _diagnose(total: int, edge_count: int, edges_seen: int,
 def exemplifies_coverage(
     agg,
     *,
-    corpus: Optional[str] = None,
+    corpus: str | None = None,
     decision_prefixes: Sequence[str] = ("DEC", "FIX"),
     principle_prefix: str = "PRINCIPLE",
     edge_verb: str = "EXEMPLIFIES",
-    limit: Optional[int] = None,
+    limit: int | None = None,
     **filters,
 ) -> dict:
     """Coverage of DECISION nodes by an `EXEMPLIFIES -> [PRINCIPLE-*]` edge.
@@ -106,9 +106,9 @@ def exemplifies_coverage(
     if nodes is None:
         return res  # verbatim not-found / STALE
 
-    dset: Set[str] = set(decision_prefixes)
-    decision_ids: Set[str] = {n["id"] for n in nodes if n.get("type_prefix") in dset}
-    principle_ids: Set[str] = {
+    dset: set[str] = set(decision_prefixes)
+    decision_ids: set[str] = {n["id"] for n in nodes if n.get("type_prefix") in dset}
+    principle_ids: set[str] = {
         n["id"] for n in nodes if n.get("type_prefix") == principle_prefix
     }
 
@@ -127,10 +127,10 @@ def exemplifies_coverage(
     # is the epistemics rule `instance-bitrate-sweep` exactly — an instrument whose
     # output does not distinguish the hypotheses it was run to distinguish. A zero that
     # cannot be diagnosed is not a measurement.
-    mapped_sets: Dict[str, Set[str]] = {}
+    mapped_sets: dict[str, set[str]] = {}
     edge_count = 0
     edges_seen = 0                      # EXEMPLIFIES edges of any shape
-    off_target: Dict[str, int] = {}     # target type_prefix -> count, for edges rejected
+    off_target: dict[str, int] = {}     # target type_prefix -> count, for edges rejected
     non_decision_sources = 0
     prefix_of = {n["id"]: n.get("type_prefix") for n in nodes}
     for part in _fresh_partitions(agg, corpus, res):
@@ -157,7 +157,7 @@ def exemplifies_coverage(
     total = len(decision_ids)
 
     # reverse index: which decisions embody each principle
-    by_principle_map: Dict[str, List[str]] = {}
+    by_principle_map: dict[str, list[str]] = {}
     for d, tgts in mapped.items():
         for t in tgts:
             by_principle_map.setdefault(t, []).append(d)

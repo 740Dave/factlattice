@@ -51,7 +51,7 @@ refusal and retries on the next query, when the corpus has settled.
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Iterable, Sequence
 
 from factlattice import hashing as _hashing
 from factlattice import parser as _parser
@@ -59,7 +59,6 @@ from factlattice.hashing import list_lts_files
 from factlattice.index_builder import build_alias_index
 from factlattice.parser import (
     CANONICAL_LAYERS,
-    DEFAULT_REGISTERED_NS,
     is_profile_document,
 )
 
@@ -78,6 +77,15 @@ class CorpusMoved(RuntimeError):
 # ===========================================================================
 # ONE root — the incremental parse cache
 # ===========================================================================
+#: the merge reports a sign of life at least every this many items (nodes, edges), so a big healthy corpus is never read as hung ([MECH-BR-BOOT])
+BEAT_EVERY = 1024
+
+
+def _beat(tick, i: int) -> None:
+    if tick is not None and i % BEAT_EVERY == 0:
+        tick()
+
+
 class RootIndex:
     """Per-root parse cache that reproduces `factlattice.build_index`'s nodes/layers
     EXACTLY while re-parsing only the files whose content hash moved.
@@ -104,24 +112,24 @@ class RootIndex:
         self.profile_layers = dict(config.profile_layers)
         # rel -> parsed products (the cache). A file that failed to parse is present with
         # empty node/edge lists plus an entry in `_errors` (build_index's behaviour).
-        self._nodes: Dict[str, List[dict]] = {}
-        self._edges: Dict[str, List[dict]] = {}
-        self._dangling0: Dict[str, List[bool]] = {}   # parser's own dangling verdict
-        self._errors: Dict[str, dict] = {}
+        self._nodes: dict[str, list[dict]] = {}
+        self._edges: dict[str, list[dict]] = {}
+        self._dangling0: dict[str, list[bool]] = {}   # parser's own dangling verdict
+        self._errors: dict[str, dict] = {}
         # rels whose file declares itself a domain profile (`document_tag: PROFILE`).
         # STILL PARSED and still cached+hash-certified (the cache must certify every file
         # it read, or freshness lies); simply omitted from `assemble`'s content fold —
         # exactly what `factlattice.build_index` does. See `parser.is_profile_document`.
         self._profile_docs: set = set()
         # rel -> content hash of the bytes the cached parse was taken from.
-        self.leaves: Dict[str, str] = {}
+        self.leaves: dict[str, str] = {}
         self.parse_ops = 0                            # proof instrument
         self.seeded = False
 
     @staticmethod
     def _hash(abs_path: str, rel: str) -> str:
         """`file_content_hash` through the MODULE (so a spy still counts), a refusal re-labelled with the root-relative
-        path ([ISSUE-NONREGULAR-MEMBER])."""
+        path ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS])."""
         try:
             return _hashing.file_content_hash(abs_path)
         except _hashing.CorpusFileError as exc:
@@ -151,6 +159,7 @@ class RootIndex:
             self._dangling0[rel] = []
             self.leaves[rel] = h_before
             return
+        _hashing._progress()        # parse_file read the file (open, read, close) and returned: a read that goes call by call reports it
         h_after = self._hash(abs_path, rel)
         if h_after != h_before:
             raise CorpusMoved(f"{rel!r} changed while being re-indexed "
@@ -188,7 +197,7 @@ class RootIndex:
         self.seeded = True
         return len(rels)
 
-    def refresh(self, live_leaves: Dict[str, str]) -> List[str]:
+    def refresh(self, live_leaves: dict[str, str]) -> list[str]:
         """Re-parse ONLY the files whose authoritative content hash differs from the
         cache's. `live_leaves` is {rel: content_hash} taken by the freshness kernel
         (the same content oracle) — added / removed / modified are all derived from it.
@@ -202,7 +211,7 @@ class RootIndex:
         cached = set(self._nodes)
         for rel in cached - live:                     # removed
             self._forget(rel)
-        touched: List[str] = []
+        touched: list[str] = []
         for rel in sorted(live):                      # added + modified
             if self.leaves.get(rel) != live_leaves[rel]:
                 self._parse(rel)
@@ -218,7 +227,7 @@ class RootIndex:
         return combine_leaf_map(self.leaves)
 
     # --- the fold (recomputed IN FULL every time — see module docstring) ----
-    def assemble(self) -> dict:
+    def assemble(self, tick=None) -> dict:
         """Reproduce `build_index`'s cross-file fold from the cached per-file parses.
 
         Returns {nodes, layers, alias_index, id_collisions, parse_errors, stats}, the
@@ -226,15 +235,18 @@ class RootIndex:
         """
         rels = sorted(self._nodes)
 
-        node_map: Dict[str, dict] = {}
-        id_collisions: List[dict] = []
-        all_edges: List[dict] = []
-        edge_dangling0: List[bool] = []
-        parse_errors: List[dict] = []
+        node_map: dict[str, dict] = {}
+        id_collisions: list[dict] = []
+        all_edges: list[dict] = []
+        edge_dangling0: list[bool] = []
+        parse_errors: list[dict] = []
 
-        profile_documents: List[str] = []
+        profile_documents: list[str] = []
 
+        beat = 0
         for rel in rels:
+            if tick is not None:
+                tick()
             if rel in self._errors:
                 parse_errors.append(self._errors[rel])
                 continue                              # build_index: `continue` on error
@@ -242,6 +254,8 @@ class RootIndex:
                 profile_documents.append(rel)
                 continue                     # vocabulary, not content — as build_index
             for nd in self._nodes[rel]:
+                beat += 1
+                _beat(tick, beat)
                 nid = nd["id"]
                 if nid in node_map:
                     id_collisions.append({
@@ -267,6 +281,8 @@ class RootIndex:
         unregistered_ns_count = 0
         unresolved_target_count = 0
         for ed, orig in zip(all_edges, edge_dangling0):
+            beat += 1
+            _beat(tick, beat)
             if ed["target"] not in resolvable:
                 ed["dangling"] = True
                 dangling_count += 1
@@ -279,13 +295,15 @@ class RootIndex:
                 unresolved_target_count += 1
 
         # --- per-layer adjacency + reverse_adjacency ------------------------
-        layers: Dict[str, dict] = {}
-        edges_by_layer: Dict[str, int] = {}
+        layers: dict[str, dict] = {}
+        edges_by_layer: dict[str, int] = {}
         for layer in CANONICAL_LAYERS:
             layer_edges = [e for e in all_edges if e["layer"] == layer]
-            adjacency: Dict[str, List[str]] = {}
-            reverse: Dict[str, List[str]] = {}
+            adjacency: dict[str, list[str]] = {}
+            reverse: dict[str, list[str]] = {}
             for e in layer_edges:
+                beat += 1
+                _beat(tick, beat)
                 adjacency.setdefault(e["source"], []).append(e["target"])
                 reverse.setdefault(e["target"], []).append(e["source"])
             layers[layer] = {"edges": layer_edges, "adjacency": adjacency,
@@ -338,7 +356,7 @@ class CorpusIndex:
         self.corpus_id = corpus_id
         self.domain_suffix = domain_suffix
         # Normalized copy — the recipe must survive independently of the caller's dict.
-        self.root_specs: List[dict] = [dict(spec) for spec in root_specs]
+        self.root_specs: list[dict] = [dict(spec) for spec in root_specs]
         from factlattice.parser_config import ParserConfig
         if config is None:
             config = ParserConfig.from_kwargs(registered_ns=registered_ns,
@@ -346,14 +364,14 @@ class CorpusIndex:
         self.config = config
         self.registered_ns = config.registered_ns
         self.profile_layers = dict(config.profile_layers)
-        self._roots: Dict[str, RootIndex] = {}        # abs root path -> RootIndex
+        self._roots: dict[str, RootIndex] = {}        # abs root path -> RootIndex
         self.full_rebuilds = 0
         self.incremental_rebuilds = 0
         # ABS paths of the files excluded from the content fold as domain profiles,
         # refreshed on every `_materialize`. Recorded (not discarded) so the exclusion is
         # auditable and so the config-vs-doctag AGREEMENT CHECK
         # (`analytics.profile_registration`) costs nothing — the fact already exists here.
-        self.profile_documents: List[str] = []
+        self.profile_documents: list[str] = []
 
     # --- instruments --------------------------------------------------------
     @property
@@ -374,14 +392,14 @@ class CorpusIndex:
         return sum(len(ri.leaves) for ri in self._roots.values())
 
     # --- root-set resolution (a spec whose path is absent is SKIPPED) -------
-    def live_roots(self) -> List[Tuple[dict, str]]:
+    def live_roots(self) -> list[tuple[dict, str]]:
         """The root specs that currently resolve on disk, in declared order.
 
         The graceful skip `config._build_root_contribution` used to carry: a root dir that
         does not exist, or an `only_file` pin whose file is absent, contributes nothing
         (a registered-but-empty project), never an error.
         """
-        out: List[Tuple[dict, str]] = []
+        out: list[tuple[dict, str]] = []
         for spec in self.root_specs:
             path = spec["path"]
             if not os.path.isdir(path):
@@ -392,6 +410,56 @@ class CorpusIndex:
             out.append((spec, os.path.abspath(path)))
         return out
 
+    def root_health(self, seated: Iterable[str] | None = None, observe=None) -> dict[str, list]:
+        """[DECLARED-ROOT-HEALTH] Which registered roots `live_roots` skips, and which live roots contribute no
+        `.lts` file. Status, not a side effect: one `stat` per registered root plus the parse cache already held.
+
+        `live_roots` skips a missing root on purpose (a registered-but-empty project is not an error, and a root
+        that appears later is picked up by self-heal). This is the other half of that choice: the skip is DECLARED,
+        so a corpus never answers from fewer roots than its registry names without saying so.
+        """
+        missing: list[dict] = []
+        empty: list[dict] = []
+        live: list[str] = []
+        unindexed: list[dict] = []
+        for spec in self.root_specs:
+            path, area = spec["path"], spec.get("area")
+            only_file = spec.get("only_file")
+            # [MECH-BR-PROBE] `observe(path, only_file)` is the freshness kernel's KEPT answer to 'is it present' (no disk call);
+            # None means it has never been observed, and the disk is asked as it always was (a library caller has no kernel)
+            seen = observe(path, None) if observe is not None else None
+            if seen is None and not os.path.isdir(path):
+                missing.append({"path": path, "area": area, "reason": "not-a-directory"})
+                continue
+            if seen is False:
+                missing.append({"path": path, "area": area, "reason": "not-a-directory"})
+                continue
+            if only_file:
+                pinned = observe(path, only_file) if observe is not None else None
+                if pinned is None:
+                    pinned = os.path.isfile(os.path.join(path, only_file))
+                if not pinned:
+                    missing.append({"path": path, "area": area, "reason": "only-file-absent"})
+                    continue
+            abs_path = os.path.abspath(path)
+            ri = self._roots.get(abs_path)
+            seated_abs = {os.path.abspath(s) for s in (seated or ())}
+            if ri is None and abs_path in seated_abs:
+                live.append(abs_path)      # seated by a build path without a parse cache (the legacy single-root shape)
+            elif ri is None:
+                # on disk now, but it appeared after this index was built: nothing from it is served until a rebuild
+                # re-seats it; the freshness gate reports it as root-set-changed and the self-heal re-seats the corpus
+                unindexed.append({"path": path, "area": area})
+            elif not ri.leaves:
+                empty.append({"path": path, "area": area})
+            else:
+                live.append(abs_path)
+        profile = getattr(self, "registered_profile", None)     # the same test `config.registered_profile` loads it by
+        if isinstance(profile, str) and profile and not os.path.isfile(profile):
+            missing.append({"path": profile, "area": None, "reason": "profile-missing"})
+        return {"missing_roots": missing, "empty_roots": empty, "unindexed_roots": unindexed,
+                "contributing_roots": live}
+
     def _root_index(self, abs_path: str) -> RootIndex:
         ri = self._roots.get(abs_path)
         if ri is None:
@@ -399,12 +467,12 @@ class CorpusIndex:
             self._roots[abs_path] = ri
         return ri
 
-    def root_index_for(self, abs_path: str) -> Optional[RootIndex]:
+    def root_index_for(self, abs_path: str) -> RootIndex | None:
         return self._roots.get(os.path.abspath(abs_path))
 
     # --- building -----------------------------------------------------------
     def cold_build(self, *, as_rebuild: bool = True,
-                   ) -> Tuple[Dict[str, dict], Dict[str, dict], List[str], str]:
+                   ) -> tuple[dict[str, dict], dict[str, dict], list[str], str]:
         """Parse every file under every live root. Returns (nodes, layers, root_paths,
         files_hash).
 
@@ -417,13 +485,37 @@ class CorpusIndex:
         live = self.live_roots()
         for _spec, abs_path in live:
             self._root_index(abs_path).full_build()
+        return self.finish_cold_build(live)
+
+    # --- the cold build in two halves ([MECH-BR-BOOT]) ------------------------------------
+    # The DISK half (is the root there, list and hash and parse its files) is `read_root`, one call per root, so a bounded loader can run each on that
+    # root's own worker. The merge is `finish_cold_build`: memory only. `cold_build` is the two in sequence, as it always was.
+    def read_root(self, spec: dict) -> str | None:
+        """The disk half of `cold_build` for ONE root spec: its absolute path if it is live (a directory, with the `only_file` pin present) and was
+        read whole into the parse cache, else None (a registered-but-empty or missing root contributes nothing)."""
+        path = spec["path"]
+        if not os.path.isdir(path):
+            return None
+        _hashing._progress()
+        only_file = spec.get("only_file")
+        if only_file and not os.path.isfile(os.path.join(path, only_file)):
+            return None
+        _hashing._progress()
+        abs_path = os.path.abspath(path)
+        self._root_index(abs_path).full_build()
+        return abs_path
+
+    def finish_cold_build(self, live: list[tuple[dict, str]], tick=None,
+                          ) -> tuple[dict[str, dict], dict[str, dict], list[str], str]:
+        """The merge half of `cold_build`, over the roots `read_root` found live. No disk. `tick` (if given) is called at least every BEAT_EVERY
+        items of the merge, so a caller that watches for a sign of life never reads a big, healthy merge as a hung one."""
         for gone in set(self._roots) - {p for _s, p in live}:
             self._roots.pop(gone, None)
-        return self._materialize(live)
+        return self._materialize(live, tick)
 
-    def incremental_build(self, live_leaves: Dict[str, Dict[str, str]],
-                          ) -> Tuple[Dict[str, dict], Dict[str, dict], List[str], str,
-                                     List[str]]:
+    def incremental_build(self, live_leaves: dict[str, dict[str, str]],
+                          ) -> tuple[dict[str, dict], dict[str, dict], list[str], str,
+                                     list[str]]:
         """Re-parse ONLY the files whose content hash moved, per `live_leaves`
         ({abs_root_path: {rel: content_hash}} — the freshness kernel's leaf maps).
 
@@ -436,7 +528,7 @@ class CorpusIndex:
         """
         self.incremental_rebuilds += 1
         live = self.live_roots()
-        reparsed: List[str] = []
+        reparsed: list[str] = []
         for _spec, abs_path in live:
             ri = self._root_index(abs_path)
             leaves = live_leaves.get(abs_path)
@@ -452,16 +544,17 @@ class CorpusIndex:
         return nodes, layers, root_paths, fhash, reparsed
 
     # --- the merge (identical to config.build_merged_partition's merge) -----
-    def _materialize(self, live: List[Tuple[dict, str]],
-                     ) -> Tuple[Dict[str, dict], Dict[str, dict], List[str], str]:
-        merged_nodes: Dict[str, dict] = {}
-        merged_layers: Dict[str, dict] = {}
-        root_paths: List[str] = []
-        per_root_hash: Dict[str, str] = {}
-        profile_documents: List[str] = []
+    def _materialize(self, live: list[tuple[dict, str]], tick=None,
+                     ) -> tuple[dict[str, dict], dict[str, dict], list[str], str]:
+        merged_nodes: dict[str, dict] = {}
+        merged_layers: dict[str, dict] = {}
+        root_paths: list[str] = []
+        per_root_hash: dict[str, str] = {}
+        profile_documents: list[str] = []
+        beat = 0
         for spec, abs_path in live:
             ri = self._roots[abs_path]
-            assembled = ri.assemble()
+            assembled = ri.assemble(tick)
             for rel in assembled.get("profile_documents") or []:
                 profile_documents.append(os.path.join(abs_path, rel))
             nodes, layers = assembled["nodes"], assembled["layers"]
@@ -477,6 +570,8 @@ class CorpusIndex:
                 for nd in nodes.values():
                     nd["area"] = area
             for nid, nd in nodes.items():
+                beat += 1
+                _beat(tick, beat)
                 merged_nodes.setdefault(nid, nd)      # first root wins on a colliding id
             for layer, ld in layers.items():
                 merged_layers.setdefault(layer, {"edges": []})["edges"].extend(
@@ -489,9 +584,11 @@ class CorpusIndex:
         # means a single-root partition healed through this path is byte-identical to a
         # cold `build_index` — determinism with no "modulo an unused field" caveat.
         for ld in merged_layers.values():
-            adjacency: Dict[str, List[str]] = {}
-            reverse: Dict[str, List[str]] = {}
+            adjacency: dict[str, list[str]] = {}
+            reverse: dict[str, list[str]] = {}
             for e in ld["edges"]:
+                beat += 1
+                _beat(tick, beat)
                 adjacency.setdefault(e["source"], []).append(e["target"])
                 reverse.setdefault(e["target"], []).append(e["source"])
             ld["adjacency"] = adjacency

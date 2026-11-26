@@ -27,8 +27,6 @@ Error severity from day one: the key is new, so no existing corpus is gated by i
 """
 from __future__ import annotations
 
-from typing import Dict, List, Set
-
 import re
 
 import factlattice
@@ -45,17 +43,17 @@ K_NOT_REFS = "canonical_node_not_refs"
 K_EMPTY = "canonical_node_empty"
 KEY = "canonical-node"
 
-CANONICAL_SEVERITY: Dict[str, str] = {
+CANONICAL_SEVERITY: dict[str, str] = {
     K_NOT_REFS: "error", K_EMPTY: "error", K_MISSING: "error", K_SELF: "error", K_MULTIPLE: "error", K_CYCLE: "error",
 }
 
 
-def find_canonical_findings(corpus: "factlattice.ParsedCorpus") -> List[dict]:
+def find_canonical_findings(corpus: factlattice.ParsedCorpus) -> list[dict]:
     index = corpus.to_graph_index()
     alias = index.get("alias_index", {}) or {}
     edges = [e for layer in index.get("layers", {}).values()
              for e in layer.get("edges", []) if e.get("type") == EDGE_TYPE]
-    out: List[dict] = []
+    out: list[dict] = []
 
     for n in corpus.nodes:
         if KEY not in n.properties:
@@ -79,7 +77,7 @@ def find_canonical_findings(corpus: "factlattice.ParsedCorpus") -> List[dict]:
                     "source_file": e.get("source_file"), "source_line": e.get("source_line"),
                     "detail": detail})
 
-    targets: Dict[str, List[dict]] = {}
+    targets: dict[str, list[dict]] = {}
     for e in edges:
         src, tgt = e["source"], alias.get(e["target"], e["target"])
         if src == tgt:
@@ -90,7 +88,7 @@ def find_canonical_findings(corpus: "factlattice.ParsedCorpus") -> List[dict]:
                 target=e["target"])
         targets.setdefault(src, []).append(e)
 
-    nxt: Dict[str, str] = {}
+    nxt: dict[str, str] = {}
     for src, es in targets.items():
         distinct = sorted({alias.get(e["target"], e["target"]) for e in es})
         if len(distinct) > 1:
@@ -99,9 +97,9 @@ def find_canonical_findings(corpus: "factlattice.ParsedCorpus") -> List[dict]:
                 f"ambiguous, a node has at most one", targets=distinct)
         nxt[src] = distinct[0]
 
-    seen: Set[str] = set()
+    seen: set[str] = set()
     for start in sorted(nxt):
-        path: List[str] = []
+        path: list[str] = []
         cur = start
         while cur in nxt and cur not in seen and cur not in path:
             path.append(cur)
@@ -132,14 +130,14 @@ def _refs_only(value) -> bool:
 _EMPTY_RE = re.compile(r"^\s*[-*]\s+" + re.escape(KEY) + r"\s*:\s*$")
 
 
-def _empty_values(corpus) -> List[dict]:
+def _empty_values(corpus) -> list[dict]:
     """`- canonical-node:` lines with no value. The parser is inconsistent about them (no
     trailing space: the key is DROPPED; trailing space: stored as ''), so this reads the
     parser's own LineCoverage record (`lines` + `node_body`, which names the node whose body
     each line belonged to), never the file path (a file-set parse's labels are basenames).
     A line whose node carries a non-blank value for the key, or a nested list, is not empty."""
     nodes = {(n.source_file, n.id): n for n in corpus.nodes}
-    found: List[dict] = []
+    found: list[dict] = []
     for cov in getattr(corpus, "coverage", ()):
         for idx, line in enumerate(cov.lines):
             if not _EMPTY_RE.match(line):

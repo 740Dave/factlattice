@@ -1,9 +1,9 @@
 """The reviewer's structure gate at DOCUMENT scope: `python -m factlattice_engine.reviewer dangles --corpus C --document P`.
 
-THE DEFECT. The procedure linted the document ALONE with dangle true, and a file-scope lint reports every reference to a
-node defined in a SIBLING file of the same corpus as a forward dangle, although all of them resolve in the corpus. The gate
-stopped every document that links across files. (A witness on a real private corpus lives in a separate file that is not
-part of the published tree.)
+THE DEFECT (measured in a real acceptance run, 2026-10-08). The procedure linted the document ALONE with dangle true, and a
+file-scope lint reports every reference to a node defined in a SIBLING file of the same corpus as a forward dangle. A real
+market document stopped on 9 forward-dangle errors to 6 targets, ALL of which resolve in the corpus. The gate stopped every
+document that links across files.
 
 THE FIX under test: the helper runs the same document-scope lint, resolves each forward-dangle target against the REGISTERED
 CORPUS through the engine's own resolution (`Partition.get_node`; for a domain-qualified ref the engine's router), and returns
@@ -242,6 +242,93 @@ def test_the_procedure_records_the_three_counts_in_the_revcheck():
 def test_the_definition_file_names_the_helper_where_it_names_this_step():
     d = (REPO / "agents" / "factlattice-reviewer.md").read_text(encoding="utf-8")
     assert "python -m factlattice_engine.reviewer dangles" in d
+
+
+# --------------------------------------------------------------------------------------------- (7) the real document
+# THE WITNESS IS THE DEPLOYMENT'S, AND IT LIVES IN THE DEPLOYMENT OVERLAY. This test used to name one deployment's real documents
+# and read them from a fixed path under the home directory. The MECHANISM stays here; the DATA (where the real documents are,
+# which they are, what the old gate and the new one must say about them) is read from `<overlay>/tests/reviewer_dangles_witness.json`
+# (PUBLISHING.md, "The deployment overlay"). With no overlay the witness test SKIPS and says why. The mechanism itself is exercised
+# on every run by the synthetic witness below, whose documents are written by the test, so a stranger's checkout still proves
+# the data-driven path (and a broken mechanism cannot hide behind a skipped witness).
+WITNESS_SPEC = ("tests", "reviewer_dangles_witness.json")
+WITNESS_KEYS = ("source_root", "document", "files", "domain_suffix", "expected_targets", "min_old_forward_errors")
+
+
+def _source_root(spec) -> Path:
+    """`source_root` with a leading `~` meaning the REAL home directory (from the account database), not $HOME: the suite
+    gives every test an empty HOME on purpose, and the real documents are not in it."""
+    raw = spec["source_root"]
+    if raw == "~" or raw.startswith("~/"):
+        import pwd
+        raw = pwd.getpwuid(os.getuid()).pw_dir + raw[1:]
+    return Path(raw)
+
+
+def _run_witness(spec, tmp_path, monkeypatch, capsys):
+    """READ-ONLY on the source files: they are copied into a scratch corpus; nothing under `source_root` is written."""
+    src = _source_root(spec)
+    files = list(spec["files"])
+    _env(monkeypatch, tmp_path)
+    root = tmp_path / "witness-corpus"
+    for rel in files:
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src / rel, root / rel)
+    _registry(tmp_path, monkeypatch, {"w": (root, spec["domain_suffix"])})
+    doc = root / spec["document"]
+    old = _old_gate(doc)
+    assert len(old) >= spec["min_old_forward_errors"] and {f["kind"] for f in old} == {"forward"}, \
+        [(f["kind"], f["node_id"]) for f in old]                                      # the defect, reproduced
+    rc, body, cap = run(["dangles", "--corpus", "w", "--document", str(doc)], capsys)
+    assert body["true_dangle_count"] == 0, body["true_dangles"]
+    assert set(body["resolved_elsewhere"]["targets"]) == set(spec["expected_targets"])
+    assert body["resolved_elsewhere"]["target_count"] == len(spec["expected_targets"])
+    assert body["resolved_elsewhere"]["count"] == len(old)          # one per reference the old gate stopped on
+    assert body["other_error_count"] == 0
+    assert rc == 0
+
+
+def test_a_copy_of_the_real_document_has_no_true_dangles(tmp_path, monkeypatch, capsys, deployment_overlay):
+    """The deployment's real-document witness: data from the overlay, skipped with a reason when there is none."""
+    from factlattice import overlay
+    path = overlay.overlay_path(*WITNESS_SPEC)
+    if path is None:
+        pytest.skip(overlay.skip_reason("the real-document witness (" + "/".join(WITNESS_SPEC) + ")"))
+    spec = json.loads(path.read_text(encoding="utf-8"))                      # a present but broken spec FAILS: never a quiet skip
+    assert all(k in spec for k in WITNESS_KEYS), [k for k in WITNESS_KEYS if k not in spec]
+    src = _source_root(spec)
+    missing = [f for f in spec["files"] if not (src / f).is_file()]
+    if missing:
+        import warnings
+        msg = (f"THE REAL-DOCUMENT WITNESS DID NOT RUN: {len(missing)} of {len(spec['files'])} real files named by the overlay are "
+               f"absent under {src} (the account's home is {_source_root({'source_root': '~'})}); the defect's own case is unwitnessed on this machine")
+        warnings.warn(msg)
+        pytest.skip(msg)
+    _run_witness(spec, tmp_path, monkeypatch, capsys)
+
+
+def test_the_witness_mechanism_runs_on_a_synthetic_overlay(tmp_path, monkeypatch, capsys):
+    """The same data-driven path, on documents this test writes: the sibling reference the old gate stops on and the new one resolves."""
+    src = tmp_path / "src"
+    (src / "sub").mkdir(parents=True)
+    (src / "sub" / "a.lts").write_text(A.format(refs="- depends-on: [B-1]\n- relates-to: [B-1]"), encoding="utf-8")
+    (src / "sub" / "b.lts").write_text(B, encoding="utf-8")
+    ov = tmp_path / "ov"
+    (ov / "tests").mkdir(parents=True)
+    (ov / "tests" / "reviewer_dangles_witness.json").write_text(json.dumps({
+        "source_root": str(src), "document": "sub/a.lts", "files": ["sub/a.lts", "sub/b.lts"], "domain_suffix": "syn.witness",
+        "expected_targets": ["B-1"], "min_old_forward_errors": 1}), encoding="utf-8")
+    monkeypatch.setenv("FACTLATTICE_OVERLAY", str(ov))
+    from factlattice import overlay
+    path = overlay.overlay_path(*WITNESS_SPEC)
+    assert path is not None and path.is_file()
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    _run_witness(spec, tmp_path, monkeypatch, capsys)
+    # the negative control: a spec that expects a target the document does not reference must FAIL, not pass quietly
+    spec["expected_targets"] = ["B-1", "NOT-REFERENCED"]
+    (tmp_path / "again").mkdir()
+    with pytest.raises(AssertionError, match="NOT-REFERENCED"):
+        _run_witness(spec, tmp_path / "again", monkeypatch, capsys)
 
 
 # --------------------------------------------------------------------------------------------- real subprocess, read-only (SDLC REVIEWER-CLI-COMMANDS)
@@ -508,6 +595,7 @@ def alias_claim_reads(base_dirs):
 
 def test_P22_build_alias_index_is_the_single_definition_and_its_three_call_sites_call_it():
     import inspect
+
     from factlattice import index_builder
     from factlattice_engine import incremental
     from factlattice_engine.reviewer import __main__ as rmain
@@ -524,7 +612,6 @@ def test_P22_build_alias_index_is_the_single_definition_and_its_three_call_sites
 def test_P22_the_pin_RUNS_against_planted_copies_and_fires_on_each(tmp_path):
     """Negative control that EXECUTES the scan on scratch copies of the real sources with a divergent alias loop planted in each
     spelling and position. Every plant must be reported; the unplanted copy must report exactly the one legitimate read."""
-    import shutil
     real = (REPO / "factlattice" / "index_builder.py").read_text(encoding="utf-8")
     clean = tmp_path / "clean"
     clean.mkdir()
@@ -601,7 +688,7 @@ def _non_files(root):
     """Every kind of path that is not a readable regular file. A missing path, a directory and `.` are inside the served root; a FIFO, a
     broken symlink and an unreadable file are OUTSIDE every root. Inside a root, a broken symlink or an unreadable file makes the engine
     fail to load the corpus (`registry-not-found`, checked first, and correct); a FIFO inside a root makes the engine build BLOCK FOREVER
-    (factlattice/hashing.py, a pre-existing engine defect, ticket ISSUE-NONREGULAR-MEMBER). NEVER add a FIFO
+    (factlattice/hashing.py, a pre-existing engine defect, ticket DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS). NEVER add a FIFO
     inside a served root to any test: the suite would hang. Returns {label: (document arg, cwd)}."""
     out = {"missing": (str(root / "missing.lts"), root)}
     (root / "adir").mkdir()

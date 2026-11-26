@@ -314,7 +314,7 @@ def test_mechanism_3b_qualified_key_region_is_flagged_not_parsed():
     # THE PARSE. `alpha` and `delta` land; `beta` and `gamma` land NOWHERE — and, the
     # point of the ruling, they do not land under a GUESSED key either. A substitution
     # is worse than a loss (SL-18), so the absence is asserted for BOTH spellings.
-    assert node.properties == {
+    assert {k: v for k, v in node.properties.items() if k != "normative_effective"} == {   # authored keys only
         "alpha": "bare form",
         "delta": "(leading paren in value) form",
     }
@@ -357,7 +357,7 @@ def test_mechanism_3b_a_paren_in_the_value_is_not_a_qualifier():
 """
     pf = factlattice.parse_text(text, "fixture.lts")
     node = next(n for n in pf.nodes if n.id == "M3B-EX")
-    assert node.properties == {
+    assert {k: v for k, v in node.properties.items() if k != "normative_effective"} == {   # authored keys only
         "delta": "(leading paren in value) form",
         "epsilon": "(leading paren) and a note (measured): still ONE property",
         "zeta": "an em-dash inside a value — and a colon after it: both stay in the value",
@@ -385,7 +385,7 @@ MECH4 = """\
 def test_mechanism_4_properties_orphaned_by_an_untagged_subheading():
     pf = factlattice.parse_text(MECH4, "fixture.lts")
     node = next(n for n in pf.nodes if n.id == "M4-PALETTE")
-    assert node.properties == {}      # the whole Contract block is invisible
+    assert {k: v for k, v in node.properties.items() if k != "normative_effective"} == {}   # the whole Contract block is invisible (authored keys; the minted state is not one)
 
     found = unaccounted_lines(pf.coverage)
     assert [v.detail["variant"] for v in found] == ["outside_node_body"] * 2
@@ -472,9 +472,9 @@ def test_spec_8_1_yaml_mapping_is_accounted_for_not_a_finding():
         "# M [SPEC:M]\n\n## [M-A] A\n\n"
         "- change: \"the extractor changed\"\n"
         "- context_for_change:\n"
-        "    prior_state: \"the limit was 12\"\n"
-        "    invalidating_assumption: \"that the load distribution stays put,\n"
-        "      which v4.1 is what moved\"\n"
+        "    prior_state: \"the gate was 0.40\"\n"
+        "    invalidating_assumption: \"that the impostor distribution stays put,\n"
+        "      which 2.7 is what moved\"\n"
     )
     pf = factlattice.parse_text(text, "fixture.lts")
     assert unaccounted_lines(pf.coverage) == []

@@ -53,10 +53,14 @@ import sys
 import pytest
 
 from factlattice_engine import (
-    FreshnessKernel, LtsEngine, LtsStore, PollVerifiedFreshness, SelfHealer,
+    FreshnessKernel,
+    LtsEngine,
+    LtsStore,
+    PollVerifiedFreshness,
+    SelfHealer,
 )
-from factlattice_engine.config import build_merged_partition, build_partition
-from factlattice_engine.tools import LTS_ALL_TOOL_NAMES, LTS_REGISTRY_TOOL_NAMES, dispatch
+from factlattice_engine.config import build_partition
+from factlattice_engine.tools import LTS_ALL_TOOL_NAMES, LTS_REGISTRY_TOOL_NAMES
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -499,3 +503,25 @@ def test_real_stdio_server_register_no_restart_and_pushes_notification(tmp_path)
         proc.stdin.close()
         proc.terminate()
         proc.wait(timeout=10)
+
+
+def test_a_corpus_registered_at_runtime_with_a_root_agrees_with_its_registered_profile(tmp_path, boot_corpus,
+                                                                                       monkeypatch):
+    """`register_corpus` with a single `root` builds through `build_partition`: its excluded profile must be
+    carried absolute, so the registration audit agrees from any working directory."""
+    from factlattice_engine.analytics.profile_registration import audit_profile_registration
+    eng, _kernel, _healer = _server_shaped(boot_corpus)
+    root = tmp_path / "withprof"
+    root.mkdir()
+    (root / "n0.lts").write_text(_lts("N0", "zero"), encoding="utf-8")
+    prof = root / "p-profile.lts"
+    prof.write_text('---\ntitle: "p"\nid: "PROFILE:P-PROF"\ndocument_tag: PROFILE\n---\n'
+                    "# p [PROFILE:P-PROF]\n\n## [P-DOMAIN] Domain\n\n- domain-id: proj.withprof\n",
+                    encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    spec = {"root": str(root), "domain_suffix": "proj.withprof", "profile": str(prof)}
+    assert eng.register_corpus("withprof", spec=spec)["success"] is True
+    assert eng.store.get_partition("withprof").profile_documents == [str(prof)]
+    assert audit_profile_registration(eng.store, config={"withprof": spec})["findings"] == []

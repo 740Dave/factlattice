@@ -111,8 +111,8 @@ This repository holds FactLattice, a plain-text notation for typed knowledge gra
 <!-- gnomon-platform-lts:end -->
 
 ## [REPO] Repository
-- python: 3.9 or later
-- required-dependency: `pydantic>=2`, the only required third-party dependency
+- python: 3.11 or later
+- required-dependency: `pydantic>=2.12`, the only required third-party dependency
 - optional-extra: `semantic`, an optional model stack
 - licence: MIT
 - spec-status: "FactLattice 1.0 — DRAFT"
@@ -158,12 +158,12 @@ This repository holds FactLattice, a plain-text notation for typed knowledge gra
 ## [PROC-QUICK-START] Quick start from a clean clone
 - part-of: [ENGINE]
 - kind: procedure
-- prerequisites: Python 3.9 or later; a clean clone of this repository, with steps 1 to 3 run from its root; no registry configured (`FACTLATTICE_CORPUS_CONFIG` unset, no `~/.config/factlattice/config.json`)
+- prerequisites: Python 3.11 or later; a clean clone of this repository, with steps 1 to 3 run from its root; no registry configured (`FACTLATTICE_CORPUS_CONFIG` unset, no `~/.config/factlattice/config.json`)
 - example-registry: built in; its only loadable corpus, `alpha`, is this repository's `specs/`; two other example entries point at directories that do not exist and are skipped
 - step-1: `pip install .`
 - step-1-verify: exit code 0; pip prints `Successfully installed`, listing `factlattice-0.1.0` and `pydantic`
 - step-2: `python3 -m factlattice_engine call lts_find --args-json '{"corpus": "alpha", "text": "stale", "rank": "relevance"}'`
-- step-2-verify: exit code 0; stdout is JSON with `"success": true` and `"count": 7`; stderr names the registry as `built-in example registry`
+- step-2-verify: exit code 0; stdout is JSON with `"success": true` and a `"count"` above 0 (14 on the tree this was verified on; the number moves as `specs/` grows); stderr names the registry as `built-in example registry`
 - step-3: `python3 -m factlattice_engine call lts_traverse --args-json '{"corpus": "alpha", "start_node": "INV-FRESH", "direction": "reverse", "max_depth": 1}'`
 - step-3-verify: exit code 0; stdout is JSON with `"success": true`, 11 nodes and 10 edges, the first node `INV-FRESH`
 - step-4: `echo '{"notes": {"root": "/absolute/path/to/your/lts/files", "domain_suffix": "example.notes"}}' > registry.json`, with the placeholder replaced by the absolute path of a directory of `.lts` files
@@ -187,7 +187,7 @@ This repository holds FactLattice, a plain-text notation for typed knowledge gra
 - part-of: [TOOLS]
 - tool: `lts_find`: structured fields only (id, title, string properties)
 - tool: `lts_find_in_prose`: body text; labels each hit body-only or also-in-structure
-- tool: `lts_node`
+- tool: `lts_node`: a node's properties, edges and excerpt; every node object in any reply carries `minted_keys` beside `properties`, naming the keys the engine minted (today `normative_effective`), which a consumer comparing authored lines with `properties` removes
 - tool: `lts_traverse`: bounded typed-edge walk; optional since/until window
 - tool: `lts_reverse`: who points here, across corpora
 - tool: `lts_capabilities`
@@ -363,7 +363,7 @@ This repository holds FactLattice, a plain-text notation for typed knowledge gra
 - whole-file-check: after every write the whole file is re-parsed; the parsed properties, values included, must change only by the intended edit, or nothing is written
 - value-check: for an add or append, the stored value is compared with the parse of the submitted line on its own; a replaced or repaired value is not compared
 - continuation-lines: replacing a wrapped value keeps the old continuation lines
-- line-break-gap: neither check catches a character `str.splitlines` treats as a line break (for example U+2028, U+2029, U+0085, a vertical tab, a form feed or a carriage return); the value is written and parses cut off there, unless the rest parses as a property or heading, which the gate refuses; the receipt's `value_as_parsed` shows it
+- line-breaks: a value, key, node id or title holding a character `str.splitlines` treats as a line break (for example U+2028, U+2029, U+0085, a vertical tab, a form feed or a carriage return) is refused with `line_break_in_input`; nothing is written
 - ledger: every applied typed write to a file outside a temporary directory (the OS temp directory, `/tmp`, `/private/tmp`) adds a hash-chained record, with node and file hashes, to a per-file ledger in local engine state, readable with `lts_history`
 - not-ledgered: edits made outside the writers; writes under a temporary directory
 - ledger-failure: if the append fails, the write stands and the receipt says WRITTEN, BUT NOT LEDGERED

@@ -28,7 +28,10 @@ import pytest
 
 from factlattice_engine import LtsEngine, LtsStore, Partition, dispatch
 from factlattice_engine.tiers import (
-    BODY_DERIVED_KEYS, DIGEST_FIELDS, DIGEST_MAX_NODES, TIERS,
+    BODY_DERIVED_KEYS,
+    DIGEST_FIELDS,
+    DIGEST_MAX_NODES,
+    TIERS,
 )
 
 
@@ -252,12 +255,12 @@ def test_node_full_errors_when_the_excerpt_or_edges_would_be_clipped(engine):
 
 
 def test_node_full_succeeds_on_a_modest_body_past_the_legacy_excerpt_char_cap(tmp_path):
-    """[ISSUE-EXCERPT-BUDGET] regression.
+    """[DEFECT-LTS-NODE-FULL-EXCERPT-VS-BUDGET-CEILING] regression.
 
-    Measured live: `tier='full'` refused `Acme-RESEARCH-FRAME` (1,437-token body, 10
+    Measured live: `tier='full'` refused `Acme-RESEARCH-FRAME` (1,509-token body, 10
     edges) at the DEFAULT 32,768-token budget, `excerpt_truncated=True` /
-    `edges_truncated=False` — and refused `DEC-ACME-LOOKUP-ORDER-IS-FIXED`
-    (2,871-token body) even at `token_budget=90000`. Root cause: `_source_excerpt`
+    `edges_truncated=False` — and refused `DEC-ZS3-CZI-PREFILTER-UZI-DECIDES`
+    (3,412-token body) even at `token_budget=90000`. Root cause: `_source_excerpt`
     capped the excerpt at the LEGACY `MAX_EXCERPT_CHARS` (4000 chars ~= 1000 tokens)
     REGARDLESS of the caller's declared `token_budget`, so any node whose own body
     exceeded ~1000 tokens could never pass `tier='full'` no matter how large a budget

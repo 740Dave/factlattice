@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
@@ -90,19 +89,18 @@ def test_every_helper_failure_has_a_fixed_code_reason_and_no_path(w, monkeypatch
 
 
 def test_resolve_output_reasons_do_not_echo_site_config_paths():
-    from factlattice_engine import reviewer
     from factlattice_engine.reviewer import Override, SiteConfig, resolve_output
     sc = SiteConfig("ok", "ref", f"{PLANT}/relative-root", ["c"], [], [])
-    r = resolve_output("c", "/d/x.lts", None, None, sc)
+    r = resolve_output("c", "/d/x.lts", None, None, sc, all_corpora={})
     assert r.root is None and PLANT not in r.reason, r.reason
     sc2 = SiteConfig("ok", "ref", None, [], [Override("c", "", f"/a/{PLANT}/one"), Override("c", "", f"/b/{PLANT}/two")], [])
-    r2 = resolve_output("c", "/d/x.lts", None, None, sc2)
+    r2 = resolve_output("c", "/d/x.lts", None, None, sc2, all_corpora={})
     assert r2.root is None and PLANT not in r2.reason, r2.reason
 
     class P:
         review_output = f"{PLANT}/rel"
         def resolve_path(self, x): return None
-    r3 = resolve_output("c", "/d/x.lts", None, P(), SiteConfig.none())
+    r3 = resolve_output("c", "/d/x.lts", None, P(), SiteConfig.none(), all_corpora={})
     assert r3.root is None and PLANT not in r3.reason, r3.reason
 
 
@@ -126,7 +124,9 @@ def _battery(w):
     out = []
     for t in server.TOOLS:
         for a in shapes:
-            out.append((t["name"], a, tools.dispatch(t["name"], dict(a), tools=eng)))
+            # only names the tool DECLARES: an undeclared name is refused `unknown_argument` before anything runs
+            decl = tools._declared_arguments(t["name"])
+            out.append((t["name"], a, tools.dispatch(t["name"], {k: v for k, v in a.items() if k in decl}, tools=eng)))
     return out
 
 

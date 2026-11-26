@@ -179,7 +179,10 @@ def test_a_really_too_long_path_is_refused_with_a_code(world, out):
 
 def test_no_uncoded_refusal_in_the_tool_layer_add_node():
     """Static: every EditRefused built in authoring.add_node, and in its validator, names a code."""
-    import ast, inspect, textwrap
+    import ast
+    import inspect
+    import textwrap
+
     from factlattice_engine import authoring
     total = 0
     for fn in (authoring.add_node, authoring._add_node_impl, authoring._decide_create_outcome,

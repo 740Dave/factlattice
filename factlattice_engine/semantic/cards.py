@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import List, Tuple
 
 # The PARSER's own property-line grammar, imported, never re-derived: a line is a property
 # (and so already in the head card, or deliberately excluded) only if the parser mints it.
+from factlattice.core_keys import ENGINE_MINTED_KEYS
 from factlattice.parser import _PROP_BOLD_RE, _PROP_KEY_ONLY_RE, _PROP_SIMPLE_RE
 
 CARD_SCHEMA_VERSION = 2   # 2: list-valued properties reach the head card [SEM-CARDS-LIST-VALUES]
@@ -31,8 +31,13 @@ _HEAD_LINE = re.compile(r"^\s*#{1,6}\s")
 
 def head_card(node_id: str, node: dict) -> str:
     parts = [node_id.replace("-", " ").replace("_", " "), node.get("title") or ""]
-    keys: List[str] = []
+    keys: list[str] = []
     for k, v in (node.get("properties") or {}).items():
+        if k in ENGINE_MINTED_KEYS:
+            # a stated choice (SDLC 7.6): the minted state is on every node, so it would add the same words to
+            # every card and pull them together; source statements and confirmations ARE counted (their text is
+            # an ordinary property), so no existing node's card changes and CARD_SCHEMA_VERSION stays.
+            continue
         keys.append(k.replace("-", " ").replace("_", " "))
         if _EXCLUDE_KEY.search(k):
             continue
@@ -49,11 +54,11 @@ def _is_property_line(line: str) -> bool:
                 or _PROP_KEY_ONLY_RE.match(line))
 
 
-def body_chunks(lines: List[str]) -> List[str]:
+def body_chunks(lines: list[str]) -> list[str]:
     prose = [ln for ln in lines if ln.strip() and not _is_property_line(ln)
              and not _HEAD_LINE.match(ln) and not ln.strip().startswith("---")]
     words = " ".join(prose).split()
-    out: List[str] = []
+    out: list[str] = []
     step = CHUNK_WORDS - CHUNK_OVERLAP
     for i in range(0, len(words), step):
         out.append(" ".join(words[i:i + CHUNK_WORDS]))
@@ -62,12 +67,12 @@ def body_chunks(lines: List[str]) -> List[str]:
     return out
 
 
-def node_cards(node_id: str, node: dict, body_lines: List[str]) -> List[Tuple[str, str]]:
+def node_cards(node_id: str, node: dict, body_lines: list[str]) -> list[tuple[str, str]]:
     """[("head", text), ("chunk", text), ...] for one node."""
     return [("head", head_card(node_id, node))] + [("chunk", c) for c in body_chunks(body_lines)]
 
 
-def card_fingerprint(cards: List[Tuple[str, str]]) -> str:
+def card_fingerprint(cards: list[tuple[str, str]]) -> str:
     h = hashlib.sha256()
     for kind, text in cards:
         h.update(kind.encode()); h.update(b"\0"); h.update(text.encode("utf-8")); h.update(b"\1")

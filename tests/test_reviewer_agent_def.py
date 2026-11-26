@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from factlattice_engine import reviewer
-from tests.test_ported_agent_defs import DENYLIST, FORBIDDEN_PATHS, _load, _TOOL_RE, _norm, _tools, denylist_hits
+from tests.test_ported_agent_defs import _TOOL_RE, FORBIDDEN_PATHS, _load, _norm, _tools, denylist_hits
 
 NAME = "factlattice-reviewer"
 ENGINE = "mcp__lts-engine__"

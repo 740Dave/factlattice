@@ -31,7 +31,7 @@ declared set + both diffs marked `"no profile loaded"` rather than failing.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ..reason_codes import UNREACHABLE_KEY_REASON
 
@@ -41,7 +41,7 @@ from ..reason_codes import UNREACHABLE_KEY_REASON
 # how the reconciliation draft counts. `aliases` is emitted for multi-id headers
 # (parser `_parse_node`), never typed by an author.
 # --------------------------------------------------------------------------- #
-_INJECTED_PROPERTY_KEYS: Set[str] = {"aliases"}
+_INJECTED_PROPERTY_KEYS: set[str] = {"aliases"}
 
 
 # =========================================================================== #
@@ -58,13 +58,13 @@ class ProfileAdapter:
     available: bool = False
     source: str = "no profile loaded"
 
-    def prefixes(self) -> Optional[Set[str]]:
+    def prefixes(self) -> set[str] | None:
         return None
 
-    def properties(self) -> Optional[Set[str]]:
+    def properties(self) -> set[str] | None:
         return None
 
-    def edge_types(self) -> Optional[Set[str]]:
+    def edge_types(self) -> set[str] | None:
         return None
 
 
@@ -98,20 +98,20 @@ class YamlProfileAdapter(ProfileAdapter):
     """
 
     def __init__(self, profile: Any, resolved_from: str = "explicit-argument",
-                 detail: Optional[str] = None):
+                 detail: str | None = None):
         from factlattice.profile import load_profile
         self._profile = load_profile(profile)
         # ⛔ PUBLIC, and it is load-bearing. `_property_edges_section` reads
         # `getattr(adapter, "profile", None)`; with the loaded profile stored ONLY as
         # `_profile`, that getattr returned None on every call and the block reported
         # `profile_registered: {}` / `profile_registered_count: 0` for a profile that
-        # demonstrably registered keys. Measured 2026-08-15 against 3f9a2c1. The block
+        # demonstrably registered keys. Measured 2026-08-15 against 9819d48. The block
         # added to instrument the new capability was itself inert, and it failed in the
         # SAFE-LOOKING direction: a well-formed zero, indistinguishable from a profile
         # that genuinely registers nothing (the epistemics rule rule-negative-control
         # — an instrument that can only report one answer is not an instrument).
         self.profile = self._profile
-        self.raw: Dict[str, Any] = dict(self._profile.raw or {})
+        self.raw: dict[str, Any] = dict(self._profile.raw or {})
         self.available = True
         self.domain_id = self._profile.domain_id
         self.path = self._profile.path
@@ -122,8 +122,8 @@ class YamlProfileAdapter(ProfileAdapter):
         self.source = f"{fmt or 'dict'}:{name} (resolved_from={resolved_from}" + (
             f", {detail})" if detail else ")")
 
-    def prefixes(self) -> Optional[Set[str]]:
-        out: Set[str] = set()
+    def prefixes(self) -> set[str] | None:
+        out: set[str] = set()
         for item in self.raw.get("prefixes") or []:
             if isinstance(item, dict):
                 p = item.get("prefix")
@@ -133,8 +133,8 @@ class YamlProfileAdapter(ProfileAdapter):
                 out.add(str(p))
         return out
 
-    def properties(self) -> Optional[Set[str]]:
-        out: Set[str] = set()
+    def properties(self) -> set[str] | None:
+        out: set[str] = set()
         for item in self.raw.get("properties") or []:
             if isinstance(item, dict):
                 name = item.get("name") or item.get("property")
@@ -144,7 +144,7 @@ class YamlProfileAdapter(ProfileAdapter):
                 out.add(str(name))
         return out
 
-    def edge_types(self) -> Optional[Set[str]]:
+    def edge_types(self) -> set[str] | None:
         """The declared edge-type vocabulary: `relationship_verbs` UNION `edge_types[]`.
 
         ⛔ `edge_types[]` WAS MISSING, and its absence was invisible in exactly the way
@@ -161,7 +161,7 @@ class YamlProfileAdapter(ProfileAdapter):
         registers a type's LAYER (and, since 2026-08-15, the property key that mints it).
         A namespaced type only ever appears in the second.
         """
-        out: Set[str] = set()
+        out: set[str] = set()
         rv = self.raw.get("relationship_verbs")
         if isinstance(rv, dict):
             for tier in ("core", "domain"):
@@ -178,7 +178,7 @@ class YamlProfileAdapter(ProfileAdapter):
 
 
 def resolve_profile_adapter(profile: Any = None,
-                            corpus: Optional[str] = None) -> ProfileAdapter:
+                            corpus: str | None = None) -> ProfileAdapter:
     """Pick the adapter for `profile`, falling back to the corpus's REGISTERED profile.
 
     * a `ProfileAdapter` instance  -> used as-is.
@@ -245,7 +245,7 @@ def resolve_profile_adapter(profile: Any = None,
 # by the built-in table or by an authored `## Relationships` triple — exactly the kind
 # of coincidental agreement the epistemics rule's rule-self-verification warns
 # against. Reachability is a fact about the CALL GRAPH, not about the graph.
-def _property_edges_wiring() -> Dict[str, Any]:
+def _property_edges_wiring() -> dict[str, Any]:
     """Does a profile-registered minting key ACTUALLY MINT through each production
     path? Returns `{checked, reachable_from, reachable_from_any_production_path}`.
 
@@ -279,7 +279,7 @@ def _property_edges_wiring() -> Dict[str, Any]:
                    or (isinstance(e, dict) and e.get("type") == "EXEMPLIFIES")
                    for e in edges)
 
-    checks: Dict[str, bool] = {}
+    checks: dict[str, bool] = {}
     tmp = tempfile.mkdtemp(prefix="factlattice-pew-")
     try:
         with open(os.path.join(tmp, "probe.lts"), "w", encoding="utf-8") as fh:
@@ -340,7 +340,7 @@ def _property_edges_wiring() -> Dict[str, Any]:
 # =========================================================================== #
 # EDGE-BEARING PROPERTY KEYS — built-in vs. profile-registered vs. actually used
 # =========================================================================== #
-def _property_edges_section(adapter, nodes) -> Dict[str, Any]:
+def _property_edges_section(adapter, nodes) -> dict[str, Any]:
     """Which property keys MINT here, and which registered ones nobody uses.
 
     Added 2026-08-15 with the profile-registrable edge keys (the maintainer's ruling). Without
@@ -358,12 +358,12 @@ def _property_edges_section(adapter, nodes) -> Dict[str, Any]:
     from factlattice.parser import FLOW_PROPERTY_EDGES, REL_PROPERTY_EDGES
 
     builtin = set(REL_PROPERTY_EDGES) | set(FLOW_PROPERTY_EDGES)
-    registered: Dict[str, Any] = {}
+    registered: dict[str, Any] = {}
     prof = getattr(adapter, "profile", None)
     if prof is not None:
         registered = dict(getattr(prof, "property_edges", None) or {})
 
-    used_keys: Set[str] = set()
+    used_keys: set[str] = set()
     for nd in nodes:
         used_keys.update((nd.get("properties") or {}).keys())
 
@@ -416,7 +416,7 @@ def _property_edges_section(adapter, nodes) -> Dict[str, Any]:
 # =========================================================================== #
 # EDGE TYPES — core vs. profile-registered, and WHICH DECLARATION SITE said so
 # =========================================================================== #
-def _edge_type_registration(adapter, used_edges: Set[str]) -> Dict[str, Any]:
+def _edge_type_registration(adapter, used_edges: set[str]) -> dict[str, Any]:
     """Attribute every declared edge type to its source, and diff each source SEPARATELY.
 
     Added 2026-08-15 closing the edge-TYPE half of the registrability ruling. The plain
@@ -434,7 +434,7 @@ def _edge_type_registration(adapter, used_edges: Set[str]) -> Dict[str, Any]:
     """
     from factlattice.parser import CORE_EDGE_LAYER
 
-    registered: Dict[str, str] = {}
+    registered: dict[str, str] = {}
     prof = getattr(adapter, "profile", None)
     if prof is not None:
         try:
@@ -442,7 +442,7 @@ def _edge_type_registration(adapter, used_edges: Set[str]) -> Dict[str, Any]:
         except Exception:  # noqa: BLE001
             registered = {}
 
-    verbs: Set[str] = set()
+    verbs: set[str] = set()
     rv = getattr(adapter, "raw", {}).get("relationship_verbs")
     if isinstance(rv, dict):
         for tier in ("core", "domain"):
@@ -468,7 +468,7 @@ def _edge_type_registration(adapter, used_edges: Set[str]) -> Dict[str, Any]:
 # =========================================================================== #
 # REVIEW EXTENSIONS (SPEC §10.4, A-E5) — what the profile registers, whether it holds, and the look-alikes
 # =========================================================================== #
-def _review_extensions_section(adapter, corpus_roots) -> Optional[Dict[str, Any]]:
+def _review_extensions_section(adapter, corpus_roots) -> dict[str, Any] | None:
     """The profile's review-extension registrations, their validation, and `unprojected_review_extension`.
 
     ⛔ THE LOUD HALF OF AUDIT D4. The `.lts` profile loader projects only the node kinds it knows and skips
@@ -506,7 +506,7 @@ def _review_extensions_section(adapter, corpus_roots) -> Optional[Dict[str, Any]
 # =========================================================================== #
 # diff helper — a used set vs. a declared set (declared may be absent)
 # =========================================================================== #
-def _diff_section(used: Set[str], declared: Optional[Set[str]]) -> Dict[str, Any]:
+def _diff_section(used: set[str], declared: set[str] | None) -> dict[str, Any]:
     """Build the {used, declared, used_but_unregistered, declared_but_unused} block.
     `declared is None` -> declared side + both diffs marked "no profile loaded"."""
     used_sorted = sorted(used)
@@ -528,7 +528,7 @@ def _diff_section(used: Set[str], declared: Optional[Set[str]]) -> Dict[str, Any
     }
 
 
-def _corpus_roots(agg, corpus: Optional[str]) -> List[str]:
+def _corpus_roots(agg, corpus: str | None) -> list[str]:
     """The roots of `corpus` as the serving store knows them (best effort; [] when unknown)."""
     try:
         store = getattr(getattr(agg, "_get_tools", lambda: None)(), "store", None)
@@ -538,7 +538,7 @@ def _corpus_roots(agg, corpus: Optional[str]) -> List[str]:
         return []
 
 
-def _parse_scope(required_scope: Any) -> Dict[str, str]:
+def _parse_scope(required_scope: Any) -> dict[str, str]:
     """Parse a node-filter scope into `find` filter kwargs.
 
     Accepts a dict (returned as-is) or a compact string `"prefix=DEC"` /
@@ -548,7 +548,7 @@ def _parse_scope(required_scope: Any) -> Dict[str, str]:
         return {}
     if isinstance(required_scope, dict):
         return {k: v for k, v in required_scope.items() if v is not None}
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for pair in str(required_scope).split(","):
         pair = pair.strip()
         if not pair or "=" not in pair:
@@ -563,8 +563,8 @@ def _parse_scope(required_scope: Any) -> Dict[str, str]:
 # =========================================================================== #
 # the op
 # =========================================================================== #
-def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
-                  required_property: Optional[str] = None,
+def profile_audit(agg, *, corpus: str | None = None, profile: Any = None,
+                  required_property: str | None = None,
                   required_scope: Any = None, tail_threshold: int = 5,
                   **filters) -> dict:
     """Measure `corpus`'s actual vocabulary against its declared `profile`.
@@ -594,7 +594,7 @@ def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
         return res  # not-found / STALE, propagated verbatim (no numbers)
 
     # ---- prefixes: type_prefix histogram over the found set --------------------
-    prefix_counts: Dict[str, int] = {}
+    prefix_counts: dict[str, int] = {}
     for nd in nodes:
         p = nd.get("type_prefix")
         if p:
@@ -610,7 +610,7 @@ def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
         prefix_counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
     # ---- properties: per-key frequency + the power-law tail split --------------
-    prop_freq: Dict[str, int] = {}
+    prop_freq: dict[str, int] = {}
     for nd in nodes:
         for key in (nd.get("properties") or {}):
             if key in _INJECTED_PROPERTY_KEYS:
@@ -636,7 +636,7 @@ def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
     et = agg.count_by_edge_type(corpus=corpus, **filters)
     if not et.get("success"):
         return et  # STALE/not-found on the edge path -> propagate verbatim
-    edge_counts: Dict[str, int] = dict(et.get("groups") or {})
+    edge_counts: dict[str, int] = dict(et.get("groups") or {})
     used_edges = set(edge_counts)
     declared_edges = adapter.edge_types()
     edges_section = _diff_section(used_edges, declared_edges)
@@ -650,7 +650,7 @@ def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
     # Two independent declarations of the same fact; their disagreement is a finding.
     # Free here — both sides already exist (see `profile_registration`). Best-effort:
     # a failure to run the cross-check must never take down the audit that DID run.
-    registration: Dict[str, Any]
+    registration: dict[str, Any]
     try:
         from .profile_registration import audit_profile_registration
         registration = audit_profile_registration(
@@ -659,7 +659,7 @@ def profile_audit(agg, *, corpus: Optional[str] = None, profile: Any = None,
     except Exception as exc:  # noqa: BLE001
         registration = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "success": True,
         "corpus": corpus,
         "profile": {

@@ -21,7 +21,7 @@ sys.path.insert(0, str(REPO / "tools"))
 
 DOC = (
     "# Doc [DOC-A]\n\n"
-    "## Old title, neither of which contains biometric data [N-1]\n\n"
+    "## Old title, neither of which contains personal data [N-1]\n\n"
     "- kind: claim\n- see-also: [N-2]\n\nSome prose about N-1.\n\n"
     "### [SPEC:N-2] An id-first heading\n\n- kind: other\n"
 )

@@ -1,14 +1,11 @@
 # Specification ambiguity and implementation divergence
 
-*Four experiments in when a spec is worth writing: rounds 1-2 are fully reproducible from this repository; rounds 3-4 are reported results (their corpus is not published).*
+*Four reproducible experiments in when a spec is worth writing.*
 
 Every experiment here hands a small software task to a fresh, isolated implementer with no
 shared context and no instruction to "be careful" or "be precise." Then the resulting code is
-run against identical inputs and scored against the intended behavior. Rounds 1 and 2 can be
-re-run from scratch with what is in this directory. For rounds 3 and 4 the shipped implementations
-and their scoring harnesses are here and run, but the corpus the implementers consulted is not
-published, so those two rounds are reported results you can score, not re-run. Each round has a
-`compare.py` (or `compare2.py` / `check.py`) you can run yourself:
+run against identical inputs and scored against the intended behavior. Everything is in this
+directory; each round has a `compare.py` (or `compare2.py`) you can run yourself:
 
 ```
 python3 round1-ratelimiter/compare.py

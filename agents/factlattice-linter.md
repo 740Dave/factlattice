@@ -45,8 +45,8 @@ Domain profiles may register additional type tags. A tag is valid if it appears 
 ^(#{2,4})\s+\[([A-Z][A-Z0-9_\-]+)\]\s+(.+)$
 ```
 
-ID-first is preferred: `### [TERM-TOKEN] Access Token Credential`
-ID-last is valid for legacy: `### Access Token Credential [TERM-TOKEN]`
+ID-first is preferred: `### [TERM-ADC] Agent Delegation Certificate`
+ID-last is valid for legacy: `### Agent Delegation Certificate [TERM-ADC]`
 
 ### Identifier Formation Rules (Section 1.1)
 
@@ -115,9 +115,9 @@ Three tiers:
 
 | Type | Format | Example |
 |------|--------|---------|
-| Within-document | `[ID]` | `[TERM-TOKEN]` |
-| Intra-domain qualified | `[DOCTYPE:ID]` | `[SYSTEM:EX-ROUTER]` |
-| Cross-domain | `[{domain}:{DOCTYPE}:{NODE-ID}]` | `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[ops.example:SPEC:EX-ROUTER]` |
+| Within-document | `[ID]` | `[TERM-ADC]` |
+| Intra-domain qualified | `[DOCTYPE:ID]` | `[SYSTEM:EX-MATCHER]` |
+| Cross-domain | `[{domain}:{DOCTYPE}:{NODE-ID}]` | `[gov.example:SYSTEM:EXAMPLE-GOVERNANCE]`, `[bio.example:SPEC:EX-MATCHER]` |
 
 ### Confidence Annotations (Section 7)
 

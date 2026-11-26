@@ -61,6 +61,40 @@ def _isolate_query_log(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
+def _fresh_process_root_registry():
+    """[MECH-BR-BOOT] x-library: ONE root registry per PROCESS, so a test that stalls a root must not leave its slots (or a deadline read from
+    its own environment) to the next test. Dropped before AND after each test; the next use makes a new one and reads LTS_ROOT_DEADLINE_S then.
+    Threads stuck in a dropped registry stay stuck (daemon), as they would in a process."""
+    try:
+        from factlattice_engine import boundedfs
+    except ImportError:                       # a tree before the bounded reads
+        yield
+        return
+    _drop_process_registry(boundedfs)
+    yield
+    _drop_process_registry(boundedfs)
+
+
+def _drop_process_registry(boundedfs):
+    """Reset the process registry, first letting the old one's IDLE workers leave now. A reset only forgets the registry; its idle workers
+    would each wait out idle_exit_s (5 s) and a fast test file piles up thousands of threads (778 tests left ~2,800; a host with a
+    2,048-thread cap then fails with "can't start new thread"). A busy or stuck worker is untouched by trim_idle, as before."""
+    from factlattice_engine import rootstate
+    old = getattr(rootstate, "_PROC", None)
+    if old is not None:
+        old.trim_idle()
+    boundedfs._reset()
+
+
+@pytest.fixture(autouse=True)
+def _unpin_ledger_table():
+    """A server pins the table it booted from for the life of the process; in a test process that would outlive the test."""
+    yield
+    from factlattice import ledger
+    ledger.unpin_table()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_registry_lookup(monkeypatch, tmp_path_factory):
     """[TEST-CONFIG-ISOLATION] No test may read the developer's REAL per-user configuration.
 
@@ -80,7 +114,33 @@ def _isolate_registry_lookup(monkeypatch, tmp_path_factory):
     monkeypatch.delenv("FACTLATTICE_CORPUS_ROOT", raising=False)
 
 
+# THE DEPLOYMENT OVERLAY IS OPT-IN PER TEST. The ambient value is captured once, when pytest is configured, and then REMOVED from every
+# test's environment (as the registry variables are above): the engine's identity hash and its profile set both depend on the overlay,
+# so a suite run with an overlay in force must not change what an ordinary test measures. A deployment-only test asks for the ambient
+# overlay by taking the `deployment_overlay` fixture, which puts back exactly what was set (a usable path, or a broken value that the
+# test then skips on, naming it). Captured here because `pytest_configure` runs before any test and before the isolation fixture.
+_AMBIENT_OVERLAY = {"raw": None}
+
+
+@pytest.fixture(autouse=True)
+def _isolate_overlay(monkeypatch):
+    from factlattice import overlay
+    monkeypatch.delenv(overlay.env_var_name(), raising=False)
+
+
+@pytest.fixture
+def deployment_overlay(monkeypatch):
+    """The overlay that was in force when the run started (nothing when none was): the test sees the ambient state, as the suite's
+    header reported it. Use it ONLY in a test that is deployment-only and skips with a reason when the overlay lacks what it needs."""
+    from factlattice import overlay
+    if _AMBIENT_OVERLAY["raw"] is not None:
+        monkeypatch.setenv(overlay.env_var_name(), _AMBIENT_OVERLAY["raw"])
+    return _AMBIENT_OVERLAY["raw"]
+
+
 def pytest_configure(config):
+    from factlattice import overlay
+    _AMBIENT_OVERLAY["raw"] = overlay.raw_value()
     # An explicit target on the command line is honoured EXACTLY. Widening a
     # deliberate `pytest tests/test_parser.py` into something else would make the
     # thing that ran differ from the thing that was asked for, and every later
@@ -96,3 +156,20 @@ def pytest_configure(config):
     overlay = pathlib.Path(config.rootpath).joinpath(*PRIVATE_OVERLAY)
     if overlay.is_dir():
         config.args.append(str(overlay))
+
+
+def pytest_report_header(config):
+    """Say, at the top of every run, whether a deployment overlay is in force: a run with no overlay SKIPS the deployment-only
+    tests, and the header (with `-rs`, each skip's own reason) says so rather than leaving a green that reads as complete."""
+    import warnings
+
+    from factlattice import overlay
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", overlay.OverlayWarning)        # the header reports the problem itself, once, below
+        root = overlay.overlay_root()
+    problem = overlay.overlay_problem()
+    if root is not None:
+        return f"deployment overlay: IN FORCE at {root} (the deployment-only tests run)"
+    if problem is not None:
+        return f"deployment overlay: NOT IN FORCE, {overlay.env_var_name()} is set but unusable ({problem}); deployment-only tests SKIP"
+    return f"deployment overlay: none ({overlay.env_var_name()} is not set); deployment-only tests SKIP, each naming its reason (-rs)"

@@ -31,13 +31,13 @@ CALIBRATION — every clause below was bought with a measurement over 3,034 node
 live `.lts` files across three repositories. The naive predicate fired 96 times (3.2%).
 Three exclusions, in the order they were forced:
 
- 1. MACHINE-MINTED IDS — 19 hits were auto-generated `DEFECT-…-3A9B1D` / `DELIV-…-7C21A9F4`
+ 1. MACHINE-MINTED IDS — 19 hits were auto-generated `DEFECT-…-4F0F4C` / `DELIV-…-5F328ABC`
     ids, truncated mid-phrase by a slug generator. Nobody authored them as a claim and
     there is no naming decision available. Excluded by the trailing-hex signature.
 
  2. CLAIM-GENRE FAMILIES — 46 hits were `DEC-`, `PRINCIPLE-`, `INSIGHT-`, `INV-`, `DEFECT-`.
     ⛔ A DECISION THAT DOES NOT STATE ITS DECISION IN ITS NAME IS HARDER TO CITE, NOT
-    EASIER. `DEC-1-4-LIMIT-IS-0-61` is LEGITIMATELY claim-shaped and its whole value is
+    EASIER. `DEC-2-7-GATE-IS-0-48` is LEGITIMATELY claim-shaped and its whole value is
     answering in one call; flagging a principle for asserting something is flagging it for
     existing. The genre is the licence, and it is overridable per corpus.
 
@@ -127,8 +127,8 @@ would be the direct measurement. That is not built, and is named here as the gap
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
 
 import factlattice
 
@@ -139,7 +139,7 @@ KIND_READ_SUPPRESSING = "read_suppressing_name"
 # `warning`, never `error`. The remedy is an authoring decision on FUTURE ids, the
 # existing population is explicitly not a worklist, and an error-severity naming rule on a
 # corpus with 3,000 nodes is a rule someone turns off in an afternoon.
-CLAIM_ID_SEVERITY: Dict[str, str] = {KIND_CLAIM_ID: "warning",
+CLAIM_ID_SEVERITY: dict[str, str] = {KIND_CLAIM_ID: "warning",
                                      KIND_READ_SUPPRESSING: "warning"}
 
 # ---------------------------------------------------------------------------
@@ -213,9 +213,9 @@ CLAIM_GENRE_PREFIXES = frozenset({
 class ClaimFinding:
     kind: str
     message: str
-    source_file: Optional[str]
-    source_line: Optional[int]
-    node_id: Optional[str] = None
+    source_file: str | None
+    source_line: int | None
+    node_id: str | None = None
     detail: dict = field(default_factory=dict)
 
 
@@ -223,12 +223,12 @@ def is_machine_minted(node_id: str) -> bool:
     return bool(MACHINE_MINTED_RE.search(node_id or ""))
 
 
-def claim_segments(node_id: str) -> List[str]:
+def claim_segments(node_id: str) -> list[str]:
     """The copula segments in an id, in order. Empty when the id names a subject."""
     return [s for s in (node_id or "").split("-") if s in CLAIM_COPULA]
 
 
-def directive_opener(node_id: str, type_prefix: Optional[str] = None) -> Optional[str]:
+def directive_opener(node_id: str, type_prefix: str | None = None) -> str | None:
     """The IMPERATIVE this id opens with, past its family prefix — else None.
 
     ⛔ NO GENRE LICENCE IS APPLIED HERE, DELIBERATELY, and it is the whole design point.
@@ -255,7 +255,7 @@ def directive_opener(node_id: str, type_prefix: Optional[str] = None) -> Optiona
     return None
 
 
-def directive_title(title: str) -> Optional[str]:
+def directive_title(title: str) -> str | None:
     """The IMPERATIVE a title opens with — else None.
 
     ⛔ THE `?` GUARD IS A MEASURED EXCLUSION, not a defensive flourish. "Do the asset GET
@@ -281,7 +281,7 @@ def directive_title(title: str) -> Optional[str]:
 
 
 def classify(node_id: str, type_prefix: str,
-             claim_genre: Iterable[str] = CLAIM_GENRE_PREFIXES) -> Optional[dict]:
+             claim_genre: Iterable[str] = CLAIM_GENRE_PREFIXES) -> dict | None:
     """`{copulas, subject}` when the id ARGUES, else None. Pure and side-effect free."""
     if is_machine_minted(node_id):
         return None
@@ -297,10 +297,10 @@ def classify(node_id: str, type_prefix: str,
             "predicate": "-".join(segs[cut:])}
 
 
-def find_claim_ids(corpus: "factlattice.ParsedCorpus",
-                   claim_genre: Iterable[str] = CLAIM_GENRE_PREFIXES) -> List[ClaimFinding]:
+def find_claim_ids(corpus: factlattice.ParsedCorpus,
+                   claim_genre: Iterable[str] = CLAIM_GENRE_PREFIXES) -> list[ClaimFinding]:
     """Every claim-shaped identifier in `corpus`, deterministic in id order."""
-    out: List[ClaimFinding] = []
+    out: list[ClaimFinding] = []
     for node in sorted(corpus.nodes, key=lambda n: (n.source_file or "", n.id)):
         hit = classify(node.id, node.type_prefix, claim_genre)
         if hit is None:
@@ -329,14 +329,14 @@ def find_claim_ids(corpus: "factlattice.ParsedCorpus",
 
 
 def find_read_suppressing_names(
-        corpus: "factlattice.ParsedCorpus") -> List[ClaimFinding]:
+        corpus: factlattice.ParsedCorpus) -> list[ClaimFinding]:
     """Every name that INSTRUCTS instead of naming — the SECOND harm (the maintainer, 2026-08-16).
 
     ⛔ NO `claim_genre` PARAMETER, and its absence is the design. See the module
     docstring: the genre licence that correctly exempts a PRINCIPLE from arguing would,
     applied here, silence this rule on exactly the nodes it exists to find.
     """
-    out: List[ClaimFinding] = []
+    out: list[ClaimFinding] = []
     for node in sorted(corpus.nodes, key=lambda n: (n.source_file or "", n.id)):
         if is_machine_minted(node.id):
             continue
@@ -373,7 +373,7 @@ def find_read_suppressing_names(
     return out
 
 
-def census(corpus: "factlattice.ParsedCorpus",
+def census(corpus: factlattice.ParsedCorpus,
            claim_genre: Iterable[str] = CLAIM_GENRE_PREFIXES) -> dict:
     """The TREND WITH A DENOMINATOR — emitted on every run, including a clean one.
 
@@ -388,7 +388,7 @@ def census(corpus: "factlattice.ParsedCorpus",
     """
     genre = set(claim_genre)
     total = flagged = licensed = machine = 0
-    by_prefix: Dict[str, Dict[str, int]] = {}
+    by_prefix: dict[str, dict[str, int]] = {}
     for node in corpus.nodes:
         total += 1
         slot = by_prefix.setdefault(node.type_prefix, {"nodes": 0, "claim_shaped": 0})
@@ -446,7 +446,7 @@ def census(corpus: "factlattice.ParsedCorpus",
     }
 
 
-def census_line(stats: Dict[str, object]) -> str:
+def census_line(stats: dict[str, object]) -> str:
     return (f"-- claim-shaped ids: {stats['claim_shaped_ids']} of {stats['nodes_total']} "
             f"node(s) argue in their identifier "
             f"({stats['licensed_by_genre']} more licensed by genre) "

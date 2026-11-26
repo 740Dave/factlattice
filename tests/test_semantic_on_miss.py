@@ -79,7 +79,7 @@ def test_on_miss_adds_its_own_block_and_never_touches_the_exact_answer(eng):
 
 
 def test_no_semantic_work_when_the_exact_path_has_hits(eng):
-    r = eng.find(corpus="c", text="tile map", semantic="on_miss")
+    r = eng.find(corpus="c", text="zero map", semantic="on_miss")
     assert r["count"] > 0 and "did_you_mean_semantic" not in r
     assert CountingService.calls == 0
 

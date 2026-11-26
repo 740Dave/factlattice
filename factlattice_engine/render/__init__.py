@@ -24,16 +24,35 @@ research-portal consumer) that build their own node/property gathering.
 """
 
 from .flow import (
-    DEFAULT_MAX_DEPTH, FLOW_EDGE_TYPES, MEMBERSHIP_EDGE_TYPES, FlowWalk, walk_flow,
+    DEFAULT_MAX_DEPTH,
+    FLOW_EDGE_TYPES,
+    MEMBERSHIP_EDGE_TYPES,
+    FlowWalk,
+    walk_flow,
 )
 from .html import (
-    DEFAULT_CSS, Block, HtmlPage, SiteResult,
-    escape_html, render_index, render_markdown_lite, render_page, slugify, write_site,
+    DEFAULT_CSS,
+    Block,
+    HtmlPage,
+    SiteResult,
+    escape_html,
+    render_index,
+    render_markdown_lite,
+    render_page,
+    slugify,
+    write_site,
 )
 from .mermaid import (
-    SHAPES, SILENT_EDGE_TYPES, VALID_DIRECTIONS, MermaidDiagram,
-    default_edge_label_fn, default_label_fn, default_shape_fn,
-    escape_label, render_mermaid, safe_node_id,
+    SHAPES,
+    SILENT_EDGE_TYPES,
+    VALID_DIRECTIONS,
+    MermaidDiagram,
+    default_edge_label_fn,
+    default_label_fn,
+    default_shape_fn,
+    escape_label,
+    render_mermaid,
+    safe_node_id,
 )
 
 __all__ = [

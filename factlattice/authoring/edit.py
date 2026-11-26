@@ -81,11 +81,12 @@ is the ORACLE, and it changed because the lexical one was measured wrong:
 
 from __future__ import annotations
 
-import hashlib
-import json
 import errno
 import fcntl
 import functools
+import hashlib
+import inspect
+import json
 import os
 import re
 import shutil
@@ -94,16 +95,29 @@ import tempfile
 import threading
 import time
 import uuid
-from contextlib import contextmanager
 from collections import Counter
-from datetime import datetime
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from .. import ledger as _ledger
-from ..parser import (_HEADING_RE, _PROP_BOLD_RE, _PROP_KEY_ONLY_RE, _PROP_SIMPLE_RE, _fold_continuation,
-                      _heading_id, parse_text, BRANCH_PROP_BOLD, BRANCH_PROP_CONT, BRANCH_PROP_SIMPLE)
+from ..core_keys import ENGINE_MINTED_KEYS
+from ..parser import (
+    _HEADING_RE,
+    _PROP_BOLD_RE,
+    _PROP_KEY_ONLY_RE,
+    _PROP_SIMPLE_RE,
+    BRANCH_PROP_BOLD,
+    BRANCH_PROP_CONT,
+    BRANCH_PROP_SIMPLE,
+    _fold_continuation,
+    _heading_id,
+    parse_text,
+    split_source_lines,
+)
+from . import linebreaks as _linebreaks
+from . import unread_time_guard as _unread
 from .schema import _coerce_key
 
 # Property-line shapes, mirroring SPEC §2.2. Used ONLY to choose an insertion point —
@@ -124,9 +138,103 @@ RESERVED_SECTION_TITLES = frozenset({
 class EditRefused(Exception):
     """Nothing was written. The refusal IS the outcome."""
 
-    def __init__(self, message: str, *, evidence: Optional[dict] = None):
+    def __init__(self, message: str, *, evidence: dict | None = None):
         super().__init__(message)
         self.evidence = evidence or {}
+
+
+#: the fixed code of a refusal for a line-break character in a text input (SPEC 4.6.6 lists it with the others).
+LINE_BREAK_CODE = "line_break_in_input"
+NON_STRING_CODE = "non_string_value"
+#: the fixed code of a refusal for an UNQUOTED placeholder clock time (`04:2xZ`) in a text the call adds.
+UNREAD_TIME_CODE = _unread.CODE
+
+
+def _non_string_message(what: str) -> str:
+    return (f"{what} not text. A property line holds one string, and storing another type would write its Python "
+            f"spelling (a list as `['a', 'b']`, null as `None`), which no reader can tell from text. Send a string; "
+            f"for several values, write the first and add each of the others with lts_add_property mode=append. "
+            f"Nothing written.")
+
+
+RESERVED_KEY_CODE = "reserved_key"
+
+
+def refuse_reserved_key(key) -> None:
+    """A key the ENGINE mints (`normative_effective`) is never written: the line would be ignored by the parser
+    (the minted value is the one kept) and read as authored. Checked on the key AFTER coercion, so a
+    capitalised or emphasised spelling is refused too. Nothing is written."""
+    if key in ENGINE_MINTED_KEYS:
+        raise EditRefused(
+            f"`{key}` is reserved and engine-minted: the parser computes it for every node from the "
+            f"node's own keys and its parent-section chain, and an authored line would be ignored. "
+            f"Write `normative: false` on the node or section instead. Nothing written.",
+            evidence={"refusal": RESERVED_KEY_CODE, "key": key})
+
+
+def refuse_non_string_value(value) -> None:
+    """A value the caller sent must be a string: see `_non_string_message`. Names the type, never echoes the value."""
+    if not isinstance(value, str):
+        raise EditRefused(_non_string_message(f"`value` is {type(value).__name__},"),
+                          evidence={"refusal": NON_STRING_CODE, "field": "value", "type": type(value).__name__})
+
+
+def refuse_line_breaks(**fields) -> None:
+    """THE INPUT CHECK (maintainers' ruling of 2026-10-28). Every text a typed writer will put on a line, or look a
+    line up by, is checked here BEFORE anything is read or written. A character at which the PARSER ends a line
+    (the set is derived from `parser.split_source_lines`, see `linebreaks`) cannot ride on one line: the stored value
+    would be cut there and the tail would become a stray prose line, with the writer replying success. So it is a
+    coded refusal naming the field, the character (U+XXXX) and its 0-based index in the field (in code points).
+    Nothing is written. Non-strings are not this check's business (`refuse_non_string_value` and
+    `_coerce_properties` refuse a non-string value)."""
+    for name, text in fields.items():
+        hit = _linebreaks.first_line_break(text) if isinstance(text, str) else None
+        if hit is None:
+            continue
+        i, ch = hit
+        cp = f"U+{ord(ch):04X}"
+        raise EditRefused(
+            f"`{name}` contains the line-break character {cp} ({_linebreaks.label(ch)}) at index {i}. The parser "
+            f"ends a line there, so the value would be stored cut off and the rest would become a stray prose "
+            f"line. Remove it (join the parts with a space). Nothing written.",
+            evidence={"refusal": LINE_BREAK_CODE, "field": name, "codepoint": cp, "index": i})
+
+
+def refuse_unread_times(**fields) -> None:
+    """THE UNREAD-TIME CHECK (the shared unread-time guard spec). Every text the call ADDS to a durable record is checked
+    here, before anything is read or written: an UNQUOTED placeholder clock time (digits mixed with x, X or ?, such as
+    `04:2xZ`) means the author wrote a time it never read. The refusal is coded `unread_time_placeholder`; it names every
+    token with its field, line (1-based) and column (0-based) and states how to quote a token meant on purpose
+    (backticks, double or single quotes, each pairing with its own kind on one line). Nothing is written.
+    Only strings are checked (non-strings are `refuse_non_string_value`'s business), and only text the call adds:
+    callers pass a value they were SENT, never one derived from a line already in the file. Keys, node ids and section
+    ids are not checked: their grammar has no colon, so they cannot hold a time."""
+    found = _unread.refusal(fields)
+    if found is not None:
+        sentence, evidence = found
+        raise EditRefused(sentence, evidence=evidence)
+
+
+def refuse_unread_times_in_properties(properties) -> None:
+    """The same check over an `add_node` `properties` mapping, VALUES only. A value holding LF is skipped, as in
+    `refuse_line_breaks_in_properties`: it is refused whole by `_coerce_properties`."""
+    if not isinstance(properties, dict):
+        return
+    refuse_unread_times(**{f"properties[{k}]": v for k, v in properties.items()
+                           if isinstance(k, str) and isinstance(v, str) and "\n" not in v})
+
+
+def refuse_line_breaks_in_properties(properties) -> None:
+    """The same check over an `add_node` `properties` mapping: every KEY first, then every VALUE. A value holding LF
+    is left to `_coerce_properties`, whose refusal text for it is pinned byte-for-byte on the non-create path
+    (tests/test_add_node_noncreate_pin.py) and which already refuses it."""
+    if not isinstance(properties, dict):
+        return
+    for k in properties:
+        refuse_line_breaks(**{"properties key": k})
+    for k, v in properties.items():
+        if isinstance(v, str) and "\n" not in v:
+            refuse_line_breaks(**{f"properties[{k}]": v})
 
 
 @dataclass
@@ -149,6 +257,7 @@ class EditResult:
     context: tuple[str, ...] = ()   # the written line in situ, for eyeballing placement
     warnings: tuple[str, ...] = field(default_factory=tuple)
     ledger: dict | None = None      # [NODE-CHANGE-LEDGER] {"status": "ok", seq, file} | {"status": "failed", reason}
+    backup: dict | None = None      # None = a backup was made (`backup_path`); else BACKUP_EPHEMERAL_SKIP (none made, said)
 
 
 @dataclass
@@ -175,6 +284,7 @@ class RepairResult:
     context: tuple[str, ...] = ()
     warnings: tuple[str, ...] = field(default_factory=tuple)
     ledger: dict | None = None
+    backup: dict | None = None
 
 
 @dataclass
@@ -193,6 +303,7 @@ class AddNodeResult:
     context: tuple[str, ...] = ()
     warnings: tuple[str, ...] = field(default_factory=tuple)
     ledger: dict | None = None
+    backup: dict | None = None
     created: bool = False           # [A-E1] True only for a `create=True` write that made the file
     created_parent: str | None = None   # [A-E1] the ONE directory level `create_parent` made, if any
 
@@ -202,7 +313,7 @@ class AddNodeResult:
 # ---------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# [ISSUE-WRITE-ATOMICITY] the shared write step: one lock, one atomic replace
+# [DEC-LTS-WRITES-NOT-ATOMIC-NO-LOCK] the shared write step: one lock, one atomic replace
 # ---------------------------------------------------------------------------
 # EVERY corpus write goes through `_serialised` (the lock, held across read -> gate -> write)
 # and `_write` (backup, then atomic replace). A new writer MUST use both (SDLC.md 7.6).
@@ -231,10 +342,22 @@ def _lock_timeout() -> float:
         return _LOCK_TIMEOUT_DEFAULT_S
 
 
+def _check_location(real: Path) -> None:
+    """[MECH-NR-LEDGER] x-state-declared: INSIDE the lock and before anything is read or written, ask `locate` once. Every corpus write
+    takes this lock, so no writer can reach the file without this answer, and the same answer goes to the ledger append."""
+    loc = _ledger.locate(real)
+    if loc.refusal is not None and not _ledger.is_ephemeral(real):     # a scratch copy has no record to protect
+        code, detail = loc.refusal
+        raise EditRefused(f"{code}: where this file's write history lives cannot be proved ({detail}), so the write is refused. "
+                          f"{_ledger.fix_for(code, detail)} Nothing written.",
+                          evidence={"refusal": code, "detail": detail, "fix": _ledger.fix_for(code, detail)})
+    _LAST.location = loc
+
+
 @contextmanager
 def _file_lock(path: Path):
     """Exclusive per-file lock: fcntl.flock on a sidecar in the state dir, keyed by the file's
-    realpath hash. Bounded wait; on timeout REFUSE ("busy, retry"), writing nothing."""
+    realpath hash. Bounded wait; on timeout REFUSE ("busy, retry"), writing nothing. Then the state check."""
     real = Path(os.path.realpath(path))
     ld = _lock_dir()
     try:
@@ -268,8 +391,10 @@ def _file_lock(path: Path):
                                       f"{timeout:g}s. Retry. Nothing written.",
                                       evidence={"refusal": "lock_busy"}) from None
                 time.sleep(0.02)
+        _check_location(real)
         yield
     finally:
+        _LAST.location = None
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
         except OSError:
@@ -281,19 +406,47 @@ def _file_lock(path: Path):
                      # must not surface as a refusal that says "Nothing written". The fd is gone either way.
 
 
+#: the text arguments of the typed writers that put text into a record or its ledger entry (value, title, the
+#: frontmatter texts of a create, the ledger metadata). Keys, node ids and section ids are not here: their grammar has no colon.
+_UNREAD_TEXT_ARGS = ("value", "title", "doc_title", "domain", "doctype", "reason", "proposer", "approver")
+
+
+def _via_text(via):
+    """The free text of `via`: the part after `clerk:` (the rest of the vocabulary is the fixed word `direct`)."""
+    return via[len("clerk:"):] if isinstance(via, str) and via.startswith("clerk:") else None
+
+
+def _precheck_unread_times(sig, path, args, kwargs) -> None:
+    """THE UNREAD-TIME CHECK, on the call's ARGUMENTS, before the per-file lock is taken and before any file is read:
+    the inputs are arguments, so no file is needed, and a refused call touches nothing (no lock file, no read)."""
+    bound = sig.bind_partial(path, *args, **kwargs).arguments
+    fields = {n: bound[n] for n in _UNREAD_TEXT_ARGS if n in bound}
+    fields["via"] = _via_text(bound.get("via"))
+    refuse_unread_times(**fields)
+    refuse_unread_times_in_properties(bound.get("properties"))
+
+
 def _serialised(fn):
     """Hold the per-file lock across the WHOLE read -> gate -> write of a writer. The writers read
     the file themselves, inside the call, so under the lock they always edit and gate the FRESH
-    text and a later writer includes the earlier one's change."""
+    text and a later writer includes the earlier one's change. Before the lock: the unread-time check
+    (`_precheck_unread_times`)."""
+    sig = inspect.signature(fn)
+
     @functools.wraps(fn)
     def wrapper(path, *args, **kwargs):
-        real = Path(os.path.realpath(Path(path).expanduser()))
-        with _file_lock(real):
-            try:
-                return fn(path, *args, **kwargs)
-            finally:
-                _bases().pop(str(real), None)
-                _hash_cache().clear()
+        _unread.clear()
+        try:
+            _precheck_unread_times(sig, path, args, kwargs)
+            real = Path(os.path.realpath(Path(path).expanduser()))
+            with _file_lock(real):
+                try:
+                    return fn(path, *args, **kwargs)
+                finally:
+                    _bases().pop(str(real), None)
+                    _hash_cache().clear()
+        finally:
+            _unread.clear()          # no fault outlives its write
     return wrapper
 
 
@@ -342,14 +495,14 @@ def _preflight(real: Path) -> None:
                           f"silently sever them. Resolve the links first. Nothing written.")
 
 
-def _cas_check(real: Path, base: Optional[bytes], tmp: Path) -> None:
+def _cas_check(real: Path, base: bytes | None, tmp: Path) -> None:
     """Compare-and-swap: the bytes on disk must still be the BASE the candidate was computed
     from. Catches a writer OUTSIDE the lock (hand edit, sync client, pre-fix engine). No retry.
     RESIDUAL WINDOW: this check and `os.replace` are two syscalls; a write landing between them
     is still lost. The lock closes the window for every writer that takes it."""
     try:
         from factlattice.hashing import safe_read_bytes
-        current: Optional[bytes] = safe_read_bytes(str(real))
+        current: bytes | None = safe_read_bytes(str(real))
     except FileNotFoundError:
         current = None
     if current != base:
@@ -449,6 +602,10 @@ def oob_warnings(ledger: dict | None, path) -> tuple[str, ...]:
     """The loud receipt warnings from the ledger append: a chain break, and a whole-file write whose
     prior content could not be preserved (empty when neither)."""
     out: tuple[str, ...] = ()
+    out += getattr(_LAST, "prune_warnings", ())     # backup retention (`_prune_backups`): a failure never fails a write
+    fault = getattr(_LAST, "guard_fault", ())
+    if fault:                      # FAIL OPEN: the unread-time detector faulted; the write went through
+        out += (_unread.fault_warning(fault, bool(getattr(_LAST, "guard_fault_recorded", False))),)
     if (ledger or {}).get("status") == "ok_without_undo":
         out += ("WRITTEN AND LEDGERED, BUT THE PRIOR CONTENT WAS NOT PRESERVED: "
                 f"{_ledger.describe(ledger)}",)
@@ -457,6 +614,12 @@ def oob_warnings(ledger: dict | None, path) -> tuple[str, ...]:
         return out
     return out + (f"OUT-OF-BAND EDIT: {os.path.realpath(path)} changed outside the writers since ledger seq "
             f"{oob['since_seq']} ({oob['since_ts']}); that change is not recorded",)
+
+
+def last_backup() -> dict | None:
+    """The backup outcome of the most recent write on THIS thread: None when a backup was made (the receipt's `backup_path`
+    names it), else `BACKUP_EPHEMERAL_SKIP` (no backup was made, and the receipt says why)."""
+    return getattr(_LAST, "backup", None)
 
 
 def last_ledger() -> dict | None:
@@ -470,23 +633,34 @@ def _meta(*, proposer=None, approver=None, reason=None, via=None, corpora=None, 
     bad = _ledger.validate_meta(proposer=proposer, approver=approver, reason=reason, via=via)
     if bad:
         raise EditRefused(f"{bad} Nothing written.")
+    # the metadata is stored text in a record people read: the same unread-time check, on every writer (all call `_meta`)
+    refuse_unread_times(reason=reason, proposer=proposer, approver=approver, via=_via_text(via))
     return {"proposer": proposer, "approver": approver, "reason": reason, "via": via,
             "corpora": list(corpora) if corpora is not None else None, "engine_head": engine_head,
             "corpora_error": corpora_error,
             "roots": list(ledger_roots) if ledger_roots is not None else None}
 
 
-def _sha_bytes(b: Optional[bytes]) -> Optional[str]:
+def _sha_bytes(b: bytes | None) -> str | None:
     return None if b is None else hashlib.sha256(b).hexdigest()
 
 
-def _ledger_append(real: Path, ctx: Optional[dict], candidate: str) -> None:
+def _ledger_append(real: Path, ctx: dict | None, candidate: str) -> None:
     """Right after `os.replace`, INSIDE the per-file lock. Never raises: a failure is recorded in
-    `last_ledger()` as {"status": "failed", "reason": ...} (the corpus write has already landed)."""
+    `last_ledger()` as {"status": "failed", "reason": ...} (the corpus write has already landed).
+    FAIL OPEN: if the unread-time detector faulted during this write, the receipt names it (`oob_warnings`) and ONE
+    extra record of verb `unread_time_guard_fault` follows this write's own record (`_append_guard_fault`)."""
+    _LAST.guard_fault = _unread.take()
+    _LAST.guard_fault_recorded = False        # set true only by a fault record really appended
+    _LAST.prune_warnings = ()                 # this write's own (`_write` sets them after the append; `oob_warnings` reads them)
     if ctx is None:
         _LAST.ledger = None
         return
     if _ledger.is_ephemeral(real):          # (e) scratch/preflight copy: no record, no blob, and SAID
+        _LAST.ledger = dict(_ledger.EPHEMERAL_SKIP)
+        return
+    location = getattr(_LAST, "location", None)
+    if location is not None and location.ephemeral_state:    # a state under the OS temp dir is treated like a root there
         _LAST.ledger = dict(_ledger.EPHEMERAL_SKIP)
         return
     try:
@@ -503,23 +677,58 @@ def _ledger_append(real: Path, ctx: Optional[dict], candidate: str) -> None:
             fields["node_hash_before"] = _node_hashes(ctx["original"]).get(nid) if ctx.get("original") else None
             fields["node_hash_after"] = _node_hashes(candidate).get(nid)
         appended = _ledger.append(real, fields, roots=ctx.get("roots"),
-                                  prior_bytes=base if ctx.get("store_prior_blob") else None)
+                                  prior_bytes=base if ctx.get("store_prior_blob") else None, location=location)
         if isinstance(ctx.get("_state"), dict):      # [delta4] this write's record exists: say which, at once
             ctx["_state"]["ledger_seq"] = appended.get("seq")
         _LAST.ledger = appended
+        if _LAST.guard_fault:
+            _append_guard_fault(real, ctx, fields, candidate, location)
     except _ledger.LedgerError as e:
         _LAST.ledger = _ledger.live_block("failed", "ledger-write-failed", e)
     except Exception as e:  # noqa: BLE001 -- the audit trail must never turn a landed write into a crash
         _LAST.ledger = _ledger.live_block("failed", "ledger-write-failed", e)
 
 
+def _append_guard_fault(real: Path, ctx: dict, fields: dict, candidate: str, location) -> None:
+    """The ONE fault record of a write whose unread-time detector faulted, appended right after the write's own
+    record, in the ledger's own format by the ledger's own writer. `verb` is the kind; `delta` is
+    {"exception_class": <class name>} (never the message); `ts` and `path_real` are the writer's. The file hashes
+    are the file as written, so the chain continues from the write's record. A failure here never changes the
+    write's own ledger outcome: `guard_fault_recorded` stays false, and the receipt warning then says that no ledger
+    record was made."""
+    sha = fields["file_sha256_after"]
+    rec = {"verb": _unread.FAULT_CODE, "delta": {"exception_class": _LAST.guard_fault[0]},
+           "file_sha256_before": sha, "file_sha256_after": sha}
+    try:
+        _ledger.append(real, rec, roots=ctx.get("roots"), location=location)
+        _LAST.guard_fault_recorded = True
+    except Exception:  # noqa: BLE001 -- the write's own record stands; the receipt says no fault record was made
+        pass
+
+
 class WrittenPath(type(Path())):
     """What `write_whole_file` returns: still a `Path` (every existing caller keeps working), plus the
     ledger outcome as `.ledger` ({"status": "ok", seq, file} | {"status": "failed", reason})."""
     ledger: dict | None = None
+    backup: dict | None = None      # None = a backup was made; else BACKUP_EPHEMERAL_SKIP
 
 
-def write_whole_file(path, text: str, *, expect_base: "bytes | None" = None, **ledger_kw) -> Path:
+def _clears_fault_list(fn):
+    """The outermost entry clears the unread-time fault list (no fault from an earlier call on this thread is this
+    write's) and the matching exit clears it again, so a fault of this call, a refusal before the inner `finally`
+    included, never outlives it. A nested entry (`schema.write_document`) leaves the outer write's faults alone."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        _unread.begin()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _unread.end()
+    return wrapper
+
+
+@_clears_fault_list
+def write_whole_file(path, text: str, *, expect_base: bytes | None = None, **ledger_kw) -> Path:
     """The shared write step for a WHOLE-DOCUMENT writer (schema.write_document): lock, record the
     existing bytes as the base (None if the file is new), backup an existing file, atomic replace,
     ledger. Returns the real path written as a `WrittenPath` (a Path with `.ledger`); the outcome is
@@ -550,16 +759,19 @@ def write_whole_file(path, text: str, *, expect_base: "bytes | None" = None, **l
             except Exception:  # noqa: BLE001
                 ctx["delta"] = None
             if real.exists():
-                _write(real, old_text or "", text, ctx=ctx)       # backup, replace, ledger (with backup_path)
+                _write(real, old_text or "", text, ctx=ctx)       # backup (unless ephemeral), replace, ledger (with backup_path)
             else:
+                _LAST.backup = None                              # a new file: nothing to back up, nothing skipped
                 _sweep_stale_temps(real)
                 _atomic_replace(real, text)
                 _ledger_append(real, {**ctx, "backup_path": None}, text)
         finally:
             _bases().pop(str(real), None)
             _hash_cache().clear()
+            _unread.clear()
     out = WrittenPath(real)
     out.ledger = last_ledger()
+    out.backup = last_backup()
     return out
 
 
@@ -573,7 +785,7 @@ def _hash_cache() -> dict:
     return _HASHES.d
 
 
-def _parsed_props(text: str, source_file: str = "<edit>") -> dict[str, dict]:
+def _parsed_props(text: str, source_file: str = "<edit>", *, keep_minted: bool = False) -> dict[str, dict]:
     """node_id -> {key: value}, straight from the authoritative parser.
 
     [NODE-CHANGE-LEDGER] also remembers each node's parser `content_hash` for this text, so the
@@ -583,7 +795,9 @@ def _parsed_props(text: str, source_file: str = "<edit>") -> dict[str, dict]:
     if len(cache) >= 4:
         cache.pop(next(iter(cache)))
     cache[text] = {n.id: n.content_hash for n in pf.nodes}
-    return {n.id: dict(n.properties) for n in pf.nodes}
+    # Engine-minted keys are not part of the authored-property identity the gate compares: marking a section
+    # `normative: false` moves the minted value of every node below it, and that is not an unexplained change.
+    return {n.id: {k: v for k, v in n.properties.items() if keep_minted or k not in ENGINE_MINTED_KEYS} for n in pf.nodes}
 
 
 def _node_hashes(text: str) -> dict:
@@ -600,13 +814,13 @@ def _parsed_spans(text: str, source_file: str = "<edit>") -> dict[str, tuple[int
     return {n.id: tuple(n.line_range) for n in pf.nodes}
 
 
-def _headings(lines: list[str]) -> list[tuple[int, int, Optional[str], str]]:
+def _headings(lines: list[str]) -> list[tuple[int, int, str | None, str]]:
     """(idx0, level, node_id_or_None, title) for every heading, fence-aware.
 
     Uses the parser's OWN `_HEADING_RE` / `_heading_id`, so ID-first, ID-last and
     doctyped forms are all recognised identically to the parser. No second grammar.
     """
-    out: list[tuple[int, int, Optional[str], str]] = []
+    out: list[tuple[int, int, str | None, str]] = []
     in_fence = False
     for i, line in enumerate(lines):
         s = line.strip()
@@ -874,30 +1088,45 @@ def _requested_as_parsed(line_text: str, key: str):
     return next(n for n in pf.nodes if n.id == "PROBE-ONE").properties.get(key)
 
 
-def _value_check(line_text: str, key: str, node_id: str, before: dict, after: dict, action: str) -> None:
-    """THE ADD/APPEND VALUE CHECK (round 6, Opus Diamond N1). `_gate` accepts ANY value on an added key, and a byte gate
-    cannot see an insertion that RE-ATTRIBUTES neighbouring lines (they are byte-identical, but the parser now folds
-    them into the new value). So: the stored value AS PARSED must equal the requested value under the parser's own
-    normalisation, and for an append the earlier items must be untouched. Otherwise refuse; nothing is written."""
-    if action == "replaced":
-        # NOT checked, on purpose (round 6): replacing a WRAPPED value leaves its old continuation lines attached to
-        # the new line, so 88aa5d6 stores `new value + old tail` (measured: 7 of 235 real replaces). Refusing that
-        # would change a live writer's outcome; it is ticketed as its own defect in the build report.
-        return
-    want = _requested_as_parsed(line_text, key)
+def _value_check(line_text: str, key: str, node_id: str, before: dict, after: dict, action: str,
+                 requested: str | None = None) -> None:
+    """THE ADD/APPEND/REPLACE VALUE CHECK. `_gate` accepts ANY value on an added key, and a byte gate cannot see an
+    insertion that RE-ATTRIBUTES neighbouring lines (they are byte-identical, but the parser now folds them into the
+    new value). So the stored value AS PARSED is compared with the REQUESTED value, after the one normalisation the
+    writer documents (surrounding whitespace is trimmed, as the parser trims it). Otherwise refuse; nothing written.
+
+    TWO comparisons, because they fail differently:
+      * against the line read ALONE by the parser (round 6): catches an insertion that absorbs, or is absorbed by,
+        neighbouring lines;
+      * against the value the CALLER SENT (maintainers' ruling of 2026-10-28): catches a value the parser cut short.
+        The first comparison cannot see that, because the single line is cut the same way and is self-consistent.
+    A replace is held to the second only, as a prefix test: replacing a WRAPPED value keeps the old continuation lines
+    attached to the new line, so the stored value is the requested one plus the old tail (a known, older behaviour),
+    which must not become a refusal; a value CUT SHORT is never a prefix-plus-space of what was sent."""
+    expected = (requested if requested is not None else _requested_text(line_text, key)).strip()
     got = after[node_id].get(key)
-    if action == "appended":
-        items, prior = _items(got), _items(before[node_id].get(key))
-        ok = items[:len(prior)] == prior and items[len(prior):] == _items(want)
+    if action == "replaced":
+        ok = isinstance(got, str) and (got == expected or got.startswith(expected + " "))
+        want = expected
     else:
-        ok = got == want
+        want = _requested_as_parsed(line_text, key)
+        if action == "appended":
+            items, prior = _items(got), _items(before[node_id].get(key))
+            ok = items[:len(prior)] == prior and items[len(prior):] == _items(want) == [expected]
+        else:
+            ok = got == want == expected
     if not ok:
         raise EditRefused(
-            f"the stored value of `{key}` on [{node_id}] is not the requested one: the parser reads {got!r} where the "
-            f"line alone reads {want!r} (the new line has absorbed, or been absorbed by, neighbouring lines). "
-            f"Nothing written.",
+            f"the stored value of `{key}` on [{node_id}] is not the requested one: the parser reads {got!r} where "
+            f"{expected!r} was requested (a value cut short at a line break, or a new line that has absorbed, or been "
+            f"absorbed by, neighbouring lines). Nothing written.",
             evidence={"node_id": node_id, "key": key, "parsed_value": got, "requested_as_parsed": want,
-                      "refusal": "gate_failed"})
+                      "requested_value": expected, "refusal": "gate_failed"})
+
+
+def _requested_text(line_text: str, key: str) -> str:
+    """The value part of `- key: value` as the caller wrote it (everything after the first `key:`)."""
+    return line_text.split(":", 1)[1] if ":" in line_text else line_text
 
 
 @_serialised
@@ -909,14 +1138,14 @@ def set_property(
     *,
     allow_replace: bool = True,
     mode: str = "set",
-    proposer: Optional[str] = None,
-    approver: Optional[str] = None,
-    reason: Optional[str] = None,
-    via: Optional[str] = None,
-    corpora: Optional[list] = None,        # adapter-only: membership at write time
-    engine_head: Optional[str] = None,     # adapter-only: the engine build stamp
-    ledger_roots: Optional[list] = None,   # adapter-only: registered roots a ledger must stay out of (L8)
-    corpora_error: Optional[str] = None,   # adapter-only: why `corpora` could not be resolved
+    proposer: str | None = None,
+    approver: str | None = None,
+    reason: str | None = None,
+    via: str | None = None,
+    corpora: list | None = None,        # adapter-only: membership at write time
+    engine_head: str | None = None,     # adapter-only: the engine and core-package build stamp
+    ledger_roots: list | None = None,   # adapter-only: registered roots a ledger must stay out of (L8)
+    corpora_error: str | None = None,   # adapter-only: why `corpora` could not be resolved
 ) -> EditResult:
     """Add or replace ONE property on ONE node. Coerces the key region, edits
     surgically, reconciles the WHOLE FILE through the real parser, then writes — or
@@ -938,12 +1167,12 @@ def set_property(
                           f"(Arbitrary paths ARE accepted; this one does not exist.)")
     original = _read_base(path)
 
+    refuse_non_string_value(value)
+    refuse_line_breaks(node_id=node_id, key=key, value=value)
     fixed, coercions = _coerce_key(key)
     if not re.fullmatch(_KEY_LEGAL, fixed):
         raise EditRefused(_refusal_message(key, fixed, coercions))
-    if "\n" in value:
-        raise EditRefused("multi-line values are not supported by the surgical editor; "
-                          "use the document writer. Nothing written.")
+    refuse_reserved_key(fixed)
     if not value.strip():
         raise EditRefused("an empty value makes `- key:` a NESTED-BLOCK head, not a "
                           "property — the parser would look for indented items and find "
@@ -958,7 +1187,7 @@ def set_property(
         )
     before_props = _parsed_props(original, str(path))     # authoritative, reused by the gate
 
-    lines = original.splitlines()
+    lines = split_source_lines(original)
     start0 = spans[node_id][0] - 1              # line_range is 1-based inclusive
     end0 = _body_end(lines, start0)
     new_line = f"- {fixed}: {value}"
@@ -1071,7 +1300,8 @@ def set_property(
                 _items(before_props[node_id][fixed]) if fixed in before_props[node_id] else [], None)},
             before=before_props)
 
-    _value_check(f"- {fixed}: {value}", fixed, node_id, before, after, action)   # round 6 (N1): the stored value is the requested one
+    _value_check(f"- {fixed}: {value}", fixed, node_id, before, after, action,
+                 requested=value)   # round 6 (N1) + maintainers' ruling of 2026-10-28: the stored value is the one SENT
 
     warnings: tuple[str, ...] = ()
     parsed_value = after[node_id][fixed]
@@ -1090,8 +1320,9 @@ def set_property(
         coercions=tuple(coercions), key_as_authored=key if coercions else None,
         line_number=written0 + 1, line_text=new_line, parsed_value=parsed_value,
         properties_before=tuple(before[node_id]), properties_after=tuple(after[node_id]),
-        delta=actual, nodes_checked=len(before), backup_path=str(backup),
+        delta=actual, nodes_checked=len(before), backup_path=_bp(backup),
         context=_context(lines, written0), warnings=warnings + oob_warnings(last_ledger(), path), ledger=last_ledger(),
+        backup=last_backup(),
     )
 
 
@@ -1177,14 +1408,14 @@ def repair_property(
     key: str,
     value: str | None = None,
     *,
-    proposer: Optional[str] = None,
-    approver: Optional[str] = None,
-    reason: Optional[str] = None,
-    via: Optional[str] = None,
-    corpora: Optional[list] = None,        # adapter-only: membership at write time
-    engine_head: Optional[str] = None,     # adapter-only: the engine build stamp
-    ledger_roots: Optional[list] = None,   # adapter-only: registered roots a ledger must stay out of (L8)
-    corpora_error: Optional[str] = None,   # adapter-only: why `corpora` could not be resolved
+    proposer: str | None = None,
+    approver: str | None = None,
+    reason: str | None = None,
+    via: str | None = None,
+    corpora: list | None = None,        # adapter-only: membership at write time
+    engine_head: str | None = None,     # adapter-only: the engine and core-package build stamp
+    ledger_roots: list | None = None,   # adapter-only: registered roots a ledger must stay out of (L8)
+    corpora_error: str | None = None,   # adapter-only: why `corpora` could not be resolved
 ) -> RepairResult:
     """Rewrite ONE malformed line, in place, so the field it was always meant to be parses.
 
@@ -1203,11 +1434,12 @@ def repair_property(
     """
     meta = _meta(proposer=proposer, approver=approver, reason=reason, via=via, corpora=corpora,
                  engine_head=engine_head, ledger_roots=ledger_roots, corpora_error=corpora_error)
+    refuse_line_breaks(node_id=node_id, key=key, value=value)
     path = Path(path).expanduser().resolve()
     if not path.is_file():
         raise EditRefused(f"{path} is not a file — nothing written.")
     original = _read_base(path)
-    lines = original.splitlines()
+    lines = split_source_lines(original)
 
     if not isinstance(line, int) or line < 1 or line > len(lines):
         raise EditRefused(
@@ -1256,6 +1488,7 @@ def repair_property(
     fixed, coercions = _coerce_key(key)
     if not re.fullmatch(_KEY_LEGAL, fixed):
         raise EditRefused(_refusal_message(key, fixed, coercions))
+    refuse_reserved_key(fixed)
     if fixed in before_props.get(node_id, {}):
         raise EditRefused(
             f"[{node_id}] ALREADY carries a parsed property `{fixed}` — repairing this "
@@ -1272,10 +1505,9 @@ def repair_property(
                               evidence={"line_text": line_before})
         value, value_source = derived_value, "derived_from_line"
     else:
+        refuse_non_string_value(value)
         value_source = "caller"
-    if "\n" in value:
-        raise EditRefused("multi-line values are not supported by the surgical editor. "
-                          "Nothing written.")
+    refuse_line_breaks(value=value)        # a value DERIVED from the line cannot hold one; a caller's is checked above
     if not value.strip():
         raise EditRefused(
             "an empty value makes `- key:` a NESTED-BLOCK head, not a property. "
@@ -1288,6 +1520,9 @@ def repair_property(
     before, after, actual = _gate(original, candidate, str(path),
                                   added=frozenset({(node_id, fixed)}),
                                   before=before_props)
+    # THE VALUES GATE (maintainers' ruling of 2026-10-28): the stored value must be the one SENT (a repaired line may
+    # keep a wrapped tail the old line already had, hence the "replaced" reading: the value, or the value plus a tail).
+    _value_check(f"- {fixed}: {value}", fixed, node_id, before, after, "replaced", requested=value)
 
     warnings: tuple[str, ...] = ()
     if value_source == "derived_from_line" and how == "emphasis":
@@ -1311,8 +1546,9 @@ def repair_property(
         coercions=tuple(coercions), key_as_authored=key if coercions else None,
         parsed_value=parsed_value,
         properties_before=tuple(before[node_id]), properties_after=tuple(after[node_id]),
-        delta=actual, nodes_checked=len(before), backup_path=str(backup),
+        delta=actual, nodes_checked=len(before), backup_path=_bp(backup),
         context=_context(lines2, idx0), warnings=warnings + oob_warnings(last_ledger(), path), ledger=last_ledger(),
+        backup=last_backup(),
     )
 
 
@@ -1352,7 +1588,9 @@ WRITER_REFUSAL_CODES = (
     "node_not_found", "duplicate_node_id", "key_absent", "key_ambiguous", "line_not_key_line", "key_nested_block",
     "key_lines_unreconciled", "key_line_unlocatable", "expect_value_mismatch", "edge-context-incomplete", "new_key_exists", "new_key_same",
     "new_key_illegal", "edge_change_refused", "edge_change_outside_node", "gate_failed", "bad_argument",
-    "not_a_file", "metadata_invalid", "os_error", "not_utf8", "lock_busy", "lock_unavailable", "write_refused")
+    "not_a_file", "metadata_invalid", "os_error", "not_utf8", "lock_busy", "lock_unavailable", "write_refused",
+    "line_break_in_input", "non_string_value", UNREAD_TIME_CODE, "state-unavailable", "named-root-state-inside-corpus",
+    "named-root-state-unprovable", "named-roots-malformed", _ledger.ROOT_UNRESPONSIVE, _ledger.MEMBERSHIP_UNCONFIRMED, _ledger.CORPUS_VERDICT_PENDING)
 
 #: what a result says when the caller (the MCP adapter) did not resolve the file's corpus profile.
 EDGE_CHECK_UNRESOLVED = "built-in tables only (no profile applied: not_resolved)"
@@ -1399,6 +1637,7 @@ class RenameResult:
     context: tuple[str, ...] = ()
     warnings: tuple[str, ...] = field(default_factory=tuple)
     ledger: dict | None = None
+    backup: dict | None = None
     edge_check: str = EDGE_CHECK_UNRESOLVED     # which vocabulary the edge rule parsed with
 
 
@@ -1421,6 +1660,7 @@ class RemoveResult:
     context: tuple[str, ...] = ()
     warnings: tuple[str, ...] = field(default_factory=tuple)
     ledger: dict | None = None
+    backup: dict | None = None
     edge_check: str = EDGE_CHECK_UNRESOLVED
 
 
@@ -1603,7 +1843,7 @@ def _line_starts(lines: list[str], eols: list[str]) -> list[int]:
 
 
 def _byte_gate(original: str, candidate: str, source_file: str, lines: list[str], eols: list[str], idx0: int,
-               *, rename_to: Optional[str] = None) -> None:
+               *, rename_to: str | None = None) -> None:
     """THE BYTE-LEVEL GATE (round 5). `_gate` compares PARSED PROPERTIES, so it cannot see a body line vanish:
     that is how F1 passed it. This one compares BYTES, against an expectation built from the PARSER's own
     line-accounting record of `original` (not from the writer's edit):
@@ -1710,19 +1950,19 @@ def rename_property(
     key: str,
     new_key: str,
     *,
-    line: Optional[int] = None,
+    line: int | None = None,
     allow_edge_change: bool = False,
-    proposer: Optional[str] = None,
-    approver: Optional[str] = None,
-    reason: Optional[str] = None,
-    via: Optional[str] = None,
-    corpora: Optional[list] = None,        # adapter-only: membership at write time
-    engine_head: Optional[str] = None,     # adapter-only: the engine build stamp
-    ledger_roots: Optional[list] = None,   # adapter-only: registered roots a ledger must stay out of (L8)
-    corpora_error: Optional[str] = None,   # adapter-only: why `corpora` could not be resolved
-    edge_configs: Optional[list] = None,   # adapter-only: ParserConfigs of the file's corpora (profile property_edges)
-    edge_check: Optional[str] = None,      # adapter-only: the sentence saying which vocabulary that was
-    edge_incomplete: Optional[list] = None,   # adapter-only: [{corpus, code}] whose profile could not be determined
+    proposer: str | None = None,
+    approver: str | None = None,
+    reason: str | None = None,
+    via: str | None = None,
+    corpora: list | None = None,        # adapter-only: membership at write time
+    engine_head: str | None = None,     # adapter-only: the engine and core-package build stamp
+    ledger_roots: list | None = None,   # adapter-only: registered roots a ledger must stay out of (L8)
+    corpora_error: str | None = None,   # adapter-only: why `corpora` could not be resolved
+    edge_configs: list | None = None,   # adapter-only: ParserConfigs of the file's corpora (profile property_edges)
+    edge_check: str | None = None,      # adapter-only: the sentence saying which vocabulary that was
+    edge_incomplete: list | None = None,   # adapter-only: [{corpus, code}] whose profile could not be determined
 ) -> RenameResult:
     """Rename the KEY of ONE property line on ONE node; the value is untouched.
 
@@ -1733,15 +1973,19 @@ def rename_property(
         meta = _meta(proposer=proposer, approver=approver, reason=reason, via=via, corpora=corpora,
                      engine_head=engine_head, ledger_roots=ledger_roots, corpora_error=corpora_error)
     except EditRefused as exc:
+        if (exc.evidence or {}).get("refusal") == UNREAD_TIME_CODE:
+            raise                         # its own fixed code, not an out-of-bounds metadata value
         raise _refuse("metadata_invalid", str(exc)) from None
     _check_common_args(node_id, key, line)
     if not isinstance(new_key, str) or not new_key:
         raise _refuse("bad_argument", "`new_key` must be a non-empty string. Nothing written.")
+    refuse_line_breaks(node_id=node_id, key=key, new_key=new_key)
     if not isinstance(allow_edge_change, bool):
         raise _refuse("bad_argument", "`allow_edge_change` must be true or false. Nothing written.")
     fixed, coercions = _coerce_key(new_key)
     if not re.fullmatch(_KEY_LEGAL, fixed):
         raise _refuse("new_key_illegal", _refusal_message(new_key, fixed, coercions))
+    refuse_reserved_key(fixed)
     if fixed == key:
         raise _refuse("new_key_same", f"`new_key` {new_key!r} is the key it already has"
                       f"{' after normalisation' if coercions else ''} — there is nothing to rename. Nothing written.")
@@ -1791,10 +2035,10 @@ def rename_property(
         line_number=idx0 + 1, line_before=line_before, line_after=line_after, value=item,
         parsed_value=after[node_id][fixed], properties_before=tuple(before[node_id]),
         properties_after=tuple(after[node_id]), delta=actual, nodes_checked=len(before),
-        backup_path=str(backup), edges_removed=removed, edges_added=added,
+        backup_path=_bp(backup), edges_removed=removed, edges_added=added,
         context=_context(new_contents, idx0),
         warnings=_mint_warnings(key, fixed, removed, added) + oob_warnings(last_ledger(), path),
-        ledger=last_ledger(), edge_check=edge_check)
+        ledger=last_ledger(), backup=last_backup(), edge_check=edge_check)
 
 
 @_serialised
@@ -1804,20 +2048,20 @@ def remove_property(
     node_id: str,
     key: str,
     *,
-    line: Optional[int] = None,
-    expect_value: Optional[str] = None,
+    line: int | None = None,
+    expect_value: str | None = None,
     allow_edge_change: bool = False,
-    proposer: Optional[str] = None,
-    approver: Optional[str] = None,
-    reason: Optional[str] = None,
-    via: Optional[str] = None,
-    corpora: Optional[list] = None,        # adapter-only: membership at write time
-    engine_head: Optional[str] = None,     # adapter-only: the engine build stamp
-    ledger_roots: Optional[list] = None,   # adapter-only: registered roots a ledger must stay out of (L8)
-    corpora_error: Optional[str] = None,   # adapter-only: why `corpora` could not be resolved
-    edge_configs: Optional[list] = None,   # adapter-only: ParserConfigs of the file's corpora (profile property_edges)
-    edge_check: Optional[str] = None,      # adapter-only: the sentence saying which vocabulary that was
-    edge_incomplete: Optional[list] = None,   # adapter-only: [{corpus, code}] whose profile could not be determined
+    proposer: str | None = None,
+    approver: str | None = None,
+    reason: str | None = None,
+    via: str | None = None,
+    corpora: list | None = None,        # adapter-only: membership at write time
+    engine_head: str | None = None,     # adapter-only: the engine and core-package build stamp
+    ledger_roots: list | None = None,   # adapter-only: registered roots a ledger must stay out of (L8)
+    corpora_error: str | None = None,   # adapter-only: why `corpora` could not be resolved
+    edge_configs: list | None = None,   # adapter-only: ParserConfigs of the file's corpora (profile property_edges)
+    edge_check: str | None = None,      # adapter-only: the sentence saying which vocabulary that was
+    edge_incomplete: list | None = None,   # adapter-only: [{corpus, code}] whose profile could not be determined
 ) -> RemoveResult:
     """Remove ONE property line and EXACTLY the wrapped tail the parser attributes to its value
     (`parser._fold_continuation`): never a sub-bullet, ordered item, quote, table row, rule, heading or fence
@@ -1831,15 +2075,23 @@ def remove_property(
         meta = _meta(proposer=proposer, approver=approver, reason=reason, via=via, corpora=corpora,
                      engine_head=engine_head, ledger_roots=ledger_roots, corpora_error=corpora_error)
     except EditRefused as exc:
+        if (exc.evidence or {}).get("refusal") == UNREAD_TIME_CODE:
+            raise                         # its own fixed code, not an out-of-bounds metadata value
         raise _refuse("metadata_invalid", str(exc)) from None
     _check_common_args(node_id, key, line)
     if expect_value is not None and not isinstance(expect_value, str):
         raise _refuse("bad_argument", "`expect_value` must be a string or omitted. Nothing written.")
     if not isinstance(allow_edge_change, bool):
         raise _refuse("bad_argument", "`allow_edge_change` must be true or false. Nothing written.")
+    refuse_line_breaks(node_id=node_id, key=key, expect_value=expect_value)
 
     path, original, lines, eols, start0, end0, before_props = _open_node(path, node_id)
-    idx0, ordinal, n_lines, item, value = _resolve_key_line(lines, start0, end0, before_props, node_id,
+    minted = key in ENGINE_MINTED_KEYS
+    # An AUTHORED line of an engine-minted key (lint f9 reports it and tells the author to remove it) is a REPAIR the writer must be able to do. The gate's
+    # parsed-property identity leaves minted keys out (marking a section moves them for every node below it), so the LINE is located against the parser's
+    # full property set, and the whole-file gate then expects NO change in the identity: the parser re-mints the value, so the node still carries it.
+    resolve_props = _parsed_props(original, str(path), keep_minted=True) if minted else before_props
+    idx0, ordinal, n_lines, item, value = _resolve_key_line(lines, start0, end0, resolve_props, node_id,
                                                             key, line, "remove")
     if expect_value is not None and item != expect_value:
         raise _refuse("expect_value_mismatch",
@@ -1852,7 +2104,9 @@ def remove_property(
     candidate = _join(new_contents, eols[:idx0] + eols[end_rm:])
     _byte_gate(original, candidate, str(path), lines, eols, idx0)
 
-    if n_lines == 1:
+    if minted:
+        before, after, actual = _gate_coded(original, candidate, str(path), removed=frozenset(), before=before_props)
+    elif n_lines == 1:
         before, after, actual = _gate_coded(original, candidate, str(path), removed=frozenset({(node_id, key)}),
                                             before=before_props)
     else:
@@ -1878,10 +2132,10 @@ def remove_property(
         path=str(path), node_id=node_id, key=key, line_number=idx0 + 1, removed_lines=list(removed_lines),
         value_removed=item, remaining_value=after[node_id].get(key),
         properties_before=tuple(before[node_id]), properties_after=tuple(after[node_id]),
-        delta=actual, nodes_checked=len(before), backup_path=str(backup), edges_removed=removed,
+        delta=actual, nodes_checked=len(before), backup_path=_bp(backup), edges_removed=removed,
         edges_added=added, context=_quiet_context(new_contents, idx0),
         warnings=_mint_warnings(key, None, removed, added) + oob_warnings(last_ledger(), path),
-        ledger=last_ledger(), edge_check=edge_check)
+        ledger=last_ledger(), backup=last_backup(), edge_check=edge_check)
 
 
 # ---------------------------------------------------------------------------------
@@ -1897,20 +2151,20 @@ def add_node(
     *,
     section: str | None = None,
     level: int | None = None,
-    proposer: Optional[str] = None,
-    approver: Optional[str] = None,
-    reason: Optional[str] = None,
-    via: Optional[str] = None,
-    corpora: Optional[list] = None,        # adapter-only: membership at write time
-    engine_head: Optional[str] = None,     # adapter-only: the engine build stamp
-    ledger_roots: Optional[list] = None,   # adapter-only: registered roots a ledger must stay out of (L8)
-    corpora_error: Optional[str] = None,   # adapter-only: why `corpora` could not be resolved
+    proposer: str | None = None,
+    approver: str | None = None,
+    reason: str | None = None,
+    via: str | None = None,
+    corpora: list | None = None,        # adapter-only: membership at write time
+    engine_head: str | None = None,     # adapter-only: the engine and core-package build stamp
+    ledger_roots: list | None = None,   # adapter-only: registered roots a ledger must stay out of (L8)
+    corpora_error: str | None = None,   # adapter-only: why `corpora` could not be resolved
     create: bool = False,                  # [A-E1] make the FILE (exclusive create); default unchanged
     create_parent: bool = False,           # [A-E1] with `create`: make exactly ONE missing parent dir
-    doc_title: Optional[str] = None,       # [A-E1] frontmatter `title` (default: the node's title)
-    domain: Optional[str] = None,          # [A-E1] frontmatter `domain` (omitted when None)
-    doctype: Optional[str] = None,         # [A-E1] frontmatter `doctype` (omitted when None)
-    _create_state: Optional[dict] = None,  # adapter-only: a per-CALL holder the create path reports into
+    doc_title: str | None = None,       # [A-E1] frontmatter `title` (default: the node's title)
+    domain: str | None = None,          # [A-E1] frontmatter `domain` (omitted when None)
+    doctype: str | None = None,         # [A-E1] frontmatter `doctype` (omitted when None)
+    _create_state: dict | None = None,  # adapter-only: a per-CALL holder the create path reports into
 ) -> AddNodeResult:
     """Append a NEW node at the end of `section`'s subtree (or at end of document when
     `section` is None). Same gate: the whole-file parsed delta must be exactly the new
@@ -1920,6 +2174,9 @@ def add_node(
     per-file lock, holding frontmatter then this node. See `_create_node_file`."""
     meta = _meta(proposer=proposer, approver=approver, reason=reason, via=via, corpora=corpora,
                  engine_head=engine_head, ledger_roots=ledger_roots, corpora_error=corpora_error)
+    refuse_line_breaks(node_id=node_id, title=title, section=section, doc_title=doc_title, domain=domain,
+                       doctype=doctype)
+    refuse_line_breaks_in_properties(properties)
     if create_parent and not create:
         raise EditRefused("`create_parent` only means something with `create=True`. Nothing written.",
                           evidence={"refusal": "create_parent_needs_create"})
@@ -1931,14 +2188,15 @@ def add_node(
     if not path.is_file():
         raise EditRefused(f"{path} is not a file — nothing written.")
     original = _read_base(path)
-    lines = original.splitlines()
+    lines = split_source_lines(original)
 
     existing_spans = _parsed_spans(original, str(path))
     if node_id in existing_spans:
         raise EditRefused(
             f"[{node_id}] already exists in {path} (line {existing_spans[node_id][0]}). "
             f"A duplicate id collides in the graph. Use `set_property` to amend it, or "
-            f"choose another id. Nothing written."
+            f"choose another id. Nothing written.",
+            evidence={"refusal": "duplicate_node_id"},
         )
     if not re.fullmatch(r"[A-Z][A-Z0-9_\-]*", node_id):
         raise EditRefused(
@@ -1976,7 +2234,9 @@ def add_node(
 
     before, after, actual = _gate_new_node(
         original, candidate, str(path), node_id,
-        added=frozenset((node_id, k) for k, _, _ in coerced))
+        added=frozenset((node_id, k) for k, _, _ in coerced),
+        requested={k: v for k, v, _ in coerced},
+        values_code="gate_failed")          # the create path leaves it to _coded("create_gate_failed")
     warnings: tuple[str, ...] = ()
 
     heading0 = insert0 + 1
@@ -1988,21 +2248,24 @@ def add_node(
         heading_level=lvl, heading_line=heading0 + 1,
         properties=dict(after[node_id]),
         coercions={k: a for k, _, a in coerced if a},
-        delta=actual, nodes_checked=len(after), backup_path=str(backup),
+        delta=actual, nodes_checked=len(after), backup_path=_bp(backup),
         context=_context(lines2, heading0, radius=len(block) + 1),
         warnings=warnings + oob_warnings(last_ledger(), path), ledger=last_ledger(),
+        backup=last_backup(),
     )
 
 
 #: the refusal codes the create path itself emits (the SDLC X6 list). A create refusal whose code is NOT here is
 #: not one of ours (an injected or foreign EditRefused) and its message is never relayed.
 KNOWN_CREATE_CODES = frozenset({
+    "state-unavailable", "named-root-state-inside-corpus", "named-root-state-unprovable", "named-roots-malformed",
+    _ledger.ROOT_UNRESPONSIVE, _ledger.MEMBERSHIP_UNCONFIRMED, _ledger.CORPUS_VERDICT_PENDING,
     "create_file_exists", "create_parent_missing", "create_grandparent_missing", "create_parent_not_directory",
     "create_parent_needs_create", "create_section_unsupported", "create_ephemeral_root",
     "create_frontmatter_value", "create_frontmatter_lost", "create_argument_invalid", "create_node_id_invalid",
     "create_property_invalid", "create_gate_failed", "create_refused", "create_os_error",
     "create_unexpected_error", "create_outcome_unknown", "create_link_unsupported", "lock_busy",
-    "lock_unavailable"})
+    "lock_unavailable", "line_break_in_input", "non_string_value", UNREAD_TIME_CODE})
 
 CREATE_LINK_UNSUPPORTED_TEXT = (
     "this filesystem did not allow the no-overwrite hard link that `create` places the file with, and "
@@ -2024,7 +2287,7 @@ def _coded(code: str):
         raise
 
 
-def _fm_value(name: str, v: Optional[str], *, default: Optional[str] = None) -> Optional[str]:
+def _fm_value(name: str, v: str | None, *, default: str | None = None) -> str | None:
     """A frontmatter value must round-trip through the parser's one-line `key: value` field: no line
     breaks, not empty. None means 'omit the key' (or the default)."""
     if v is None:
@@ -2032,7 +2295,7 @@ def _fm_value(name: str, v: Optional[str], *, default: Optional[str] = None) -> 
     if v is None:
         return None
     v = str(v)
-    if "\n" in v or "\r" in v or not v.strip():
+    if _linebreaks.first_line_break(v) is not None or not v.strip():
         raise EditRefused(f"frontmatter `{name}` must be a single non-empty line (a multi-line or empty "
                           f"value cannot round-trip the parser's frontmatter field). Nothing written.",
                           evidence={"refusal": "create_frontmatter_value"})
@@ -2050,7 +2313,7 @@ class _LinkUnsupported(Exception):
     """The no-overwrite hard link could not be made (anything but EEXIST). Carries only an errno NAME (or the
     exception type) and, if the temp could not be removed, the TEMP path. Never the target."""
 
-    def __init__(self, what: str, leftover_temp: Optional[str] = None):
+    def __init__(self, what: str, leftover_temp: str | None = None):
         super().__init__(what)
         self.what, self.leftover_temp = what, leftover_temp
 
@@ -2065,7 +2328,7 @@ def _unlink_quiet(p) -> bool:
         return False
 
 
-def _create_exclusive(real: Path, data: bytes, state: Optional[dict] = None) -> None:
+def _create_exclusive(real: Path, data: bytes, state: dict | None = None) -> None:
     """Make `real` exist with exactly `data` through ONE primitive, or raise and leave nothing at `real`.
 
     The temp is O_EXCL in the target's directory; `os.link` onto the target is the atomic no-overwrite
@@ -2086,7 +2349,7 @@ def _create_exclusive(real: Path, data: bytes, state: Optional[dict] = None) -> 
     except BaseException:
         _unlink_quiet(tmp)                  # the call may have created the file before it raised
         raise
-    leftover: Optional[str] = None
+    leftover: str | None = None
     try:
         try:
             st = os.fstat(fd)
@@ -2215,7 +2478,8 @@ def _create_node_file(path, node_id, title, properties, *, meta, section, level,
 
     with _coded("create_gate_failed"):
         before, after, actual = _gate_new_node(
-            "", candidate, str(real), node_id, added=frozenset((node_id, k) for k, _, _ in coerced))
+            "", candidate, str(real), node_id, added=frozenset((node_id, k) for k, _, _ in coerced),
+            requested={k: v for k, v, _ in coerced})
     got_fm = parse_text(candidate, str(real)).frontmatter
     lost_fm = [k for k, v in fm if got_fm.get(k) != v]
     if lost_fm:
@@ -2226,7 +2490,7 @@ def _create_node_file(path, node_id, title, properties, *, meta, section, level,
     if state is not None:
         state.update(real=str(real))
     _bases()[str(real)] = None                  # the file did not exist: file_sha256_before = null
-    made_parent: Optional[str] = None
+    made_parent: str | None = None
     if need_parent:
         try:
             os.mkdir(parent, 0o755)
@@ -2277,12 +2541,19 @@ def _create_node_file(path, node_id, title, properties, *, meta, section, level,
 def _coerce_properties(properties: dict) -> list[tuple[str, str, list[str]]]:
     """Coerce every key BEFORE touching the file; refuse as a set, not one at a time.
     Returns [(key, value, coercions)]."""
+    not_text = [k for k, v in properties.items() if not isinstance(v, str)]
+    if not_text:
+        raise EditRefused(_non_string_message(f"the values of {not_text!r} are"),
+                          evidence={"refusal": NON_STRING_CODE, "field": str(not_text[0]),
+                                    "keys": [str(k) for k in not_text]})
     coerced: list[tuple[str, str, list[str]]] = []
     bad: list[str] = []
     for k, v in properties.items():
         fixed, applied = _coerce_key(k)
         if not re.fullmatch(_KEY_LEGAL, fixed):
             bad.append(_refusal_message(k, fixed, applied))
+        elif fixed in ENGINE_MINTED_KEYS:
+            refuse_reserved_key(fixed)
         elif not str(v).strip():
             bad.append(f"key {k!r} has an empty value; `- key:` is a nested-block head, "
                        f"not a property.")
@@ -2299,7 +2570,9 @@ def _coerce_properties(properties: dict) -> list[tuple[str, str, list[str]]]:
 
 
 def _gate_new_node(original: str, candidate: str, source_file: str,
-                   node_id: str, *, added: frozenset) -> tuple[dict, dict, dict]:
+                   node_id: str, *, added: frozenset,
+                   requested: dict | None = None,
+                   values_code: str | None = None) -> tuple[dict, dict, dict]:
     """Same VALUE-aware gate, one relaxation: the node SET is expected to gain exactly
     `node_id`. `added` is the (node_id, key) pairs the new node introduces; NOTHING on any
     existing node may be added, removed, or have its VALUE changed."""
@@ -2332,6 +2605,18 @@ def _gate_new_node(original: str, candidate: str, source_file: str,
                       "value_moves": value_moves,
                       "actual_delta": actual, "nodes_checked": len(after)},
         )
+    # THE VALUES GATE (maintainers' ruling of 2026-10-28): every property of the new node must come back from the parser
+    # as the value that was SENT (trimmed, as the parser trims). A value the parser cut short fails here even if the
+    # input check were bypassed.
+    for k, want in (requested or {}).items():
+        got = after[node_id].get(k)
+        if got != str(want).strip():
+            raise EditRefused(
+                f"the stored value of `{k}` on the new node [{node_id}] is not the requested one: the parser reads "
+                f"{got!r} where {str(want).strip()!r} was requested (a value cut short at a line break). "
+                f"Nothing written.",
+                evidence={"node_id": node_id, "key": k, "parsed_value": got, "requested_value": str(want).strip(),
+                          **({"refusal": values_code} if values_code else {})})
     return before, after, _delta(before, after)
 
 
@@ -2370,7 +2655,7 @@ def _refusal_message(raw: str, fixed: str, applied: list[str]) -> str:
     was = f"key {raw!r}" + (f" -> {fixed!r}" if applied else "")
     if fixed and fixed[0].isdigit():
         hint = (" The key begins with a DIGIT. Legalising it means INVENTING a prefix "
-                "(`doc-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not "
+                "(`fl-003-…`, `corpus-003-…`) and choosing one is AUTHORING, not "
                 "normalisation. Name the field yourself — this is the one class the "
                 "boundary deliberately will not decide for you.")
     elif not fixed:
@@ -2429,16 +2714,110 @@ def _backup_path(path: Path) -> Path:
                       f"to overwrite an existing backup. Nothing written.")
 
 
-def _write(path: Path, original: str, candidate: str, *, ctx: Optional[dict]) -> Path:
+BACKUP_KEEP_DEFAULT = 20
+# 20: the ledger (`[NODE-CHANGE-LEDGER]`) is the history; the backups are the short-term undo. Twenty full copies is
+# one working burst of edits to a file, and bounds a file's backups at 20 x its size (the measured case, a 1.5 MB
+# corpus file, was 4100 copies = 6.1 GiB in two days; at 20 it is 30 MB).
+_BACKUP_STAMP = r"\d{8}T\d{6}\.\d{6}"
+
+
+def _backup_keep() -> tuple[int | None, tuple[str, ...]]:
+    """(N, warnings) from `FACTLATTICE_BACKUP_KEEP`: an integer >= 1; unset, empty, or any integer that is 0 ("0",
+    "00") = the default;
+    `all` = None (no pruning, the old behaviour); anything else = the default, with a warning."""
+    raw = os.environ.get("FACTLATTICE_BACKUP_KEEP")
+    val = (raw or "").strip()
+    if val == "":
+        return BACKUP_KEEP_DEFAULT, ()
+    if val.lower() == "all":
+        return None, ()
+    if re.fullmatch(r"[0-9]{1,9}", val):
+        n = int(val)                                  # "0", "00", "000" ... all mean the default
+        return (n or BACKUP_KEEP_DEFAULT), ()
+    return BACKUP_KEEP_DEFAULT, ("FACTLATTICE_BACKUP_KEEP was not understood (the value is not echoed); using the "
+                                 f"default of {BACKUP_KEEP_DEFAULT} backups per file.",)
+
+
+def _prune_backups(path: Path, just_made: Path) -> tuple[str, ...]:
+    """Delete all but the newest N backups of THIS source file (`_backup_path`'s name: `<name>.<stamp>.<digest>
+    [.<n>].bak`, where the digest is of the path string). The source is matched on its exact name AND digest, and
+    the stamp must follow the name, so `a.lts` never matches `a.lts.old.lts`, `ab.lts`, or another directory's
+    `a.lts`. "Newest" means the newest LOCAL-CLOCK stamp in the name, then the uniquifier: after a clock step back
+    (a DST fall-back, an NTP step) the backups made in the repeated hour can rank below older ones and be pruned
+    first. The backup this write just made always survives. Never raises: a failure is a warning naming the error
+    class only (the write has already landed); a file another pruner removed first is not an error."""
+    keep, warns = _backup_keep()
+    if keep is None:
+        return warns
+    failed: set[str] = set()
+    try:
+        digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
+        rx = re.compile(re.escape(path.name) + r"\.(" + _BACKUP_STAMP + r")\." + digest + r"(?:\.([0-9]+))?\.bak")
+        base = backup_dir()
+        mine: list[tuple[str, int, str]] = []
+        with os.scandir(base) as it:
+            for e in it:
+                m = rx.fullmatch(e.name)
+                if m and e.is_file(follow_symlinks=False):
+                    mine.append((m.group(1), int(m.group(2) or 0), e.name))
+        mine.sort(reverse=True)                       # newest first: the stamp, then the uniquifier
+        for _stamp, _n, name in mine[keep:]:
+            if name == just_made.name:
+                continue
+            try:
+                os.unlink(base / name)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                failed.add(type(e).__name__)
+    except Exception as e:  # noqa: BLE001 -- retention must never turn a landed write into a failure
+        failed.add(type(e).__name__)
+    if failed:
+        warns += (f"backup pruning failed ({', '.join(sorted(failed))}); the write is unaffected and older backups "
+                  f"were kept. Retention is the newest {keep} per file (FACTLATTICE_BACKUP_KEEP).",)
+    return warns
+
+
+BACKUP_EPHEMERAL_ENV = "FACTLATTICE_BACKUP_EPHEMERAL"
+BACKUP_EPHEMERAL_SKIP = {"status": "skipped", "reason": "backup-skipped-ephemeral"}   # a CODE: the target is under an ephemeral root
+
+
+def _bp(backup: Path | None) -> str | None:
+    """The receipt's `backup_path`: the backup's path, or None when none was made."""
+    return None if backup is None else str(backup)
+
+
+def _backup_ephemeral_keep() -> bool:
+    """True only when $FACTLATTICE_BACKUP_EPHEMERAL is `keep` (any case, trimmed): the opt-in to a backup of a file under an
+    ephemeral root. Anything else, set or not, is the default: no backup there."""
+    return (os.environ.get(BACKUP_EPHEMERAL_ENV) or "").strip().lower() == "keep"
+
+
+def _write(path: Path, original: str, candidate: str, *, ctx: dict | None) -> Path | None:
     """Backup, then ATOMICALLY replace. The backup is part of the receipt: a reversal must not
-    require reconstructing the original from memory — see `backup_dir` for why it does NOT
-    live beside the original. The caller holds `_file_lock` (every writer is `_serialised`)."""
-    _preflight(Path(os.path.realpath(path)))
-    backup = _backup_path(path)
-    shutil.copy2(path, backup)
+    require reconstructing the original from memory -- see `backup_dir` for why it does NOT
+    live beside the original. The caller holds `_file_lock` (every writer is `_serialised`).
+
+    NO BACKUP for a file under an ephemeral root: the ledger's own predicate (`ledger.is_ephemeral`, the one that makes the
+    ledger skip the write -- never a second copy of it) decides. Whenever the backup is skipped the ledger skips too; the reverse is
+    not guaranteed (the ledger also skips when the named root's STATE folder is under temp, and that file keeps its backup). A scratch file is deleted with
+    its directory; its backup would be nobody's undo record, and would outlive it (94 GB, measured). Returns None then, and
+    `last_backup()` says why. `FACTLATTICE_BACKUP_EPHEMERAL=keep` restores the backup."""
+    real = Path(os.path.realpath(path))
+    _preflight(real)
+    if _ledger.is_ephemeral(real) and not _backup_ephemeral_keep():
+        backup = None
+        _LAST.backup = dict(BACKUP_EPHEMERAL_SKIP)
+        _LAST.prune_warnings = ()               # no backup, no retention to report (a stale one is another write's)
+    else:
+        backup = _backup_path(path)
+        _LAST.backup = None
+        shutil.copy2(path, backup)
     _sweep_stale_temps(path)
     _atomic_replace(path, candidate)      # no in-place truncate: a kill leaves the old or the new file
     if ctx is not None:                   # [NODE-CHANGE-LEDGER] inside the lock, right after os.replace
         _ledger_append(Path(os.path.realpath(path)),
-                       {**ctx, "original": original, "backup_path": str(backup)}, candidate)
+                       {**ctx, "original": original, "backup_path": _bp(backup)}, candidate)
+    if backup is not None:
+        _LAST.prune_warnings = _prune_backups(path, backup)    # last: the write has landed; a failure here is a warning
     return backup

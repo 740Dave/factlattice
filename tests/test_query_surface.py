@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from factlattice_engine import querylog, readprofile, server, tools
+
 try:                                   # absent at the pre-change commit: the tests that need it then FAIL
     from factlattice_engine import query_surface as qs
 except ImportError:                     # (the module is the feature), the rest fail on behaviour
@@ -144,7 +145,7 @@ def test_where_values_must_be_strings(eng, bad):
 
 # ============================================================ where (item 4)
 def test_planted_not_one_of_list_case(eng):
-    """[ZBA] not_one_of {a, b}: Y=[a,x] MUST be returned; Y=[a,b] must NOT; absent must NOT;
+    """not_one_of {a, b}: Y=[a,x] MUST be returned; Y=[a,b] must NOT; absent must NOT;
     scalar x returned; scalar a not. (A mapping carries no string value: not matched.)"""
     r = find(eng, prefix="Y-", where=[{"key": "ykey", "not_one_of": ["a", "b"]}])
     assert ids(r) == ["Y-LIST-AX", "Y-SCALAR-X"]

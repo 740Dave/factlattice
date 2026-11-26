@@ -4,7 +4,7 @@ id: "SELFCHECK:CTRL-DOC"
 domain: met.selfcheck
 audience: engine
 status: active
-created: 2025-06-02
+created: 2026-08-11
 ---
 # Parser self-verification control [SELFCHECK:CTRL-DOC]
 
@@ -37,7 +37,7 @@ created: 2025-06-02
 
 - provenance:
   authored_by: selfcheck
-  authored_at: 2025-06-02
+  authored_at: 2026-08-11
 
 ## [CASE-CONFIDENCE] SPEC 7.1 confidence mapping
 
@@ -46,7 +46,7 @@ created: 2025-06-02
   blast_radius: high
   rationale: measured against silent-loss-classes v4
   assessed_by: ui-architect
-  assessed_at: 2025-06-02T00:00:00Z
+  assessed_at: 2026-08-11T00:00:00Z
 
 ## [CASE-CONTEXT-FOR-CHANGE] SPEC 8.1 mapping with a KEYED invalidating_assumption
 
@@ -255,3 +255,31 @@ ENABLES: [CASE-P5-MAPPING] -> [CASE-CONTEXT-FOR-CHANGE]
 
 - applies-to: [CASE-REV-HOOK]
 - attaches-to: [CASE-REV-HOOK]
+
+## [CASE-NS-SECTION] SL-41 a section marked non-normative: everything below it is non-normative, with no override
+
+- normative: false
+
+### [CASE-NS-CHILD] SL-41 a descendant with no key inherits the state
+
+- status: active
+
+## [CASE-NS-STATEMENT] SL-41 a node carrying source-text is a source statement, non-normative inside a normative section
+
+- source-text: the words as they were said
+- source-locator: transcript line 1
+- source-kind: typed
+- source-role: stakeholder
+
+## [CASE-NS-GOAL] SL-41 restates mints a RESTATES edge to the source statement it restates
+
+- restates: [CASE-NS-STATEMENT]
+
+## [CASE-NS-CONFIRM] SL-41 a confirmation CONFIRMS one statement and is CHECKED_AGAINST the normative node
+
+- confirmation-of: [CASE-NS-STATEMENT]
+- checked-against: [CASE-NS-GOAL]
+- confirmation-verdict: confirmed
+- confirmation-by: reviewer
+- confirmation-date: 2026-11-15T21:40:01Z
+- confirmation-locator: transcript line 9

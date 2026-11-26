@@ -8,7 +8,6 @@ from __future__ import annotations
 from factlattice_engine.analytics.core import strip_inline_commentary
 from factlattice_engine.analytics.exemplifies import _diagnose
 
-
 # --------------------------------------------------------------------------
 # group_by — trailing inline commentary split 14 fixtures across 71 buckets
 # --------------------------------------------------------------------------

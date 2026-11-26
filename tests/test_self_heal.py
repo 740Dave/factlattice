@@ -53,11 +53,15 @@ import pytest
 import factlattice.hashing as _hashing
 from factlattice import build_index
 from factlattice_engine import (
-    ContentHashFreshness, FreshnessKernel, LtsEngine, LtsStore,
-    PollVerifiedFreshness, SelfHealer,
+    ContentHashFreshness,
+    FreshnessKernel,
+    LtsEngine,
+    LtsStore,
+    PollVerifiedFreshness,
+    SelfHealer,
 )
 from factlattice_engine.config import build_merged_partition, build_partition
-from factlattice_engine.incremental import CorpusIndex, CorpusMoved, RootIndex
+from factlattice_engine.incremental import CorpusIndex, RootIndex
 
 
 # ===========================================================================

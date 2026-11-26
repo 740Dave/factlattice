@@ -58,6 +58,7 @@ DESIGN NOTES
 from __future__ import annotations
 
 from .core import (
+    NONE_KEY,
     LtsAggregator,
     avg,
     build_default_tools,
@@ -82,7 +83,6 @@ from .core import (
     sum,
     top_by_degree,
     top_k,
-    NONE_KEY,
 )
 from .profile_audit import (
     NullProfileAdapter,

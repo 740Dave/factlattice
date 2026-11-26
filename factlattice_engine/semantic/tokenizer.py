@@ -1,7 +1,7 @@
 """Pure-Python BERT-uncased WordPiece tokenizer over a pinned `vocab.txt`.
 
 Why not HF `tokenizers`: it is not installed, and installing it is a second network act
-beyond the maintainer-approved one-time weight download (ISSUE-SEMANTIC-DESIGN
+beyond the maintainer-approved one-time weight download (LTS-SEMANTIC-QUERY-DESIGN-AND-BUILD-
 MODEL, gate a). Every candidate model declares the SAME pipeline in its `tokenizer.json`
 (BertNormalizer{clean_text, handle_chinese_chars, lowercase, strip_accents=None -> follows
 lowercase}, BertPreTokenizer, WordPiece{"##", max_input_chars_per_word=100, unk="[UNK]"},
@@ -17,7 +17,6 @@ which is not installed.
 from __future__ import annotations
 
 import unicodedata
-from typing import Dict, List, Tuple
 
 CLS, SEP, UNK, PAD = "[CLS]", "[SEP]", "[UNK]", "[PAD]"
 # Bump on ANY change to normalisation, pre-tokenisation or WordPiece here: it is part of every
@@ -82,10 +81,10 @@ def normalize(text: str) -> str:
     return "".join(c.lower() for c in s)   # per character, as Rust: no final-sigma context
 
 
-def pre_tokenize(text: str) -> List[str]:
+def pre_tokenize(text: str) -> list[str]:
     """BertPreTokenizer: split on whitespace (dropped) and punctuation (isolated)."""
-    words: List[str] = []
-    cur: List[str] = []
+    words: list[str] = []
+    cur: list[str] = []
     for ch in text:
         if _is_whitespace(ch):
             if cur:
@@ -103,17 +102,17 @@ def pre_tokenize(text: str) -> List[str]:
 
 class WordPieceTokenizer:
     def __init__(self, vocab_path: str):
-        with open(vocab_path, "r", encoding="utf-8") as fh:
+        with open(vocab_path, encoding="utf-8") as fh:
             tokens = [line.rstrip("\n") for line in fh]
-        self.vocab: Dict[str, int] = {t: i for i, t in enumerate(tokens)}
+        self.vocab: dict[str, int] = {t: i for i, t in enumerate(tokens)}
         for special in (CLS, SEP, UNK, PAD):
             if special not in self.vocab:
                 raise ValueError(f"vocab missing {special}")
         self.cls_id, self.sep_id = self.vocab[CLS], self.vocab[SEP]
         self.unk_id, self.pad_id = self.vocab[UNK], self.vocab[PAD]
-        self._cache: Dict[str, List[str]] = {}
+        self._cache: dict[str, list[str]] = {}
 
-    def _wordpiece(self, word: str) -> List[str]:
+    def _wordpiece(self, word: str) -> list[str]:
         hit = self._cache.get(word)
         if hit is not None:
             return hit
@@ -142,13 +141,13 @@ class WordPieceTokenizer:
             self._cache[word] = pieces
         return pieces
 
-    def tokenize(self, text: str) -> List[str]:
-        out: List[str] = []
+    def tokenize(self, text: str) -> list[str]:
+        out: list[str] = []
         for w in pre_tokenize(normalize(text)):
             out.extend(self._wordpiece(w))
         return out
 
-    def encode(self, text: str, max_len: int = 512) -> Tuple[List[int], int]:
+    def encode(self, text: str, max_len: int = 512) -> tuple[list[int], int]:
         """`([CLS] ids [SEP])` truncated to `max_len` INCLUDING the specials, plus the
         number of [UNK] pieces (so a caller can report an unk rate)."""
         pieces = self.tokenize(text)[: max_len - 2]

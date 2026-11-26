@@ -13,9 +13,7 @@ for the verdict) so that what is queried is what the reviewer produces, not a ha
 """
 from __future__ import annotations
 
-from tests._shapes import j as _j
 import os
-import shutil
 
 import pytest
 
@@ -23,6 +21,7 @@ from factlattice import ledger
 from factlattice_engine import config, reviewer
 from factlattice_engine.tools import LtsEngine, dispatch
 from tests import reviewer_contract as C
+from tests._shapes import j as _j
 
 NOW_KEY = "REVIEWED-20261007T120000Z-AB12"
 KEY2 = "REVIEWED-20261007T130000Z-CD34"
@@ -96,7 +95,7 @@ def world(tmp_path):
     reviewed.mkdir()
     (reviewed / "doc.lts").write_text("# Doc [SPEC:HOSTDOC]\n\n## [HOST-A] A claim\n\n- claim: it works\n\n"
                                       "## [HOST-B] Another\n\n- claim: it also works\n- source: a test\n")
-    reviews = tmp_path / "lts-reports"
+    reviews = tmp_path / "example-reviews"
     reviews.mkdir()                       # the OUTPUT ROOT exists (go-live makes it); create_parent makes only the corpus folder
     folder = reviews / "reviewed"
     p_pass = write_review(folder, NOW_KEY, findings=[("reviewed:HOST-A", "major", "factlattice-reviewer:REVRULE-GEN-3"),
@@ -106,14 +105,14 @@ def world(tmp_path):
     p_unrev = write_review(folder, KEY3, stop=True)
     eng = LtsEngine(config.build_store({
         "reviewed": {"roots": [{"path": str(reviewed), "area": None}], "domain_suffix": "r"},
-        "lts-reports": {"roots": [{"path": str(reviews), "area": None}], "domain_suffix": "rv",
+        "example-reviews": {"roots": [{"path": str(reviews), "area": None}], "domain_suffix": "rv",
                         "profile": reviewer.PROFILE_PATH}}))
     return {"eng": eng, "tmp": tmp_path, "reviewed": reviewed, "reviews": reviews, "folder": folder,
             "pass": p_pass, "inprog": p_inprog, "unrev": p_unrev}
 
 
 def find(world, **kw):
-    r = dispatch("lts_find", {"corpus": "lts-reports", **kw}, tools=world["eng"])
+    r = dispatch("lts_find", {"corpus": "example-reviews", **kw}, tools=world["eng"])
     assert r["success"], r
     return r
 
@@ -139,8 +138,8 @@ def test_forward_a_recorded_hash_equal_to_the_nodes_is_fresh_and_a_change_makes_
                                       "key": "about-node-hash", "value": h}, tools=None)
     assert r["success"]
     eng = LtsEngine(config.build_store({"reviewed": {"roots": [{"path": str(world["reviewed"]), "area": None}], "domain_suffix": "r"},
-                                        "lts-reports": {"roots": [{"path": str(world["reviews"]), "area": None}], "domain_suffix": "rv"}}))
-    f = dispatch("lts_find", {"corpus": "lts-reports", "prefix": f"REVFINDING-{NOW_KEY}-1"}, tools=eng)["nodes"][0]
+                                        "example-reviews": {"roots": [{"path": str(world["reviews"]), "area": None}], "domain_suffix": "rv"}}))
+    f = dispatch("lts_find", {"corpus": "example-reviews", "prefix": f"REVFINDING-{NOW_KEY}-1"}, tools=eng)["nodes"][0]
     assert f["properties"]["about-node-hash"] == h
     (world["reviewed"] / "doc.lts").write_text((world["reviewed"] / "doc.lts").read_text().replace("it works", "it fails"))
     eng2 = LtsEngine(config.build_store({"reviewed": {"roots": [{"path": str(world["reviewed"]), "area": None}], "domain_suffix": "r"}}))
@@ -267,7 +266,7 @@ def test_the_gate_fails_closed_against_an_old_server_that_ignores_path(world):
         a = dict(args)
         if tool == "lts_find":
             a.pop("path", None)                       # the old server ignores it
-            a["corpus"] = "lts-reports"
+            a["corpus"] = "example-reviews"
         return dispatch(tool, a, tools=world["eng"])
     g = reviewer.self_gate(str(world["pass"]), old)
     assert g["passed"] is False and {c["name"]: c["ok"] for c in g["checks"]}["path-find-proof"] is False
@@ -280,7 +279,7 @@ def test_severity_counts_parser():
 
 
 def test_the_review_is_connected_by_part_of_so_lts_traverse_can_walk_it(world):
-    ids = [n["id"] for n in find(world, prefix=f"REV", where=[{"key": "part-of", "has": True}])["nodes"]]
+    ids = [n["id"] for n in find(world, prefix="REV", where=[{"key": "part-of", "has": True}])["nodes"]]
     assert f"REVFINDING-{NOW_KEY}-1" in ids and f"REVCHECK-{NOW_KEY}-1" in ids and f"REVPROV-{NOW_KEY}-1" in ids
 
 
@@ -349,7 +348,7 @@ def test_a_review_with_a_planted_secret_in_an_evidence_value_fails_the_gate_with
 
 def test_the_reviews_own_legitimate_values_do_not_trip_the_scan(world):
     path = world["pass"]
-    for key, val in (("evidence", "see DEC-ACME-ARCHIVE-FILES-ARE-READ-ONLY-2027-03-14 and commit 09b80e9"),
+    for key, val in (("evidence", "see DEC-LIB-STORED-DATA-IS-A-PROTECTED-TEMPLATE-2026-10-02 and commit 09b80e9"),
                      ("about-node-hash", "sha256:" + "ab" * 32), ("hash", "sha256:" + "cd" * 32),
                      ("reviewed-document", "/Users/you/projdata/reports/some_long_directory_name_2026-09-12/doc.lts"),
                      ("evidence-lines", "12-14"),

@@ -125,7 +125,7 @@ def test_refuses_where_correcting_needs_a_choice(doc, authored, must_mention):
 
 def test_never_modifies_anything_past_the_first_colon(doc):
     """Values legitimately hold mixed-case identifiers, sha digests and pictographs."""
-    value = "⛔ ExampleStatusNotMet FIXED_12 sha256:9f8Ab3 — 98.40%, not 91.0%"
+    value = "⛔ RegistrationQualityNotMet FIXED_20 sha256:9f8Ab3 — 99.07%, not 94.0%"
     r = set_property(doc, "AUTH-FIX-TWO", "⚠ Finding", value)
     assert r.key == "finding"
     assert r.parsed_value == value, "the value must survive the round trip byte for byte"
@@ -606,7 +606,7 @@ def test_falsifier_reports_the_shipped_lint_s_recall_gap(tmp_path):
 
 
 def test_falsifier_tiers_are_stable_and_documented(tmp_path):
-    from factlattice_engine.property_loss import scan_text, TIER_A, TIER_B
+    from factlattice_engine.property_loss import TIER_A, TIER_B, scan_text
     by_key = {f.key_region: f for f in scan_text(LOSSY, "l.lts")}
     assert by_key["⚠ premise"].tier == TIER_A            # coerces cleanly -> `premise`
     assert by_key["worked example"].tier == TIER_A       # spaces -> hyphens
@@ -643,7 +643,7 @@ def test_falsifier_excludes_outside_node_body_from_the_headline(tmp_path):
     cannot fix it (there is no node to address). Folding it into the headline would
     guarantee a flat trend and a false verdict of 'the diagnosis was wrong'.
     """
-    from factlattice_engine.property_loss import scan_text, TIER_C, HEADLINE_TIERS
+    from factlattice_engine.property_loss import HEADLINE_TIERS, TIER_C, scan_text
     findings = {f.key_region: f for f in scan_text(OUTSIDE_BODY, "o.lts")}
     assert findings["source-file"].tier == TIER_C
     assert findings["source-file"].tier not in HEADLINE_TIERS
@@ -661,7 +661,7 @@ def test_corroboration_needs_a_corpus_wide_vocabulary(tmp_path):
     live files, because a key lost on its only use in a file has no surviving sibling
     THERE. The signal exists only corpus-wide. Pinned so the scope cannot silently
     narrow again."""
-    from factlattice_engine.property_loss import scan_corpus, scan_text, corroborate
+    from factlattice_engine.property_loss import corroborate, scan_corpus, scan_text
 
     lossy = "---\ndomain: d\n---\n# A [SPEC:A]\n\n- kind: root\n- ⚠ premise: lost here\n"
     healthy = "---\ndomain: d\n---\n# B [SPEC:B]\n\n- premise: parsed fine over here\n"

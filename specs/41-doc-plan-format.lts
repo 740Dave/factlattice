@@ -1,0 +1,1671 @@
+---
+lts: "1.1"
+title: The doc-plan format: documentation generated from specs, with every sentence traced to a spec node
+domain: MET.FACTLATTICE
+doctype: SPEC
+---
+
+# The doc-plan format: documentation generated from specs, with every sentence traced to a spec node [FL-DOC-PLAN]
+
+- status: draft
+- x-created: 2026-11-16
+- scope: A document, the doc plan, states how one audience's human documentation is generated from a project's specs: which sections, in what order, from which spec nodes selected by query, in what voice and at what reading level, with which static assets and visuals. It also fixes the grammar the generated Markdown uses to point back at the spec nodes it came from, and what the generated FOR-LLMS.md must hold. Each audience has its own source spec and its own plan.
+- boundary: This file defines the plan's nodes and keys, the citation and anchor grammar in generated Markdown, the style profile and its default banned patterns, the reading-level key and its check, the two forms of the visual node, and the shape of FOR-LLMS.md. It does not define the writer agent or the steps it follows, and it does not define the software-development extension. The format does not generate anything: a plan is data, and a program or an agent reads it.
+- not-this: Not a template language and not a build system. Not a summary of the specs: the generated text is written by an agent, and the plan only says where each part comes from. Not specific to one project, one product or one language. Not a new core key table: the new keys belong to a domain profile, and until that profile is declared a strict document that uses them is told so.
+- rationale: Documentation written from specs by hand or by a general-purpose agent drifts from them release by release, changes shape between releases, and mixes what the specs require with what someone remembered. A plan makes the structure a reviewable, versioned document, and the citations make every sentence auditable against its source.
+- x-depends-on-spec: Spec 39 (FL-NORMATIVE-SOURCE) defines normative content, source statements and the normative_effective value that this format reads. Spec 40 (FL-PROFILES) defines the profile mechanism that declares this format's keys, id prefixes and document tag. Neither is restated here.
+- x-authority: Requirement: the stakeholder's requests restated in the goals below, whose words are kept in [SRC-DP-STATEMENTS]. Each goal's x-whose says which parts are his and which are the authors'. The lint and banned-pattern severities, the heading level range, the language-tag and language-path conventions, the release state, the figures list of a gated plan and the shape of dp-survey-audiences are the authors' design and are decisions of this file's authors, not his words. That a survey recommends the audience documents a project should have is his request, in [SRC-DP-SURVEY]. The design, the key names, the grammar, the default banned-pattern list and the thresholds are the architects' judgement and are not derived from those words; each such choice is marked as a decision or as an open item. A requirement that carries x-origin is the authors' design as its x-origin says, and is not marked as a decision or as an open item. The product owner confirmed two readings of the request, that each audience has its own source spec and its own plan and that the generated FOR-LLMS.md stays in the LTS shape inside a Markdown file: see [SRC-DP-CONFIRM-READINGS].
+- x-not-built: Everything in this file. No profile declares the keys, no lint implements the checks and no generator reads a plan yet ([PLAN-DP]). The default patterns of [BANNED-DEFAULTS] carry their data keys as x-dp-* until the profile ships, so this file lints without errors on the current engine.
+- x-applies-itself: This file follows spec 39's rule. The stakeholder's words appear only in the nodes under [SRC-DP-STATEMENTS], a section marked non-normative, each with a locator. Every goal restates one or more of them in the authors' words and links to them. Where a goal also holds the authors' design, its x-whose says which part.
+- see-also: [TRACE-DP], [PLAN-DP], [OPEN-DP-DEPENDENCIES], [OPEN-DP-PUBLISH-BEYOND-DOCS]
+
+## Goal: a project's documentation is generated from its specs, with the same structure every release [GOAL-DP-GENERATED-FROM-SPECS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G1
+- x-goal: A project's human documentation is generated from its specs. The structure, and the sources of static content such as a logo, are defined once, in a document that is not the specs and not the output, and every release uses the same structure; the content changes release by release as the specs change.
+- x-whose: The stakeholder's request, typed. The goal restates it; the words are in [SRC-DP-STRUCTURE] and [SRC-DP-SAME-STRUCTURE].
+- restates: [SRC-DP-STRUCTURE], [SRC-DP-SAME-STRUCTURE]
+
+## Goal: documentation is organised by audience, each audience with its own source spec and plan [GOAL-DP-BY-AUDIENCE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G2
+- x-goal: Documentation is organised by audience. For one project, installing and using the software is one spec and writing specs for it is another; each audience has its own source spec and its own doc plan, and the output is Markdown in the repository's docs folder.
+- x-whose: The stakeholder's request, typed, and his confirmation of the reading that each audience has its own source spec and plan. The goal restates both; the words are in [SRC-DP-BY-AUDIENCE] and [SRC-DP-CONFIRM-READINGS].
+- restates: [SRC-DP-BY-AUDIENCE], [SRC-DP-CONFIRM-READINGS]
+
+## Goal: the generator reads the specs directly, and only their normative part is a source [GOAL-DP-SPEC-SOURCES]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G3
+- x-goal: The source LTS files are read directly by the generator and not through a summary. Only the normative part of a spec is a source; what a stakeholder said, and the existing documents, are not.
+- x-whose: The first sentence is the stakeholder's suggestion, typed, restated from [SRC-DP-READ-DIRECT]. The second sentence is the authors' design, resting on spec 39 and on the rule that an old document is evidence of what readers needed and not a source of claims; no source statement carries it.
+- restates: [SRC-DP-READ-DIRECT]
+
+## Goal: the reasons behind a project's design are drawn from its specs [GOAL-DP-WHY-FROM-SPECS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G4
+- x-goal: The explanation of why a project is built as it is comes from goals and requirements in its specs. Where a spec lacks them, they are recovered into the spec first, marked as recovered for the owner to confirm, and only then used by a document.
+- x-whose: The stakeholder's request, typed, restated from [SRC-DP-WHY-IN-SPECS]. That recovered goals are marked recovered is the authors' design, since code shows what a program does and not why.
+- restates: [SRC-DP-WHY-IN-SPECS]
+
+## Goal: existing documents are surveyed, and what is valuable in them is kept [GOAL-DP-SURVEY-AND-FOLD]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G5
+- x-goal: Before anything is replaced, the existing documents of a repository are surveyed and each gets a recommendation to keep, drop or fold, with a reason; the survey also recommends the audience documents the project should have. What is valuable in a document marked fold is carried into the generated documentation.
+- x-whose: The stakeholder's request, typed, restated from [SRC-DP-SURVEY] (which includes the recommendation of installer, user and other audience documents), and his naming of the project's existing documents as the best test case, in [SRC-DP-WHY-IN-SPECS]. What the test case is a test of is the authors' reading, that it is the survey's acceptance input; his words do not say, and his confirmation is pending: [OPEN-DP-TEST-CASE-MEANING]. That test case is carried by [SCEN-DP-TEST-CASE-EXISTING-DOCS]. Where folded content lands is the authors' design: a reason becomes a goal or requirement in a spec, and a tutorial, example or walkthrough becomes an authored node of the plan.
+- restates: [SRC-DP-SURVEY], [SRC-DP-WHY-IN-SPECS]
+- see-also: [OPEN-DP-TEST-CASE-MEANING]
+
+## Goal: every project gets a FOR-LLMS.md that serves two roles and stays in the LTS shape [GOAL-DP-FOR-LLMS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G6
+- x-goal: Every project documented this way gets a FOR-LLMS.md. One document lets an LLM learn what the software does and why, well enough to tell a human whether to use it and where to go for technical detail; and it holds what an agent needs to write install instructions or to install and validate the software. Generation never drops the install role. The file stays LTS-shaped inside a Markdown file.
+- x-whose: The overview role, the install role and the file's present form are the stakeholder's words, typed, restated from [SRC-DP-FOR-LLMS-EXISTS], [SRC-DP-AGENTS-PARSE-LTS], [SRC-DP-INSTALL-ROLE], [SRC-DP-FOR-LLMS-ROLE] and [SRC-DP-FOR-LLMS-COLD]. His test, that a reader given only the file can say how the software would or would not help a named project and where to go for detail, is in [SRC-DP-FOR-LLMS-COLD] and is carried by [SCEN-DP-FOR-LLMS-COLD-AGENT]. His confirmation that the file stays LTS-shaped is [SRC-DP-CONFIRM-READINGS]. That the install role is never dropped by generation is the authors' reading of [SRC-DP-INSTALL-ROLE].
+- restates: [SRC-DP-FOR-LLMS-EXISTS], [SRC-DP-AGENTS-PARSE-LTS], [SRC-DP-INSTALL-ROLE], [SRC-DP-FOR-LLMS-ROLE], [SRC-DP-FOR-LLMS-COLD], [SRC-DP-CONFIRM-READINGS]
+
+## Goal: the format serves any project and any language [GOAL-DP-ANY-PROJECT]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G7
+- x-goal: Nothing in the format is specific to one project, product or language. The target languages are asked for and recorded, only English is produced for now, and language is a parameter throughout so that adding one later is a run and not a redesign.
+- x-whose: The language rule is the stakeholder's request, typed, restated from [SRC-DP-LANGUAGES] and [SRC-DP-MULTILINGUAL]. That language is a parameter throughout, so that adding one is a run and not a redesign, is the authors' design (the default offered to him in the design session); he typed a different answer, which is [SRC-DP-LANGUAGES]. That nothing in the format may be specific to one project is the authors' inference from his two later turns, [SRC-DP-SECOND-CONSUMER] and [SRC-DP-FIRST-RUN-ON-OTHER-PRODUCT], which name a second product as the next consumer. Neither turn says any project.
+- restates: [SRC-DP-LANGUAGES], [SRC-DP-MULTILINGUAL], [SRC-DP-SECOND-CONSUMER], [SRC-DP-FIRST-RUN-ON-OTHER-PRODUCT]
+
+## Goal: the documentation has a chosen voice and a chosen reading level, and neither is a default assistant voice [GOAL-DP-STYLE-AND-LEVEL]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G8
+- x-goal: A plan names a documentation style, for example corporate or casual, and a target reader education level, and records both. No style sounds like a general-purpose assistant's default voice.
+- x-whose: The stakeholder's request, typed, restated from [SRC-DP-STYLES] and [SRC-DP-EDUCATION]. His turn gives corporate and casual as examples with a marker for the first word (eg), so the set of styles is open. The voice he excludes is a named model's; the elided name is a model's name, and the goal's wording, a general-purpose assistant's default voice, is the authors' reading. That the plan holds the reading level is the authors' reading of the reference file he names, and his confirmation is pending: [OPEN-DP-READING-LEVEL-HOME]. That a lint and a cold reader check the voice, that a readability score checks the level, and that those checks report as errors are the authors' design.
+- restates: [SRC-DP-STYLES], [SRC-DP-EDUCATION]
+
+## Goal: the generator makes the visuals it can make and recommends the ones it cannot [GOAL-DP-VISUALS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G9
+- x-goal: The generator creates the visuals a language-model instance can produce itself, such as diagrams and charts, and recommends where visuals should appear, including ones it cannot make. The format does not require a screenshot of every dialog or callouts on screenshots.
+- x-whose: The stakeholder's request and its later clarification, typed, restated from [SRC-DP-VISUAL-RECOMMEND], [SRC-DP-VISUAL-CORRECTION] and [SRC-DP-VISUAL-LIMIT]. His limit is what a model instance could generate; the formats that satisfy it are the authors' reading, stated in [DD-DP-VISUAL-FORMATS-OPEN]. The citation of the nodes a visual depicts and the two forms of the node are the authors' design.
+- restates: [SRC-DP-VISUAL-RECOMMEND], [SRC-DP-VISUAL-CORRECTION], [SRC-DP-VISUAL-LIMIT]
+
+## Goal: each release can be reviewed as a diff, and a section keeps its identity across releases [GOAL-DP-REVIEWABLE-RELEASES]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: G10
+- x-goal: Each release's documents can be reviewed as a diff against the previous release's, every changed section naming the spec nodes it came from, and a cold check of coverage and invention can run before the operator sees it. A section's identity is stable across releases.
+- x-whose: Two parts. The diff against the previous release, each changed section naming the spec nodes it came from, with a cold audit of coverage and invention before the stakeholder sees it, and the definition of done as a newcomer installing and using the software from the generated documents alone, are the stakeholder's selection of two options the assistant wrote: [SRC-DP-SELECTED-DONE]. A selection is not his words. Paragraph-level citation and stable section ids are the authors' addition. His wish for the same structure release by release, in [SRC-DP-SAME-STRUCTURE], supports stable sections.
+- restates: [SRC-DP-SELECTED-DONE], [SRC-DP-SAME-STRUCTURE]
+
+## Source statements (non-normative) [SRC-DP-STATEMENTS]
+
+- part-of: [FL-DOC-PLAN]
+- normative: false
+- x-note: Everything in this section, and below it, is non-normative. It records what was said, as contiguous excerpts of the stakeholder's turns in one design session; the locator names the whole turn. An excerpt is verbatim, byte for byte from the transcript record, including its typing slips and its doubled spaces. Where a turn names a person, an agent, a model or a product of another project, the excerpt either stops short of the name, begins after it, or replaces the name with the marker [...], so that the elision is visible; no other word is replaced. It is never read as a requirement, an acceptance criterion or a test target.
+
+### Source statement: a file that defines the structure of the documentation and the static content [SRC-DP-STRUCTURE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: I'm thinking we need some form of interstitial LTS file that defines the structure of the documentation to be written - e.g. human-user documentation - and perhaps even sources of static content (e.g. [...] logo)
+- source-locator: design-session transcript, line 23913, 2026-11-16T03:13:19.620Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the same structure every release [SRC-DP-SAME-STRUCTURE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: consistently generate information with the same structure, updating release by release by release.
+- source-locator: design-session transcript, line 23913, 2026-11-16T03:13:19.620Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: read the source LTS files directly into the generator [SRC-DP-READ-DIRECT]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: For documentation from specs, consider too reading the source LTS files direct into the the generator
+- source-locator: design-session transcript, line 23927, 2026-11-16T03:22:19.316Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: a specific agent, since someone may want documentation in several languages [SRC-DP-MULTILINGUAL]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: Worth considering creating a specific agent for this purpose as someone could, in theory, want multi-lingual documentation.
+- source-locator: design-session transcript, line 23927, 2026-11-16T03:22:19.316Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the existing FOR-LLMS.md is LTS in a Markdown file [SRC-DP-FOR-LLMS-EXISTS]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: The public repo already has a "FOR-LLMS.md" file that is really LTS masquerading as MD
+- source-locator: design-session transcript, line 23927, 2026-11-16T03:22:19.316Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: one spec per audience, and Markdown in the docs folder [SRC-DP-BY-AUDIENCE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: Agree, installing and using lts-engine is one spec, writing LTS specs is another.  Agree, markdown in the repo's docs.
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the why belongs in the specs, and the existing docs are the test case [SRC-DP-WHY-IN-SPECS]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: The "why" should be in the LTS specs for FactLattice as goals and requirements; we very likely don't have these now, we should create them using our most recent specs-from-code tooling if required.  I think the existing 72 files in docs is the best test case possible.
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: look at the existing documentation and recommend keep or drop, then fold [SRC-DP-SURVEY]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: to be thoughtful enough to look at a repo, look at any extant documentation, and recommend what to keep/drop, and then fold any valuable existing content into the replacement documentation that it generates.  So it should be able to make the recommendation for installer/user docs and other audience-specific suggestions.
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: always generate a FOR-LLMS.md [SRC-DP-FOR-LLMS-ROLE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: But in all cases, it should generate a FOR-LLMS.md file that does what the current one does (provides an LLM an overview of what the software does to help a human decide whether to download/use it
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: what a reader of that one document must be able to answer [SRC-DP-FOR-LLMS-COLD]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: imagine that you, [...], were pointed at FactLattice's FOR-LLMS.md file - you'd be asked how it would or wouldn't help development of [...], or [...]; you'd need to know enough about what it does and why from reading that one doc, and where to go to get additional tech details).
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: ask for languages interactively, English only for now [SRC-DP-LANGUAGES]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: The agent should ask for languages interactively, but English only for now.
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: two or more documentation styles, and neither the default voice [SRC-DP-STYLES]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: I think the agent should have a couple of different documentation writing styles, eg corporate/casual (with FactLattice as the latter). And neither should sound like [...]'s default speaking style.
+- source-locator: design-session transcript, line 24305, 2026-11-16T03:52:21.009Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: a target education level, recorded in the reference file [SRC-DP-EDUCATION]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: A target education level for the reader should also be asked by the agent and embedded in the reference file created by the agent.
+- source-locator: design-session transcript, line 24305, 2026-11-16T03:52:21.009Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: no screenshot of every dialog, but recommend where visualizations should appear [SRC-DP-VISUAL-RECOMMEND]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: this documentation agent need not screenshot every dialog nor create callout overlays on the screenshots. But I would like it to make recommendations for where visualizations should appear.
+- source-locator: design-session transcript, line 24305, 2026-11-16T03:52:21.009Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the generator was not prevented from adding graphics [SRC-DP-VISUAL-CORRECTION]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: I didn't mean to prevent the doc writer from adding graphics or visualizations. The documentation in the FactLattice repo has some visuals that were agentically created without my explicit instruction.
+- source-locator: design-session transcript, line 24338, 2026-11-16T03:57:35.830Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: both readings are fine [SRC-DP-CONFIRM-READINGS]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: Both readings are fine, go ahead.
+- source-locator: design-session transcript, line 24282, 2026-11-16T03:39:10.111Z
+- source-kind: typed
+- source-role: product owner
+- x-note: The turn answers a question that offered two readings: that each audience has its own source spec and its own plan, and that the generated FOR-LLMS.md stays LTS-shaped inside a Markdown file. The words alone do not name the readings; the question is not part of this statement. The two goals that rest on it ([GOAL-DP-BY-AUDIENCE], [GOAL-DP-FOR-LLMS]) therefore carry the readings in their own words.
+
+### Source statement: everything an agent needs to write install instructions or to install and validate, in one file [SRC-DP-INSTALL-ROLE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: everything that the agent needs to know to *either* generate human-readable install instructions or simply go ahead and offer to do the install and validate it should be in the file.
+- source-locator: design-session transcript, line 23913, 2026-11-16T03:13:19.620Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: agents can parse LTS [SRC-DP-AGENTS-PARSE-LTS]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: And agents can parse LTS just fine - I've pointed [...] at it and it has no problem interpreting the content.
+- source-locator: design-session transcript, line 23927, 2026-11-16T03:22:19.316Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the guidance on graphics was about what a model instance can generate [SRC-DP-VISUAL-LIMIT]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: I only meant to provide guidance on graphics that were within the realm of what a [...] instance could generate.
+- source-locator: design-session transcript, line 24338, 2026-11-16T03:57:35.830Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the work will be useful for another product's documentation [SRC-DP-SECOND-CONSUMER]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: it actually will be useful for documentation I need to generate for [...] product.
+- source-locator: design-session transcript, line 24130, 2026-11-16T03:35:44.841Z
+- source-kind: typed
+- source-role: product owner
+- x-note: The turn begins with other words that are not about the format and are not excerpted.
+### Source statement: a first run on a second product once the writer is blessed [SRC-DP-FIRST-RUN-ON-OTHER-PRODUCT]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: I'd specifically like [...] to try it on [...] when it's blessed by you and [...].
+- source-locator: design-session transcript, line 24180, 2026-11-16T03:36:34.196Z (the queued_command attachment of the message typed while the assistant was working, marked as a human turn; its queue record is line 24161)
+- source-kind: typed
+- source-role: product owner
+### Source statement: agreement to two of the numbered questions [SRC-DP-SELECTED-DONE]
+
+- part-of: [SRC-DP-STATEMENTS]
+- source-text: Agree on your #5 and #7.
+- source-locator: design-session transcript, line 24071, 2026-11-16T03:33:16.342Z
+- source-kind: selected
+- source-role: product owner
+- source-option-author: assistant
+- x-option-5: The option's wording, written by the assistant at line 23984 of the same transcript and not the stakeholder's: you see a diff against the previous release, with each changed section citing the spec nodes behind it. A cold audit has already checked coverage and invention before it reaches you.
+- x-option-7: The option's wording, written by the assistant at line 23984: the first [...] release where a newcomer installs and uses [...] from the generated docs alone, the same clean-room test as the install.
+
+## Requirement: a plan is one document for one audience and names exactly one source spec [REQ-DP-PLAN-PER-AUDIENCE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R1
+- implements: [GOAL-DP-BY-AUDIENCE], [GOAL-DP-GENERATED-FROM-SPECS]
+- verified-by: [SCEN-DP-ONE-PLAN-ONE-SPEC], [SCEN-DP-PLAN-MISSING-KEY], [SCEN-DP-TWO-AUDIENCES], [SCEN-DP-ALSO-FROM], [SCEN-DP-LANGUAGE-TAG-MALFORMED], [SCEN-DP-PLAN-TWO-PLAN-NODES], [SCEN-DP-SOURCE-SPEC-UNRESOLVED]
+- see-also: [DD-DP-ONE-SPEC-PER-PLAN], [MECH-DP-PROFILE], [OPEN-DP-ALSO-FROM]
+- x-rule: A doc plan is one LTS document of document tag DOCPLAN, and it has exactly one plan node (kind plan). The plan serves exactly one audience. The audience's source spec is one spec root node, named by the plan. Two audiences are two plan documents and two source specs, which may live in one corpus.
+- x-plan-keys: The plan node carries: dp-kind: plan (required); dp-audience, a lowercase token naming the audience, such as user or spec-author (required); dp-source-spec, one reference of the form corpus:NODE-ID naming the source spec's root node (required, exactly one); dp-languages, a list of BCP 47 language tags with the primary language first (required, at least one); dp-output-dir, the directory the generated files go in, relative to the repository root (default docs/); dp-reader-education, free text naming the target reader's education level as the requester gave it (required); dp-publication, public or internal (required, no default, [REQ-DP-PUBLIC-NO-PRIVATE]); dp-output-form, markdown or lts-in-md (default markdown; lts-in-md is for FOR-LLMS.md, [REQ-DP-FOR-LLMS]); dp-coverage-query ([REQ-DP-COVERAGE]); dp-reading-target, dp-reading-formula and dp-reading-tolerance ([REQ-DP-READING-LEVEL]); dp-banned-rev-seen ([REQ-DP-BANNED-DEFAULTS]); dp-claims-gate ([REQ-DP-CLAIMS-GATE]). The plan carries exactly one style node as a child ([REQ-DP-STYLE-PROFILE]).
+- x-also-from: dp-also-from is optional and repeatable: further spec roots, as corpus:NODE-ID, that sections may draw from in addition to the source spec. A plan whose audience is one project-wide overview, such as the plan for FOR-LLMS.md, uses it to reach the audience specs. A plan that uses it states in a note why. See [OPEN-DP-ALSO-FROM].
+- x-subtree: A spec's content is the spec root node and every node whose part-of chain reaches it (the parent-section chain the parser records for each node).
+- x-lint: A missing required key is an ERROR naming the key, except a missing dp-publication, which is reported as publication_undeclared and not as plan_missing_key (R20, [REQ-DP-PUBLIC-NO-PRIVATE]). A second dp-source-spec value, or a dp-source-spec that does not resolve to a node, is an ERROR. A document with two plan nodes is an ERROR. dp-languages holding a value that is not a well-formed BCP 47 tag is an ERROR naming the value.
+- x-defaults: dp-output-dir is docs/ and dp-output-form is markdown. No other plan key has a default except where its own requirement states one: a missing value is a finding and is never filled in, because a style, a level or a language chosen by the tool and not by the requester is the guess this format exists to prevent.
+
+## Requirement: a section has a stable id, an order, and sources selected by query [REQ-DP-SECTIONS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R2
+- implements: [GOAL-DP-GENERATED-FROM-SPECS], [GOAL-DP-REVIEWABLE-RELEASES]
+- verified-by: [SCEN-DP-QUERY-NORMATIVE-ONLY], [SCEN-DP-QUERY-ORDER], [SCEN-DP-EMPTY-QUERY], [SCEN-DP-OUTSIDE-SPEC], [SCEN-DP-HAND-LIST-REFUSED], [SCEN-DP-SECTION-NO-SOURCES], [SCEN-DP-DEPENDS-ON-WRONG-KIND], [SCEN-DP-SECTION-ORDER-DUPLICATE]
+- see-also: [DD-DP-SECTION-ID-IS-NODE-ID], [REQ-DP-QUERY]
+- x-rule: A section is a node of kind section, part of the plan. Its node id IS its section id: it begins with DPSEC-, matches the id grammar of §1.1, and is unique in the corpus; it should carry the audience, such as DPSEC-USER-INSTALL, so that two plans in one corpus cannot collide. The id appears in the generated Markdown as the anchor of [REQ-DP-CITATION-GRAMMAR]. There is no second id.
+- x-section-keys: dp-kind: section (required); dp-order, a positive integer, unique among the plan's active sections, ascending in output order (required); dp-output-file, the file the section is written into, relative to dp-output-dir (required; several sections may share a file, and they appear in dp-order); dp-heading-level, an integer 1 to 4 (default 2); dp-source-query, one or more queries ([REQ-DP-QUERY]); dp-render ([REQ-DP-PROGRAM-RENDERED]); dp-role, used only by the FOR-LLMS.md plan ([REQ-DP-FOR-LLMS]); dp-claim-class ([REQ-DP-CLAIMS-GATE]); dp-section-status, active or retired (default active, [REQ-DP-STABLE-IDS]); dp-allow-empty, true only (default absent, meaning an empty result blocks the section).
+- x-uses: A section names the authored nodes and the static assets it uses with the core key depends-on, whose targets must be nodes of kind authored or asset. The section's sources are the nodes its queries return plus the authored nodes it depends on.
+- x-no-sources: A section with no dp-source-query and no depends-on to an authored node has no sources and is a finding. A section made only of authored nodes is legal.
+- x-empty: A query whose result is empty makes the section blocked for the run: nothing is written for it and the requester is told which goal or requirement is missing. A section marked dp-allow-empty: true is generated from its other queries and authored nodes.
+- x-outside-spec: Every node a query returns must lie in the source spec's content or in the content of a spec named by dp-also-from, or the result is a finding.
+- x-lint: Findings are listed in [MECH-DP-LINT]. The ids section_no_sources, section_order_duplicate, query_empty, source_outside_spec and depends_on_wrong_kind are ERRORs.
+
+## Requirement: a section names its source nodes by query, never by a hand list [REQ-DP-QUERY]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R3
+- implements: [GOAL-DP-GENERATED-FROM-SPECS], [GOAL-DP-SPEC-SOURCES]
+- verified-by: [SCEN-DP-QUERY-NORMATIVE-ONLY], [SCEN-DP-QUERY-ORDER], [SCEN-DP-HAND-LIST-REFUSED], [SCEN-DP-QUERY-MALFORMED], [SCEN-DP-RESOLVER-OVERSIZE]
+- see-also: [DD-DP-QUERY-IS-THE-ENGINE-FIND]
+- x-rule: The value of dp-source-query is one query, written as terms separated by a semicolon and one space. A term is a name, an equals sign and a value, and the value contains no semicolon. A section has one or more dp-source-query lines (a repeated key is a list), and its query result is the union of theirs, de-duplicated by corpus and id.
+- x-terms: corpus (required): the corpus id. prefix: an id prefix with its trailing hyphen. status: a lifecycle status as lts_find reads it. document-tag: a document tag. source-file: a file as the engine reports it. where: a property condition written key:operator:value, with operator one of has, lacks, equals, not-equals (has and lacks take no value, written key:has); the term may repeat, and the conditions are ANDed. text: a phrase matched as lts_find matches its text argument. from, edge, direction and depth: a traversal from one node, where from is a node id in the named corpus, edge is an edge type, direction is forward or reverse, and depth is a positive integer (default 1); from is the only place a query names a node id, and it names a root to walk from, not a source. order-by: a property key and asc or desc, written key:asc, default id:asc.
+- x-meaning: A query means the result of the engine's find or traverse over those terms, then the filter below. The terms are the engine's own arguments, so the engine's definition of each governs and this file does not restate it. An unknown term name, a term id or ids, a value that is a bracketed id list, or a query with no corpus term is malformed.
+- x-resolver: The plan-query resolver is an internal caller of the engine's find. It binds semantic to off, word_fallback to false, and an unbounded token budget, and a result that reports oversize_skipped is a loud failure of the run, never a silently smaller source set. It passes corpus on every call. The engine's term names that this grammar does not expose (one_of and not_one_of conditions, match modes, all_of, any_of and fields) are listed as not available; a later addition goes in this requirement in the same change that adds it.
+- x-always-normative: Every query carries the implicit condition that normative_effective is true. It cannot be switched off. A source statement, a confirmation, and every node under a non-normative section are therefore never returned ([INV-DP-NORMATIVE-SOURCES-ONLY]).
+- x-order: The result is ordered by order-by (default id ascending), then by corpus and id. The same corpus bytes and the same query give the same order, so the structure of a release does not change without a change in the specs or in the plan.
+- x-hand-list: A hand list is a section whose sources are named one by one as ids. The grammar has no term for it, and a plan that carries one in any value of dp-source-query is malformed. A recorded depiction, the cited ids of a generated visual, is not a hand list: it records what was drawn and is checked against the query ([REQ-DP-VISUALS]).
+- x-lint: query_malformed is an ERROR naming the term. query_resolver_oversize, a resolution that reports oversize_skipped, is an ERROR. query_empty is an ERROR (see [REQ-DP-SECTIONS]).
+
+## Requirement: authored content that is in no spec is an authored node of the plan [REQ-DP-AUTHORED]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R4
+- implements: [GOAL-DP-SURVEY-AND-FOLD]
+- verified-by: [SCEN-DP-AUTHORED-ORIGIN], [SCEN-DP-AUTHORED-NO-QUOTE], [SCEN-DP-AUTHORED-CITED]
+- see-also: [REQ-DP-SURVEY]
+- x-rule: Content that belongs in the documentation but is in no spec, such as a tutorial, an example or a walkthrough, is a node of kind authored in the plan document. It is versioned and reviewed like a spec node, is normative content of the plan (it carries no normative: false), and is cited like any source, as the plan's corpus id and the node id.
+- x-keys: dp-kind: authored (required); dp-origin-doc, the path of the existing document the content came from, or the word new when it came from none (required); dp-origin-rev, the repository revision at which that document was read, required when dp-origin-doc is a path. The text itself is the node's body: the paragraphs under the node's properties.
+- x-why-in-specs: A reason or design intent is not an authored node. It belongs in a spec as a goal or requirement and is sourced from there ([GOAL-DP-WHY-FROM-SPECS]). An authored node holds what a goal or requirement would not: a step-by-step, an example, a worked case.
+- x-not-a-statement: An authored node never carries source-text or confirms. A stakeholder's words are not documentation content.
+- x-lint: A missing dp-origin-doc, or a path without dp-origin-rev, is an ERROR. An authored node that carries source-text is an ERROR (authored_is_statement).
+
+## Requirement: a static asset is declared, with its path and a hash, before it is used [REQ-DP-ASSETS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R5
+- implements: [GOAL-DP-GENERATED-FROM-SPECS]
+- verified-by: [SCEN-DP-ASSET-UNDECLARED], [SCEN-DP-ASSET-HASH]
+- x-rule: A static asset, such as a logo or a fixed image, is a node of kind asset in the plan. A document may use an asset only through a section that depends-on it. An asset that is not declared is not used.
+- x-keys: dp-kind: asset (required); dp-asset-path, the path relative to the repository root (required); dp-asset-sha256, the hash of the file's bytes in the form sha256: followed by 64 lowercase hexadecimal digits (required); dp-asset-alt, the alternative text the generator uses (required for an image).
+- x-lint: A generated document that embeds a file that is not a declared asset or a declared visual file is an ERROR (asset_undeclared). A declared asset whose file is missing, or whose bytes do not hash to dp-asset-sha256, is an ERROR (asset_hash_mismatch). A missing dp-asset-path, dp-asset-sha256 or dp-asset-alt on an image is an ERROR.
+
+## Requirement: the generated Markdown carries two comment forms, an anchor and a citation [REQ-DP-CITATION-GRAMMAR]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R6
+- implements: [GOAL-DP-REVIEWABLE-RELEASES], [GOAL-DP-GENERATED-FROM-SPECS]
+- verified-by: [SCEN-DP-ANCHOR-OK], [SCEN-DP-ANCHOR-BAD], [SCEN-DP-SECTION-CITATION], [SCEN-DP-CITATION-MALFORMED], [SCEN-DP-GRAMMAR-ONE-DEFINITION], [SCEN-DP-SECTION-MISSING-FROM-OUTPUT]
+- see-also: [DD-DP-BARE-IDS-IN-COMMENTS], [REQ-DP-CITATION-RULES]
+- x-defined-once: This requirement is the only definition of the grammar. Every lint, audit and diff tool reads the forms from here, and a writer never invents a variant.
+- x-anchor: A section anchor is one line, exactly <!-- sec: SECTION-ID --> , written as: the characters less-than, bang, two hyphens, one space, sec, colon, one space, the section id, one space, two hyphens, greater-than. It stands alone on its line. The section id matches [A-Z][A-Z0-9_-]+ and names a section node of the plan. A section begins at its anchor and ends at the line before the next anchor, or at the end of the file. The anchor is written on the line directly before the section's heading line. Text before the first anchor is only the document's title heading, if any.
+- x-citation: A citation is one line, exactly <!-- src: REF, REF --> with REF repeated as needed: the characters less-than, bang, two hyphens, one space, src, colon, one space, then one or more references separated by a comma and one space, then one space, two hyphens, greater-than. It stands alone on its line. A reference is a corpus id, a colon and a node id, as corpus:NODE-ID, where the corpus id matches [a-z0-9][a-z0-9._-]* and the node id matches [A-Z][A-Z0-9_-]+. A reference is bare, never bracketed, so that a Markdown file read as LTS mints no edge from it. A reference to a node of the plan itself, such as an authored node, uses the plan's corpus id.
+- x-where: A section's citation is the line directly after its anchor line. A block's citation is the line directly after the last line of the block, with no blank line between them. A block is a paragraph, a list, a table, a code block, a quotation or an image line; the lines of one list or one table are one block. The comment forms are HTML comments, so a Markdown renderer shows nothing.
+- x-not-cited: A heading line, a blank line, an anchor, a citation, and the document's title heading need no citation of their own. Nothing else is exempt.
+- x-malformed: A comment that begins with <!-- sec: or <!-- src: and does not match its form exactly, a second space, a bracketed id, a missing colon or a trailing text, is malformed. It is a finding and is never read as a best guess.
+- x-visual-files: A visual file carries the same references inside the file, in the comment form of its own format: a line beginning %% src: in a Mermaid file, and an XML comment <!-- src: ... --> in an SVG file. The Markdown that embeds the visual carries a citation after the embedding line, as for any block.
+- x-lint: anchor_malformed, anchor_unknown_section, anchor_duplicate and citation_malformed are ERRORs. A section named in the plan as active and absent from its output file is section_missing, an ERROR in a release.
+
+## Requirement: every section and every block is cited, and every citation resolves to a normative source in the section's own set [REQ-DP-CITATION-RULES]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R7
+- implements: [GOAL-DP-SPEC-SOURCES], [GOAL-DP-WHY-FROM-SPECS], [GOAL-DP-REVIEWABLE-RELEASES]
+- verified-by: [SCEN-DP-UNCITED-BLOCK], [SCEN-DP-CITATION-UNRESOLVED], [SCEN-DP-CITES-NON-NORMATIVE], [SCEN-DP-CITES-OUTSIDE-SECTION], [SCEN-DP-SECTION-CITATION], [SCEN-DP-COVERAGE]
+- see-also: [INV-DP-NORMATIVE-SOURCES-ONLY], [REQ-DP-COVERAGE], [MECH-DP-LINT]
+- x-rule: Each generated section carries a section citation, and each block in it carries a block citation ([REQ-DP-CITATION-GRAMMAR]). A sentence that cannot be cited is not written.
+- x-resolve: Every reference must resolve to a node that exists in the named corpus. A reference that does not resolve is a finding.
+- x-set: Every reference in a block citation must be a member of the section's source set: a node its queries return, or an authored node it depends on, or an asset it depends on. A reference outside that set is a finding, because it is a source the plan does not declare. The section citation is the union of the section's block citations and may list nothing else.
+- x-normative: A reference to a node whose normative_effective is false is a finding, whether or not a query could have returned it.
+- x-invention: A block that has no citation is how invention is found. A cold audit of a release reads each block against its cited nodes ([ACC-DP]).
+- x-lint: uncited_block, section_uncited, citation_unresolved, cites_non_normative and cites_outside_section are ERRORs.
+
+## Requirement: program-renderable parts are copied exactly, and prose is written around them [REQ-DP-PROGRAM-RENDERED]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R8
+- implements: [GOAL-DP-GENERATED-FROM-SPECS], [GOAL-DP-SPEC-SOURCES]
+- verified-by: [SCEN-DP-PROGRAM-RENDER-EXACT]
+- x-rule: A section marks how its content is produced with dp-render: prose, program or mixed (default prose). A program part is a table, a list of settings with their defaults, a list of commands, or a list of codes, rendered from node properties without judgement. A mixed section has program parts and prose around them.
+- x-keys: For a section whose dp-render is program or mixed: dp-render-as, one of table, list or code (required); dp-render-keys, the property keys whose values are rendered, in column order (required). The row set is the section's query result in query order.
+- x-exact: A program part holds each value exactly as the node holds it: no word is replaced, no number is rounded, combined or restated. The part is one block and its citation names every node whose values it renders.
+- x-lint: A program part whose cell differs from the cited node's property value is program_value_differs, an ERROR. A dp-render-keys key that a returned node lacks is a finding, program_value_missing, an ERROR: an empty cell is never invented.
+
+## Requirement: a style profile is a node of the plan and states the voice [REQ-DP-STYLE-PROFILE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R9
+- implements: [GOAL-DP-STYLE-AND-LEVEL]
+- verified-by: [SCEN-DP-STYLE-REQUIRED], [SCEN-DP-STYLE-MISSING-SAMPLES], [SCEN-DP-SENTENCE-TOO-LONG]
+- see-also: [REQ-DP-BANNED-DEFAULTS]
+- x-rule: The plan has one child node of kind style. It holds the voice and the sample paragraphs the writer imitates over any description.
+- x-keys: dp-kind: style (required); dp-voice, a short token naming the voice; corporate and casual are the examples the stakeholder named, and the set is open (required); dp-register, free text such as plain or technical (required); dp-sentence-max-words, a positive integer, the length above which a sentence is reported (required); dp-banned-add and dp-banned-remove, see [REQ-DP-BANNED-DEFAULTS].
+- x-samples: The style node has at least one child node of kind sample, each holding one paragraph of the target voice in its dp-sample-text key (required, at least one sample). A sample is the voice's reference and carries a citation to nothing: it is not part of any document.
+- x-presets: A requester may start from a preset, such as corporate or casual. The format defines none and no closed set of voices: a preset's content is the writer's, and a plan holds the resulting values explicitly, so that the plan alone states the voice. The format never selects a voice for a plan.
+- x-lint: A missing key, or a plan with no style node or no sample, is a finding (style_missing_key, style_missing_sample), an ERROR. A sentence longer than dp-sentence-max-words in generated prose is a WARNING (sentence_too_long).
+- x-cold-reader: The lint is a tripwire. Whether the voice is the profile's is judged by a cold reader given the style node and the generated documents, and a release record states whether that check was done ([REQ-DP-RELEASE-RECORD]).
+
+## Requirement: the default banned patterns live in this format, a plan may remove or add by name, and a change to the default list re-opens every plan [REQ-DP-BANNED-DEFAULTS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R10
+- implements: [GOAL-DP-STYLE-AND-LEVEL]
+- verified-by: [SCEN-DP-BANNED-HIT], [SCEN-DP-BANNED-REMOVE], [SCEN-DP-BANNED-REMOVE-UNKNOWN], [SCEN-DP-BANNED-ADD], [SCEN-DP-BANNED-DEFAULT-REV], [SCEN-DP-BANNED-COLD-READER]
+- see-also: [BANNED-DEFAULTS], [DD-DP-DEFAULT-LIST-IN-THE-FORMAT]
+- x-where: The default list is the set of nodes under [BANNED-DEFAULTS] in this file, which lands in the specs corpus. It is not in the writer's definition and not in any plan. A lint and a writer read it by querying the nodes whose id begins with BANDEF-. A copy anywhere else is a second list, and the one here governs. The data keys of the default list are dp-banned-rev, on [BANNED-DEFAULTS], and every dp-pattern-* key, on its patterns. Until the profile in [MECH-DP-PROFILE] ships, the default nodes of [BANNED-DEFAULTS] carry each of them spelled x-dp-* (so x-dp-banned-rev, x-dp-pattern-name and so on), and every sentence of this file that names one of these keys means its x-dp-* spelling on the default nodes until then; the build that ships the profile renames them to dp-* in the same change.
+- x-names: A pattern has a stable name in kebab-case, in its dp-pattern-name key, that is also the tail of its node id. A name is never reused for a different pattern and never renamed without a recorded map in this file's change notes.
+- x-remove: A plan removes a default by listing its name in dp-banned-remove on the style node, with a reason in dp-banned-remove-reason (required when the list is not empty). A name that is not a default's name is an ERROR (banned_remove_unknown). Removing is by name only: a plan cannot weaken a pattern's phrases or counts, only drop the pattern.
+- x-add: A plan adds a pattern as a child node of the style node of kind banned, carrying the same dp-pattern keys as a default and a name that is not a default's name. An added pattern applies to that plan only.
+- x-applies: The effective list of a plan is the default list, less the removed names, plus the added patterns. It applies to every generated Markdown file of the plan, outside HTML comments, code blocks and the text of authored nodes' code.
+- x-rev: The default list carries an integer dp-banned-rev on [BANNED-DEFAULTS]. A plan records, in dp-banned-rev-seen on the plan node, the revision it was last reviewed against. A plan whose dp-banned-rev-seen is not the current revision is re-opened: a finding banned_rev_stale is reported, and the next release of that plan lints every generated file in full and not only the sections whose sources changed. Changing the default list in any way, adding, removing or editing a pattern, increments dp-banned-rev and so re-opens every plan, except the rename of the default nodes' x-dp-* keys to dp-* when the profile ships, which is a spelling change and does not increment it. The owner of a plan clears the finding by reviewing the plan against the new list and setting dp-banned-rev-seen.
+- x-classes: A pattern is of class phrase (a lexical match), count (a counted quantity per unit over a limit) or cold-reader (a pattern a lexical lint cannot decide, which the cold reader judges). A class is stated in the node and the lint applies the class's rule. No class is claimed to be more than a tripwire: each pattern's dp-pattern-note states what it cannot see.
+- x-phrase: A phrase pattern matches case-insensitively, as whole words, in prose. Its dp-pattern-phrases list holds the phrases, one per item; a hit is a finding.
+- x-count: A count pattern counts the occurrences of dp-pattern-count-of in each unit named by dp-pattern-count-per (sentence, paragraph, section or document); a unit whose count is greater than dp-pattern-count-max is a hit.
+- x-lint: banned_pattern is an ERROR for phrase and count patterns, naming the pattern, the file and the line. banned_rev_stale is a WARNING. A cold-reader pattern is never reported by the lint; it is listed in the style node's checks owed.
+
+## Requirement: the reading level is recorded per audience and checked by a readability score [REQ-DP-READING-LEVEL]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R11
+- implements: [GOAL-DP-STYLE-AND-LEVEL]
+- verified-by: [SCEN-DP-READING-PASSES], [SCEN-DP-READING-FAILS], [SCEN-DP-READING-NOT-SCORED], [SCEN-DP-READING-MISSING]
+- see-also: [OPEN-DP-READING-LEVEL-MAPPING], [OPEN-DP-READING-LEVEL-HOME]
+- x-keys: On the plan node: dp-reading-target, a number, the highest Flesch-Kincaid grade the audience's documents may score (required); dp-reading-formula, the name of the formula (default flesch-kincaid-grade, and the only name defined now; any other value is an ERROR naming it, so a later formula is an additive change); dp-reading-tolerance, a number of grades (default 0.5). dp-reader-education, from [REQ-DP-PLAN-PER-AUDIENCE], records the target in the requester's own words beside the number.
+- x-formula: grade = 0.39 times (words divided by sentences) plus 11.8 times (syllables divided by words) minus 15.59.
+- x-counting: The score is computed per generated file over its prose blocks, which are the paragraphs and list items, leaving out headings, anchors, citations, code blocks, tables, image lines, link targets and the text of program parts. A word is a maximal run of letters, digits and apostrophes. A sentence ends at a full stop, an exclamation mark or a question mark followed by a space or the end of a block, except after a number containing a full stop or after e.g., i.e., etc. or vs.; a prose block with no terminal mark counts as one sentence. The syllables of a word are its groups of the vowels a, e, i, o, u and y, less one if the word ends in e and has more than one group, with a minimum of one.
+- x-pass: A file passes when its grade is no more than dp-reading-target plus dp-reading-tolerance. There is no lower bound: a document that reads below the target is not a finding.
+- x-not-scored: A file with fewer than five prose sentences is not scored. The lint reports it as not scored. Not scored is not a pass and is never counted as one.
+- x-limits: The syllable count is a rule of thumb, and the score is a tripwire on the audience's level and not a measurement of understanding. The mapping from an education level to a grade is the requester's, recorded in dp-reader-education and dp-reading-target; this format defines none ([OPEN-DP-READING-LEVEL-MAPPING]).
+- x-lint: reading_level_above_target is an ERROR naming the file, the grade and the target. reading_input_missing, a missing dp-reading-target or dp-reader-education, is an ERROR. reading_formula_unknown is an ERROR.
+
+## Requirement: language is a parameter, and only the primary language's files are produced now [REQ-DP-LANGUAGES]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R12
+- implements: [GOAL-DP-ANY-PROJECT]
+- verified-by: [SCEN-DP-LANGUAGE-PATHS], [SCEN-DP-LANGUAGE-UNLISTED]
+- x-rule: dp-languages lists every language the requester asked for, the primary first. The sections, their ids, their queries and their citations are the same in every language, so a new language is a run of the same plan.
+- x-paths: A section's file for the primary language is dp-output-dir joined with dp-output-file. For any other listed language L it is dp-output-dir, then L, then dp-output-file. A file for a language not in dp-languages is an ERROR (language_unlisted).
+- x-produced-now: The generator produces only English for now. A plan may list other languages as requested; the files for them are not produced and their absence is not a finding. When the generator produces a language it adds nothing to the plan except the release record's output hashes for that language.
+- x-lint: language_unlisted is an ERROR. A tag in dp-languages that is not well formed is an ERROR ([REQ-DP-PLAN-PER-AUDIENCE]).
+
+## Requirement: a visual is a node with one of two forms, generated or recommended [REQ-DP-VISUALS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R13
+- implements: [GOAL-DP-VISUALS]
+- verified-by: [SCEN-DP-VISUAL-GENERATED], [SCEN-DP-VISUAL-GENERATED-INCOMPLETE], [SCEN-DP-VISUAL-RECOMMENDED], [SCEN-DP-VISUAL-RECOMMENDED-INCOMPLETE], [SCEN-DP-VISUAL-FULFILLED], [SCEN-DP-VISUAL-NOT-CHECKED], [SCEN-DP-VISUAL-FORMATS], [SCEN-DP-VISUAL-RASTER-HASH], [SCEN-DP-VISUAL-SVG-INVALID]
+- see-also: [DD-DP-VISUAL-ONE-KIND-TWO-FORMS], [DD-DP-VISUAL-FORMATS-OPEN]
+- x-rule: A visual is a node of kind visual that is part of the section it belongs in. A raster file is declared like an asset (path and hash) and an undeclared image is never embedded ([REQ-DP-ASSETS]). Its dp-visual-form is generated or recommended.
+- x-generated: A generated visual is a file the generator wrote, in a form an agent can produce and check: Mermaid, SVG, a text diagram (box drawing in a fenced block), or a raster image rendered by code and declared and hashed like an asset. Keys: dp-visual-form: generated; dp-visual-file, the file's path relative to dp-output-dir, beside the documents and under source control (required); dp-visual-format, one of mermaid, svg, text-diagram or raster, or another value the plan describes in dp-visual-check (required); dp-visual-cites, the node ids the visual depicts, each as corpus:NODE-ID, one or more (required); dp-visual-caption, the alternative text (required). A text format (mermaid, svg, text-diagram) cites the same ids inside itself ([REQ-DP-CITATION-GRAMMAR]); a raster cannot, and is cited by the plan node and by the citation after its embedding line. Every number or label in a visual is traceable to one of its cited nodes.
+- x-cites-are-recorded: dp-visual-cites records what was drawn, as the ids of nodes the generator selected for the picture. It is checked, never trusted: each id must resolve, be normative, and lie in the section's source set ([REQ-DP-CITATION-RULES]), and it must equal the set of references in the visual file.
+- x-recommended: A recommended visual is one the generator cannot make, such as a screenshot or a photograph, or one the plan wants a person to supply. Keys: dp-visual-form: recommended; dp-visual-capture, what the picture should show (required); dp-visual-why, why it helps the reader (required); dp-visual-where, a free-text position in the section, such as after the third block (optional, since the node is part of its section). It carries no file.
+- x-fulfilled: A recommended visual is fulfilled when a person supplies the image: the image is declared as an asset ([REQ-DP-ASSETS]) and the recommendation names it in dp-fulfilled-by. The recommendation node stays, so that the history of what was asked for is kept.
+- x-not-asked: The format does not ask for a screenshot of every dialog or for callout overlays, and defines no node for either.
+- x-checks: A generated visual is checked as far as a check exists: an SVG file must be well-formed XML; a Mermaid file is checked by a Mermaid renderer when one is available; a text-diagram is checked only for its citation; a raster is checked by its hash. When the renderer is not available the result is reported as not checked, never as a pass (visual_not_checked, INFO).
+- x-lint: A generated visual missing a required key, or whose file is absent, is an ERROR (visual_generated_incomplete, visual_file_missing). A recommended visual missing dp-visual-capture or dp-visual-why is an ERROR (visual_recommended_incomplete). A dp-visual-cites that differs from the file's references is visual_cites_mismatch, an ERROR. An SVG that is not well-formed is an ERROR (visual_invalid). A raster whose bytes do not hash to dp-visual-sha256 is visual_hash_mismatch, an ERROR. visual_format_undefined is an ERROR (see x-formats).
+- x-formats: mermaid: a Mermaid source file. svg: an SVG file. text-diagram: a text file of box-drawing characters that the document includes in a fenced block. raster: an image file rendered by code from data in the specs; it carries dp-visual-sha256, the hash of its bytes in the form sha256: followed by 64 lowercase hexadecimal digits (required), and may name the script that rendered it in dp-visual-generator. Any other value of dp-visual-format is legal only when dp-visual-check says in words how the visual is checked; with neither a defined format nor a check it is visual_format_undefined, an ERROR. The set is open to formats an agent can generate and check, and the four named are the ones this file defines. See [DD-DP-VISUAL-FORMATS-OPEN].
+
+## Requirement: the survey of existing documents is recorded and accepted before anything is replaced [REQ-DP-SURVEY]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R14
+- implements: [GOAL-DP-SURVEY-AND-FOLD]
+- verified-by: [SCEN-DP-SURVEY-ENTRY], [SCEN-DP-SURVEY-ACCEPTED-GATES-RELEASE], [SCEN-DP-SURVEY-NONE], [SCEN-DP-SURVEY-AUDIENCES], [SCEN-DP-TEST-CASE-EXISTING-DOCS], [SCEN-DP-SURVEY-DOCUMENT-MISSING]
+- see-also: [REQ-DP-AUTHORED]
+- x-rule: A survey is a node of kind survey in the plan, with one child node of kind survey-entry for each existing document surveyed.
+- x-entry-keys: dp-kind: survey-entry; dp-survey-doc, the document's path (required); dp-survey-verdict, keep, drop or fold (required); dp-survey-reason, one line (required); dp-survey-lands, for fold only: the authored node the content becomes, or a proposal for a spec owner written as a goal or requirement (required for fold).
+- x-survey-keys: On the survey node: dp-kind: survey; dp-survey-at, the date and time of the survey as a full UTC timestamp (required); dp-survey-accepted, the full UTC timestamp at which the requester accepted the survey, present only once it is accepted; dp-survey-accepted-by, a role word, and dp-survey-accepted-locator, where the acceptance is recorded (both required when dp-survey-accepted is present); dp-survey-audiences, optional and repeatable, one line per audience the survey recommends the project should have, in the form audience: reason; the ask is the stakeholder's, in [SRC-DP-SURVEY], and the key's shape is the authors'. Absence of dp-survey-accepted means not accepted. There is no default.
+- x-gate: A release record names the survey it rests on in dp-survey. A release whose survey has no dp-survey-accepted is an ERROR (survey_not_accepted). A project with no existing documents records dp-survey: none, with no survey node. The authors' design, not the stakeholder's words: the reason is that the writer replaces nothing before the survey is accepted, so the gate keeps a release from resting on a survey no one has agreed to. The acceptor is the requester who dispatched the run, or whoever the stakeholder names while he is away, recorded by role in dp-survey-accepted-by.
+- x-nothing-deleted: A drop is a recommendation. The format records it and does nothing to the document.
+- x-lint: Missing entry keys are ERRORs. A fold with no dp-survey-lands is an ERROR. A dp-survey-doc that does not exist at the survey's revision is survey_document_missing, a WARNING.
+
+## Requirement: a release is an append-only record with a per-section manifest of source hashes [REQ-DP-RELEASE-RECORD]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R15
+- implements: [GOAL-DP-REVIEWABLE-RELEASES], [GOAL-DP-GENERATED-FROM-SPECS]
+- verified-by: [SCEN-DP-RELEASE-APPEND-ONLY], [SCEN-DP-UPDATE-SCOPE], [SCEN-DP-RELEASE-HASH-FORM], [SCEN-DP-RELEASE-OUTPUT-HASH], [SCEN-DP-VOICE-CHECK-STATE], [SCEN-DP-DONE-NEWCOMER]
+- see-also: [DD-DP-RELEASE-IS-APPENDED]
+- x-rule: Each release adds one node of kind release to the plan document. A release node is never edited after it is added, and the next release adds another. The latest release is the one with the highest dp-release-seq.
+- x-keys: dp-kind: release; dp-release-seq, a positive integer, one more than the previous release's (required); dp-released-at, a full UTC timestamp (required); dp-source-rev, the repository revision of the specs read (required); dp-survey, the id of the survey node it rests on or none (required); dp-manifest, a list; dp-output-hashes, a list; dp-voice-check, done or owed (required); dp-audit-check, done or owed (required); dp-release-state, generated, approved or published (default generated). dp-publication, and dp-text-scan for a public plan, are defined in [REQ-DP-PUBLIC-NO-PRIVATE].
+- x-manifest: Each item of dp-manifest is SECTION-ID corpus:NODE-ID sha256:HEX, with one space between the three parts: a section, one node in its source set at generation, and that node's content_hash exactly as the engine reports it (the form sha256: followed by 64 lowercase hexadecimal digits). A section's items together are its manifest. Authored nodes and assets in the source set are listed the same way, with the plan's corpus id.
+- x-output-hashes: Each item of dp-output-hashes is SECTION-ID LANG sha256:HEX: a section, the language tag, and the hash of the section's text from its anchor line to the line before the next anchor.
+- x-update-scope: An update run regenerates a section when the set of nodes its queries return now differs from the set in its latest manifest, or when any listed node's content_hash differs, or when a listed node is gone. A section that is not regenerated is not changed: its text hashes to its latest output hash. A section that is new, and not in the latest manifest, is regenerated.
+- x-writers: A generator or any other tool writes plan nodes and release nodes with the typed writers (lts_add_node, lts_add_property), through the engine's tool door, and never by editing the file.
+- x-checks-owed: dp-voice-check and dp-audit-check are done only when the cold voice check ([REQ-DP-STYLE-PROFILE]) and the cold audit of coverage and invention ([REQ-DP-COVERAGE]) were run, by a reader other than the generator, for this release. The generator records owed.
+- x-lint: A release with a missing key, a dp-release-seq that is not one more than the previous, a malformed manifest or output-hash item, or a section in scope that has no item, is an ERROR. A section outside the update scope whose text hash differs from its latest output hash is release_section_changed_out_of_scope, an ERROR. A release node that differs from its first appended form cannot be detected by lint and is a limit ([OPEN-DP-LINT-HOME]).
+
+## Requirement: a section's id is never reused, and a rename or retirement is recorded in the graph [REQ-DP-STABLE-IDS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R16
+- implements: [GOAL-DP-REVIEWABLE-RELEASES]
+- verified-by: [SCEN-DP-RETIRED-ID-RESERVED], [SCEN-DP-RENAME-MAP], [SCEN-DP-ID-VANISHED], [SCEN-DP-RETIRED-RELEASED-AGAIN]
+- see-also: [INV-DP-SECTION-ID-STABLE], [DD-DP-RENAME-BY-SUPERSEDED-BY]
+- x-rule: Once a section id appears in a release's manifest it is permanent. The section may stop being generated or move to a new id, and then it is recorded; it is never deleted and its id never names a different section.
+- x-retire: A section that is no longer generated stays in the plan with dp-section-status: retired and dp-retired-in, the dp-release-seq of the first release that no longer contains it. It is not generated and its anchor does not appear in the output.
+- x-rename: A rename, a split or a merge is a new section node and a retirement of the old one, and the old node carries the core key superseded-by naming the new node or nodes. That edge is the recorded map: lts_traverse on SUPERSEDES from a new section lists what it replaced. A merge is several retired nodes naming one new node, and a split is one retired node naming several.
+- x-lint: A section id that appears in the latest release's manifest and is neither an active section node nor a retired one carrying superseded-by is section_id_unmapped, an ERROR. An active section whose id appears in a release record with a dp-release-seq above its dp-retired-in is retired_id_released_again, an ERROR. A retired node with no dp-retired-in is an ERROR.
+- x-limit: The format checks that no released id vanishes unmapped and that a retired id is not generated again. It cannot check that an active id still means what it meant; the release diff's review does.
+
+## Requirement: FOR-LLMS.md has two required roles and stays LTS-shaped inside a Markdown file [REQ-DP-FOR-LLMS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R17
+- implements: [GOAL-DP-FOR-LLMS]
+- verified-by: [SCEN-DP-FOR-LLMS-BOTH-ROLES], [SCEN-DP-FOR-LLMS-INSTALL-DROPPED], [SCEN-DP-FOR-LLMS-PARSES], [SCEN-DP-FOR-LLMS-CITED], [SCEN-DP-FOR-LLMS-COLD-AGENT], [SCEN-DP-FOR-LLMS-NOT-LTS-SHAPED]
+- see-also: [OPEN-DP-FOR-LLMS-FIXED-SECTIONS], [DD-DP-FOR-LLMS-IS-A-PLAN]
+- x-rule: FOR-LLMS.md is the output of one plan, whose dp-audience is llm and whose plan node carries dp-output-form: lts-in-md. Every project documented under this format has such a plan, and the generator always produces its file.
+- x-roles: Each section of that plan carries dp-role, one of overview or install, and the plan has at least one active section of each. The overview role holds what the software does and why, who it helps and who it does not, and where the technical detail lives. The install role holds what an agent needs to write human install instructions, or to install and validate the software. The format fixes these two roles and no more; the section list under each is the project's ([OPEN-DP-FOR-LLMS-FIXED-SECTIONS]).
+- x-never-dropped: Generation never drops the install role. If the specs cannot supply install content, the install section is blocked and the file is not written with the role missing: a FOR-LLMS.md with one role is a finding and is not produced.
+- x-lts-shaped: The file's bytes are an LTS document: a frontmatter block with the format-version marker and a title, node headings with bracketed ids, and properties as property lines, so that the engine parses the file as it would a file with the extension .lts, and a Markdown renderer shows a readable page. The anchors and citations of [REQ-DP-CITATION-GRAMMAR] are HTML comments, which the parser treats as ignorable lines. A node's id in the file is its section id.
+- x-cited: The file is cited as any generated document is. The comment lines do not change what the parser reads.
+- x-lint: for_llms_role_missing is an ERROR naming the missing role, for the plan and for the output. for_llms_not_lts_shaped is an ERROR when the file read as LTS has a parse error, loses a node its plan declares, or lacks the frontmatter block (with the format-version marker and a title) that x-lts-shaped requires. The missing frontmatter is a finding here although the engine only warns about it (missing_frontmatter) for an ordinary document, because FOR-LLMS.md must be fully LTS-shaped. The plan keys for the file's install content are fixed by the install requirement of the project, not here.
+
+## Requirement: a plan can mark customer-facing claims for an operator's approval [REQ-DP-CLAIMS-GATE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R18
+- implements: [GOAL-DP-ANY-PROJECT]
+- verified-by: [SCEN-DP-CLAIMS-GATE-ON], [SCEN-DP-CLAIMS-GATE-OFF]
+- x-rule: A plan states dp-claims-gate: operator when every customer-facing claim in its documents is the operator's to approve before anything is published. The default is none, and the key has no other value.
+- x-effect: With the gate on, every section carries dp-claim-class, customer-facing or internal (required, no default, so that a claim is never left unclassified). A release node of a gated plan carries dp-claims, the list of section ids classified customer-facing that changed in the release, each with the citations of its blocks as they stand. A release is not in state approved or published without dp-operator-approved-at (a full UTC timestamp), dp-operator-approved-by (a role word) and dp-operator-approved-locator.
+- x-figures: A figure in a gated plan is quoted exactly from a cited node. The generator never computes, rounds, combines or restates one; this is the rule of [REQ-DP-PROGRAM-RENDERED] and it holds for prose too, and the format adds that a figure in prose is listed in dp-figures on the release node with the node it came from.
+- x-not-publishing: The format records approval and does not publish. Publishing is the requester's.
+- x-lint: With the gate on, a section with no dp-claim-class is an ERROR. A release in state approved or published with a missing approval key is claims_not_approved, an ERROR. A gated release with no dp-claims for a changed customer-facing section is an ERROR.
+- x-origin: The authors' design, carried into the format from a deployment's policy that customer-facing claims are the operator's to approve. It is optional, defaults to none, and is not the stakeholder's words. It serves G7 only in that a second consumer of the format has that policy.
+
+## Requirement: coverage is checkable, because the plan says which requirements are user-facing [REQ-DP-COVERAGE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R19
+- implements: [GOAL-DP-REVIEWABLE-RELEASES], [GOAL-DP-SPEC-SOURCES]
+- verified-by: [SCEN-DP-COVERAGE], [SCEN-DP-COVERAGE-UNMARKED]
+- see-also: [REQ-DP-CITATION-RULES]
+- x-rule: The plan node carries dp-coverage-query, one or more queries in the grammar of [REQ-DP-QUERY], whose result is the requirements the plan treats as user-facing for the audience. Every node in that result must be cited by at least one block of the plan's output.
+- x-invention-is-the-other-half: Coverage finds what is missing; an uncited block finds what was invented ([REQ-DP-CITATION-RULES]). Together they are what a cold audit of a release reads.
+- x-lint: A node in the coverage result that no block cites is coverage_gap, an ERROR in a release. A plan with no dp-coverage-query is a WARNING (coverage_unmarked): no coverage can be checked.
+
+## Requirement: a public plan cites no node of a private corpus, and its output passes the deployment's text policy before a release is recorded [REQ-DP-PUBLIC-NO-PRIVATE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: R20
+- implements: [GOAL-DP-GENERATED-FROM-SPECS], [GOAL-DP-ANY-PROJECT]
+- verified-by: [SCEN-DP-PUBLIC-PRIVATE-REFUSED], [SCEN-DP-PUBLIC-TERM-REFUSED], [SCEN-DP-PUBLICATION-UNDECLARED], [SCEN-DP-PUBLIC-SOURCE-SPEC-PRIVATE], [SCEN-DP-PUBLIC-CITATION-PRIVATE], [SCEN-DP-RELEASE-PUBLICATION-MISSING]
+- see-also: [REQ-DP-RELEASE-RECORD], [REQ-DP-CLAIMS-GATE], [OPEN-DP-TEXT-POLICY-SEAM]
+- x-rule: A plan states dp-publication, public or internal. The key is required and has no default, because a forgotten public mark must not pass silently. public means the plan's documents are meant for readers beyond those who can read the project's private corpora; internal means they are not. dp-publication's internal and dp-claim-class's internal are different keys with different meanings, who may receive the documents and against what a claim is checked; neither implies the other, and dp-publication: internal does not exempt a plan from the claims gate or change its dp-release-state.
+- x-private-sources: For a plan whose dp-publication is public, the root named by dp-source-spec and each node in a section's source set must lie in a corpus that is not private, and so must each node a block citation of the rendered output names. Whether a corpus is private is decided by the engine's own privacy rule, the one SPEC.md states in section 4.6.4b, Private corpora; this file does not restate it and keeps no list of private corpora. A public plan must itself live in a corpus that is not private, because its authored nodes and assets are published. A violation is public_cites_private_node, an ERROR naming the section and the node id. It is reported to the plan's author and is never written into the generated output.
+- x-text-policy: The rendered output of a public plan is scanned by the deployment's text-policy matcher before the release node is added. The matcher is the one the deployment's commit hook already uses (in this repository, the disclosure guard and its vocabulary files). This file names the matcher as a seam, whose contract is open ([OPEN-DP-TEXT-POLICY-SEAM]), and defines no vocabulary, rule or class of its own. A hit is public_text_policy_hit, an ERROR naming the output file, the line and the name of the matched rule, and never repeating the matched text, because a finding that quoted the term would copy it into the report. When the matcher cannot run for a public plan, the release is refused with text_policy_unavailable, an ERROR. A run with no vocabulary configured is this case too, as the next key says. On every release of a public plan, including an update run that regenerates only some sections, both checks cover their whole input: this scan reads every file of the rendered output, including the text in visual files and captions, and the check of x-private-sources reads every section's source set and every block citation of the whole output.
+- x-no-vocabulary: A public plan's release needs the text-policy scan to run in the matcher's publication mode. When the deployment has configured no vocabulary, or the matcher cannot run that mode for any reason, the result is text_policy_unavailable, an ERROR that blocks the release: the check fails closed, as the deployment guard's own publication mode does, because a publication check must not pass on less than the publication mode. When the scan ran in full the release record says dp-text-scan: vocabulary, the key's one value.
+- x-record: The release node of a plan carries dp-publication, the plan's value for that release (required), and, for a public plan, dp-text-scan: vocabulary, recording that the full scan ran (required). A release with either key missing is an ERROR under [REQ-DP-RELEASE-RECORD].
+- x-blocks: Each of the four ERRORs of this requirement, publication_undeclared, public_cites_private_node, public_text_policy_hit and text_policy_unavailable, blocks the release. The rendered output is held until both checks have passed: no release node is added, and no output file replaces the previous release's file.
+- x-internal: For a plan whose dp-publication is internal, neither check runs, and the release record states dp-publication: internal.
+- x-limit: The checks are as good as the engine's privacy rule and the deployment's vocabulary. A node in a public corpus that copies private content passes the first, and a term the vocabulary does not name passes the second.
+- x-lint: A plan with no dp-publication, or with a value that is neither public nor internal, is publication_undeclared, an ERROR naming the plan; it is reported once and is not also reported as plan_missing_key. public_cites_private_node, public_text_policy_hit and text_policy_unavailable are described above. All four are listed in [MECH-DP-LINT].
+- x-origin: The authors' design, not the stakeholder's words. It comes from a maintainers' brief of 2026-10-31 and from the roadmap item that a public artifact is checked mechanically for private nodes before any push, which the stakeholder moved to FactLattice on 2026-11-16 to be merged with a similar FactLattice item; the authors merged it into this format. The text-policy scan is the authors' addition; the roadmap item names private nodes only. The gap it closes: a plan's queries name a corpus on every call ([REQ-DP-QUERY] x-resolver), so a plan can select nodes from a private corpus, and nothing else stops them reaching a public document.
+- x-plan-in-private-corpus: When the public plan itself, or the root its dp-source-spec names, lies in a private corpus, public_cites_private_node names the plan, and also the root when the root is the node that lies in a private corpus, because no section is at fault.
+
+## Invariant: only normative content is a source [INV-DP-NORMATIVE-SOURCES-ONLY]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-rule: A node whose normative_effective is false is never a source of a generated section: not through a query, not through a citation, not as a visual's cited id. A stakeholder's words, kept in source statements, and a confirmation are never documentation content. Neither is an existing document that has not first been folded into a spec or an authored node.
+- implements: [GOAL-DP-SPEC-SOURCES]
+- verified-by: [SCEN-DP-QUERY-NORMATIVE-ONLY], [SCEN-DP-CITES-NON-NORMATIVE]
+- rationale: Words copied from a quote into documentation would be read as requirements, and nobody could tell afterwards which parts were said and which were designed.
+
+## Invariant: a section id is never reused [INV-DP-SECTION-ID-STABLE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-rule: An id that has named a section in a release names it for ever. It may be retired and mapped, and it is never given to a different section.
+- implements: [GOAL-DP-REVIEWABLE-RELEASES]
+- verified-by: [SCEN-DP-RETIRED-ID-RESERVED], [SCEN-DP-RETIRED-RELEASED-AGAIN]
+- rationale: A reviewer comparing two releases reads section by id. An id that moved to a new meaning would show as an edit and hide a replacement.
+
+## Mechanism: a domain profile declares the keys, the prefixes and the document tag [MECH-DP-PROFILE]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- implements: [REQ-DP-PLAN-PER-AUDIENCE]
+- x-keys: Every key of this format begins dp-, matches the key grammar of §1.3.3, and is declared by a domain profile that this format ships beside the other profiles. The keys: dp-kind, dp-audience, dp-source-spec, dp-also-from, dp-languages, dp-output-dir, dp-output-form, dp-reader-education, dp-publication, dp-reading-target, dp-reading-formula, dp-reading-tolerance, dp-banned-rev-seen, dp-claims-gate, dp-coverage-query, dp-order, dp-output-file, dp-heading-level, dp-source-query, dp-render, dp-render-as, dp-render-keys, dp-role, dp-claim-class, dp-section-status, dp-retired-in, dp-allow-empty, dp-origin-doc, dp-origin-rev, dp-asset-path, dp-asset-sha256, dp-asset-alt, dp-voice, dp-register, dp-sentence-max-words, dp-banned-add, dp-banned-remove, dp-banned-remove-reason, dp-sample-text, dp-pattern-name, dp-pattern-class, dp-pattern-phrases, dp-pattern-count-of, dp-pattern-count-per, dp-pattern-count-max, dp-pattern-note, dp-banned-rev, dp-visual-form, dp-visual-file, dp-visual-format, dp-visual-sha256, dp-visual-generator, dp-visual-check, dp-visual-cites, dp-visual-caption, dp-visual-capture, dp-visual-why, dp-visual-where, dp-fulfilled-by, dp-survey-doc, dp-survey-verdict, dp-survey-reason, dp-survey-lands, dp-survey-at, dp-survey-accepted, dp-survey-accepted-by, dp-survey-accepted-locator, dp-survey-audiences, dp-release-seq, dp-released-at, dp-source-rev, dp-survey, dp-manifest, dp-output-hashes, dp-voice-check, dp-audit-check, dp-release-state, dp-claims, dp-figures, dp-operator-approved-at, dp-operator-approved-by, dp-operator-approved-locator, dp-text-scan.
+- x-kinds: The values of dp-kind are plan, section, authored, asset, style, sample, banned, survey, survey-entry, visual and release. Each kind has an id prefix the profile registers: PLAN-, DPSEC-, DPAUTH-, ASSET-, STYLE-, SAMPLE-, BAN-, SVY-, SVYE-, VIS- and REL-. The default patterns of [BANNED-DEFAULTS] use the prefix BANDEF-, so a plan's own BAN- nodes and the defaults cannot collide.
+- x-doctype: The document tag DOCPLAN is registered by the profile.
+- x-bare-values: The values of dp-source-spec, dp-also-from, dp-survey, dp-fulfilled-by, dp-survey-lands and dp-visual-cites are written bare, as corpus:NODE-ID or NODE-ID, never bracketed. A bracketed value would mint a generic reference edge that the format does not intend.
+- x-relationships: The format mints no new edge type. A section depends-on its authored nodes and assets, a visual is part-of its section, a retired section is superseded-by its replacement, and every plan node is part-of its parent. The existing core keys carry all of them.
+- x-undeclared-until: Until the profile declares the keys, a strict document that uses one gets undeclared_key for it, as spec 39's keys do until the parser carries them. The key still parses and holds its value (§1.3.3). This file carries the format's keys on one set of its own nodes, the default patterns of [BANNED-DEFAULTS], because that list is data a plan reads; it carries them spelled x-dp-* until the profile lands, and therefore gets no undeclared_key for them, and the build that ships the profile renames them to dp-* in the same change. No other node of this file uses one.
+- x-guard: The profile is refused at load if it declares a bare core key or a bare core edge type (§1.3.1, §1.3.2). No key here collides, because every one begins dp-.
+- x-prefix-check: Prior use of every id prefix this format defines, checked on 2026-11-16 with the engine's find over all 55 registered corpora, the 16 private ones named explicitly in the call (all 55 were consulted and none skipped). Matches by prefix: PLAN- 0, DPSEC- 0, DPAUTH- 0, ASSET- 0, STYLE- 0, SAMPLE- 0, BAN- 0, BANDEF- 0, SVY- 0, SVYE- 0, VIS- 0, REL- 0. Two earlier candidates were in prior use and were replaced: SEC- 7 matches and AUTH- 8 matches. Private corpora are counted but their node ids are not named here. The profile-registers half of the same check: the engine's main branch registers prefixes only in the reviewer profile, all of its REVIEW-family, and none of this format's prefixes is among them.
+
+## Mechanism: the lint over a plan and its output [MECH-DP-LINT]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- implements: [REQ-DP-CITATION-RULES], [REQ-DP-BANNED-DEFAULTS], [REQ-DP-READING-LEVEL], [REQ-DP-RELEASE-RECORD], [REQ-DP-PUBLIC-NO-PRIVATE]
+- see-also: [OPEN-DP-LINT-HOME]
+- x-scope: The checks run over a plan document, the spec corpus it names, and the generated files. Each is a check and not a guarantee: a check passes only when it ran, and a check that could not run is reported as not run, never as passed.
+- x-plan: plan_missing_key, plan_second_source_spec, plan_two_plan_nodes, source_spec_unresolved, language_tag_malformed, section_no_sources, section_order_duplicate, depends_on_wrong_kind, query_malformed, query_empty, source_outside_spec, authored_missing_origin, authored_is_statement, asset_hash_mismatch, style_missing_key, style_missing_sample, banned_remove_unknown, reading_input_missing, reading_formula_unknown, visual_generated_incomplete, visual_recommended_incomplete, survey_entry_incomplete, survey_not_accepted, release_malformed, section_id_unmapped, retired_id_released_again, for_llms_role_missing, query_resolver_oversize, publication_undeclared, public_cites_private_node: ERROR each.
+- x-output: anchor_malformed, anchor_unknown_section, anchor_duplicate, section_missing, citation_malformed, section_uncited, uncited_block, citation_unresolved, cites_non_normative, cites_outside_section, program_value_differs, program_value_missing, asset_undeclared, language_unlisted, banned_pattern, reading_level_above_target, visual_file_missing, visual_cites_mismatch, visual_invalid, visual_hash_mismatch, visual_format_undefined, release_section_changed_out_of_scope, coverage_gap, claims_not_approved, for_llms_not_lts_shaped, public_text_policy_hit, text_policy_unavailable, public_cites_private_node: ERROR each.
+- x-warnings: banned_rev_stale, sentence_too_long, coverage_unmarked, survey_document_missing (a survey entry names a document that does not exist at the survey's revision): WARNING each.
+- x-info: visual_not_checked, a file that is not scored for reading level: reported, never counted as a pass.
+- x-paths: A check that compares paths (dp-asset-path, dp-output-file, dp-visual-file, a generated file's embedded images) canonicalises each path first, as the engine does for roots, and refuses a path that leaves the repository.
+- x-legacy: A plan document without the format-version marker gets the same findings with the severities of §1.5.1.
+- x-home: Where the lint runs is open ([OPEN-DP-LINT-HOME]).
+
+## Defaults: the banned patterns of a generated voice [BANNED-DEFAULTS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- see-also: [BANDEF-STOCK-OPENER], [BANDEF-STOCK-CLOSER], [BANDEF-WORTH-NOTING], [BANDEF-HEDGE-STACK], [BANDEF-EM-DASH-HEAVY], [BANDEF-REFLEXIVE-TRIPLE], [BANDEF-NEEDLESS-HEADER], [BANDEF-NEEDLESS-BULLETS], [BANDEF-PUFFERY], [BANDEF-BOLD-EMPHASIS], [BANDEF-NOT-JUST-REVERSAL], [BANDEF-RHETORICAL-TRANSITION], [BANDEF-STRUCTURE-ANNOUNCEMENT], [BANDEF-FALSE-REASSURANCE], [BANDEF-EMOJI]
+- x-purpose: The default list of patterns that mark an assistant's stock voice. It applies to every plan unless the plan removes a pattern by its name. A change to this list in any way increments dp-banned-rev, which this node carries spelled x-dp-banned-rev until the profile ships, and re-opens every plan ([REQ-DP-BANNED-DEFAULTS]).
+- x-dp-banned-rev: 1
+- x-note: The patterns are lexical tripwires. A hit is a candidate and not proof of the voice, and a miss is not proof against it; each pattern's note says what it cannot see. The list is the format's own and is not drawn from any one writer's definition.
+
+### Banned pattern: stock-opener [BANDEF-STOCK-OPENER]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: stock-opener
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - in today's fast-paced world
+  - welcome to
+  - let's dive in
+  - in this guide, we will explore
+- x-dp-pattern-note: Sees only these phrases. A different stock opener passes.
+
+### Banned pattern: stock-closer [BANDEF-STOCK-CLOSER]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: stock-closer
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - in conclusion
+  - in summary
+  - happy coding
+  - we hope this helps
+- x-dp-pattern-note: Does not see a closing paragraph that recaps what was just said without these words.
+
+### Banned pattern: worth-noting [BANDEF-WORTH-NOTING]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: worth-noting
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - it's worth noting that
+  - it is worth noting that
+  - it's important to note
+  - it is important to note
+  - note that
+- x-dp-pattern-note: Matches note that anywhere in prose, not only at a sentence's start, and so flags the legitimate imperative as readily as the stock phrase.
+
+### Banned pattern: hedge-stack [BANDEF-HEDGE-STACK]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: hedge-stack
+- x-dp-pattern-class: count
+- x-dp-pattern-count-of: the words may, might, could potentially, generally, typically and in some cases
+- x-dp-pattern-count-per: sentence
+- x-dp-pattern-count-max: 1
+- x-dp-pattern-note: Counts the listed words only. A sentence hedged in other words passes, and a sentence that needs two hedges because the source states two conditions is flagged.
+
+### Banned pattern: em-dash-heavy [BANDEF-EM-DASH-HEAVY]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: em-dash-heavy
+- x-dp-pattern-class: count
+- x-dp-pattern-count-of: the em dash character
+- x-dp-pattern-count-per: paragraph
+- x-dp-pattern-count-max: 1
+- x-dp-pattern-note: Counts the character and not its use as the default joint between clauses.
+
+### Banned pattern: reflexive-triple [BANDEF-REFLEXIVE-TRIPLE]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: reflexive-triple
+- x-dp-pattern-class: cold-reader
+- x-dp-pattern-note: Three adjectives or clauses in a row where the source does not give three. A lexical lint cannot tell a triple the source gives from one the writer added.
+
+### Banned pattern: needless-header [BANDEF-NEEDLESS-HEADER]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: needless-header
+- x-dp-pattern-class: cold-reader
+- x-dp-pattern-note: A heading over a single short paragraph, or headings nested more than three deep. The depth can be counted and a lint may report it, but whether a paragraph is too short for a heading is the reader's call.
+
+### Banned pattern: needless-bullets [BANDEF-NEEDLESS-BULLETS]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: needless-bullets
+- x-dp-pattern-class: cold-reader
+- x-dp-pattern-note: Bullets for prose that reads as a sentence, or a list of one item. A list of one item can be counted; whether a list should be prose is the reader's call.
+
+### Banned pattern: puffery [BANDEF-PUFFERY]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: puffery
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - seamless
+  - seamlessly
+  - robust
+  - powerful
+  - cutting-edge
+  - game-changer
+  - leverage
+  - unlock
+  - empower
+  - delve
+  - elevate
+  - streamline
+- x-dp-pattern-note: Whole-word matches of these words only. A word used literally, such as a lock that is unlocked by a key, is flagged as readily.
+
+### Banned pattern: bold-emphasis [BANDEF-BOLD-EMPHASIS]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: bold-emphasis
+- x-dp-pattern-class: count
+- x-dp-pattern-count-of: bold spans in prose paragraphs
+- x-dp-pattern-count-per: section
+- x-dp-pattern-count-max: 1
+- x-dp-pattern-note: Counts bold spans in paragraphs, leaving out headings, tables and code. A bold term that is a defined name is counted as readily as emphasis.
+
+### Banned pattern: not-just-reversal [BANDEF-NOT-JUST-REVERSAL]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: not-just-reversal
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - not just
+  - it's not
+  - it is not
+- x-dp-pattern-note: Matches the opening words only, so a plain negative statement such as it is not supported is flagged as readily as the rhetorical reversal. It is a candidate list for the cold reader.
+
+### Banned pattern: rhetorical-transition [BANDEF-RHETORICAL-TRANSITION]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: rhetorical-transition
+- x-dp-pattern-class: cold-reader
+- x-dp-pattern-note: A question used as a transition, such as asking what a thing means before explaining it. A lint may list the sentences that end in a question mark; whether one is a transition is the reader's call.
+
+### Banned pattern: structure-announcement [BANDEF-STRUCTURE-ANNOUNCEMENT]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: structure-announcement
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - below, you'll find
+  - below you will find
+  - the following section describes
+  - this section describes
+- x-dp-pattern-note: Sees these phrases only.
+
+### Banned pattern: false-reassurance [BANDEF-FALSE-REASSURANCE]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: false-reassurance
+- x-dp-pattern-class: phrase
+- x-dp-pattern-phrases:
+  - don't worry
+  - simply
+  - just
+  - easily
+  - straightforward
+- x-dp-pattern-note: Whole-word matches. Just in its ordinary senses, as in just before, is flagged as readily as the reassurance.
+
+### Banned pattern: emoji [BANDEF-EMOJI]
+
+- part-of: [BANNED-DEFAULTS]
+- x-dp-pattern-name: emoji
+- x-dp-pattern-class: count
+- x-dp-pattern-count-of: characters with the Unicode property Emoji_Presentation
+- x-dp-pattern-count-per: document
+- x-dp-pattern-count-max: 0
+- x-dp-pattern-note: Counts the property only. A pictograph without it passes.
+
+## Acceptance [ACC-DP]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-setup: Small scratch plans and spec corpora, one per scenario, read by the lint and the generator's checks, plus a pair of cold readers for the two checks no lint can make. Each scenario below is a check.
+- x-red-first: Each check is first shown failing on the state before it exists, for the reason it names. For most the reason is that the keys are not declared and the lint does not exist.
+- x-not-run: None of it. No profile, no lint and no generator exists for this format.
+- x-evidence-slot: EMPTY. Filled when a real plan for a real project has produced a real release and a cold audit of coverage and invention has read it. Until then this format has never been used on a project, and nothing here is proven by use.
+- x-pre-integration-questions: Does the query grammar reach every section a real project's documentation needs without a hand list? Does the citation comment form survive the Markdown tools the project already uses (formatters that rewrite comments)? Does a project's own FOR-LLMS.md parse as LTS once its comment lines are added? Each is answered by a real plan and is open until then.
+
+### Scenario: one plan names one source spec and a second source spec is an error [SCEN-DP-ONE-PLAN-ONE-SPEC]
+
+- part-of: [ACC-DP]
+- given: a plan node with one dp-source-spec value, and a copy with two
+- when: the plan is linted
+- then: the first has no finding on the key and the second is plan_second_source_spec, an ERROR
+
+### Scenario: a plan missing a required key is named [SCEN-DP-PLAN-MISSING-KEY]
+
+- part-of: [ACC-DP]
+- given: a plan with no dp-reader-education and no dp-languages
+- when: the plan is linted
+- then: plan_missing_key is reported for each, naming the key, and no value is filled in
+
+### Scenario: two audiences are two plans over two source specs [SCEN-DP-TWO-AUDIENCES]
+
+- part-of: [ACC-DP]
+- given: two plan documents in one corpus, audiences user and spec-author, each with its own source spec and its own DPSEC- ids
+- when: both are linted
+- then: each resolves its own source spec, no id collides, and a query of one plan that returns a node under the other's source spec is source_outside_spec
+
+### Scenario: dp-also-from widens the set and nothing else [SCEN-DP-ALSO-FROM]
+
+- part-of: [ACC-DP]
+- given: a plan whose dp-also-from names one more spec root, and a section query that returns a node under it and a node under a third spec
+- when: the plan is linted
+- then: the first node is accepted and the second is source_outside_spec
+
+### Scenario: a query never returns a non-normative node [SCEN-DP-QUERY-NORMATIVE-ONLY]
+
+- part-of: [ACC-DP]
+- given: a spec holding a requirement, a source statement with a similar title, and a node under a non-normative section, all matching one query
+- when: the query is resolved
+- then: only the requirement is returned, and the other two are never in the result
+
+### Scenario: the same corpus and the same query give the same order [SCEN-DP-QUERY-ORDER]
+
+- part-of: [ACC-DP]
+- given: a query resolved twice over unchanged corpus bytes, once with order-by id:asc and once by default
+- when: the two results are compared
+- then: they are identical, and an order-by on a property that some nodes lack puts those nodes last, by id
+
+### Scenario: an empty query result blocks the section [SCEN-DP-EMPTY-QUERY]
+
+- part-of: [ACC-DP]
+- given: a section whose queries match nothing, and a second section with the same result and dp-allow-empty: true plus one authored node
+- when: a run is made
+- then: the first is query_empty and is not written, and the second is written from its authored node alone
+
+### Scenario: a source outside the spec is an error [SCEN-DP-OUTSIDE-SPEC]
+
+- part-of: [ACC-DP]
+- given: a query whose result includes a node that is not under the source spec's root
+- when: the plan is linted
+- then: source_outside_spec names the node
+
+### Scenario: a hand list of ids is refused [SCEN-DP-HAND-LIST-REFUSED]
+
+- part-of: [ACC-DP]
+- given: a dp-source-query holding ids=REQ-A, REQ-B, and another holding a bracketed id list
+- when: the plan is linted
+- then: each is query_malformed naming the term, and no section reads its sources from them
+
+### Scenario: a section with no sources is a finding [SCEN-DP-SECTION-NO-SOURCES]
+
+- part-of: [ACC-DP]
+- given: a section with neither a query nor a depends-on to an authored node
+- when: the plan is linted
+- then: section_no_sources is an ERROR
+
+### Scenario: a malformed query names the term [SCEN-DP-QUERY-MALFORMED]
+
+- part-of: [ACC-DP]
+- given: queries with an unknown term, with no corpus term, and with a where condition whose operator is not one of the four
+- when: the plan is linted
+- then: each is query_malformed and names the term or the operator
+
+### Scenario: an authored node names its origin [SCEN-DP-AUTHORED-ORIGIN]
+
+- part-of: [ACC-DP]
+- given: an authored node with dp-origin-doc as a path and no dp-origin-rev, and one with dp-origin-doc: new
+- when: the plan is linted
+- then: the first is authored_missing_origin, an ERROR, and the second is clean
+
+### Scenario: an authored node cannot be a source statement [SCEN-DP-AUTHORED-NO-QUOTE]
+
+- part-of: [ACC-DP]
+- given: an authored node that carries source-text
+- when: the plan is linted
+- then: authored_is_statement is an ERROR, and the node is not normative content for any query
+
+### Scenario: an authored node is cited like a spec node [SCEN-DP-AUTHORED-CITED]
+
+- part-of: [ACC-DP]
+- given: a section that depends-on an authored node, and a block that cites it by the plan's corpus id
+- when: the output is linted
+- then: the citation resolves and is in the section's source set
+
+### Scenario: an undeclared asset is not used [SCEN-DP-ASSET-UNDECLARED]
+
+- part-of: [ACC-DP]
+- given: a generated file that embeds an image no asset or visual node declares
+- when: the output is linted
+- then: asset_undeclared is an ERROR naming the file and line
+
+### Scenario: an asset whose bytes changed fails its hash [SCEN-DP-ASSET-HASH]
+
+- part-of: [ACC-DP]
+- given: an asset whose file was edited after dp-asset-sha256 was recorded
+- when: the plan is linted
+- then: asset_hash_mismatch is an ERROR naming the asset and both hashes
+
+### Scenario: a well-formed anchor and its section [SCEN-DP-ANCHOR-OK]
+
+- part-of: [ACC-DP]
+- given: a file with the line anchor for DPSEC-USER-INSTALL directly before the heading, then the section citation, then two cited blocks
+- when: the output is linted
+- then: the section runs from the anchor to the next anchor, and no anchor or citation finding is reported
+
+### Scenario: a bad anchor is named, never guessed [SCEN-DP-ANCHOR-BAD]
+
+- part-of: [ACC-DP]
+- given: an anchor with a bracketed id, one with two spaces, one repeated in the file, and one naming a section the plan does not have
+- when: the output is linted
+- then: anchor_malformed, anchor_malformed, anchor_duplicate and anchor_unknown_section are reported, each with its line
+
+### Scenario: the section citation is the line after the anchor [SCEN-DP-SECTION-CITATION]
+
+- part-of: [ACC-DP]
+- given: a section whose citation is missing, and a section whose citation lists a node that none of its blocks cites
+- when: the output is linted
+- then: the first is section_uncited and the second is cites_outside_section for the extra node
+
+### Scenario: a malformed citation is a finding [SCEN-DP-CITATION-MALFORMED]
+
+- part-of: [ACC-DP]
+- given: citations that use a bracketed id, a missing colon, a trailing full stop, and a semicolon separator
+- when: the output is linted
+- then: each is citation_malformed and none is read as a best guess
+
+### Scenario: the grammar has one definition [SCEN-DP-GRAMMAR-ONE-DEFINITION]
+
+- part-of: [ACC-DP]
+- given: the lint, the generator's checks and the release diff tool
+- when: the places each reads the anchor and citation forms from are listed
+- then: each reads them from [REQ-DP-CITATION-GRAMMAR] and none carries its own copy of a pattern that differs from it
+
+### Scenario: a block with no citation is invention [SCEN-DP-UNCITED-BLOCK]
+
+- part-of: [ACC-DP]
+- given: a section with a paragraph, a list and a table, of which the list has no citation line
+- when: the output is linted
+- then: uncited_block names the list and its line, and the paragraph and table are clean
+
+### Scenario: a citation that resolves to no node is a finding [SCEN-DP-CITATION-UNRESOLVED]
+
+- part-of: [ACC-DP]
+- given: a citation naming a node that does not exist in the named corpus, and one naming a corpus that is not registered
+- when: the output is linted
+- then: citation_unresolved is reported for each
+
+### Scenario: a citation to a non-normative node is an error [SCEN-DP-CITES-NON-NORMATIVE]
+
+- part-of: [ACC-DP]
+- given: a block that cites a source statement, and one that cites a node under a non-normative section
+- when: the output is linted
+- then: cites_non_normative is an ERROR for each
+
+### Scenario: a citation outside the section's own set is an error [SCEN-DP-CITES-OUTSIDE-SECTION]
+
+- part-of: [ACC-DP]
+- given: a block that cites a normative node that the section's queries do not return and no authored node covers
+- when: the output is linted
+- then: cites_outside_section is an ERROR naming the node
+
+### Scenario: a program part is copied exactly [SCEN-DP-PROGRAM-RENDER-EXACT]
+
+- part-of: [ACC-DP]
+- given: a section rendering a table of a property over four nodes, a copy whose one cell was reworded, and a copy where one node lacks the property
+- when: the output is linted
+- then: the reworded cell is program_value_differs and the missing property is program_value_missing, and an empty cell is never written
+
+### Scenario: a style node needs its keys and a sample [SCEN-DP-STYLE-REQUIRED]
+
+- part-of: [ACC-DP]
+- given: a plan with a style node that has no dp-voice, and one with all keys
+- when: the plan is linted
+- then: the first is style_missing_key naming dp-voice, and the second has no finding
+
+### Scenario: a style with no sample is an error [SCEN-DP-STYLE-MISSING-SAMPLES]
+
+- part-of: [ACC-DP]
+- given: a style node with all keys and no sample child
+- when: the plan is linted
+- then: style_missing_sample is an ERROR
+
+### Scenario: a default banned phrase in prose is a hit [SCEN-DP-BANNED-HIT]
+
+- part-of: [ACC-DP]
+- given: a generated paragraph holding the phrase in conclusion, the same phrase inside a code block, and the same phrase inside an HTML comment
+- when: the output is linted
+- then: one banned_pattern for stock-closer is reported with its file and line, and the other two are not
+
+### Scenario: a plan removes a default by name [SCEN-DP-BANNED-REMOVE]
+
+- part-of: [ACC-DP]
+- given: a plan whose dp-banned-remove lists puffery with a reason, and a paragraph with the word robust
+- when: the output is linted
+- then: no banned_pattern is reported for puffery, and the removal and its reason are on the style node
+
+### Scenario: removing a name that is not a default is an error [SCEN-DP-BANNED-REMOVE-UNKNOWN]
+
+- part-of: [ACC-DP]
+- given: a dp-banned-remove that lists a misspelt name
+- when: the plan is linted
+- then: banned_remove_unknown is an ERROR naming it
+
+### Scenario: a plan adds a pattern of its own [SCEN-DP-BANNED-ADD]
+
+- part-of: [ACC-DP]
+- given: a style node with a child banned node, a phrase pattern with a name that is not a default's, and a paragraph with the phrase
+- when: the output is linted
+- then: banned_pattern is reported for the added pattern, and another plan in the same corpus is not affected
+
+### Scenario: editing the default list re-opens every plan [SCEN-DP-BANNED-DEFAULT-REV]
+
+- part-of: [ACC-DP]
+- given: two plans with dp-banned-rev-seen of 1, and the default list's x-dp-banned-rev raised to 2
+- when: both are linted
+- then: each reports banned_rev_stale, each next release lints every generated file in full, and setting dp-banned-rev-seen to 2 on one plan clears only that plan's finding
+
+### Scenario: a cold-reader pattern is not reported by the lint [SCEN-DP-BANNED-COLD-READER]
+
+- part-of: [ACC-DP]
+- given: a paragraph that is a reflexive triple
+- when: the output is linted
+- then: no finding is reported, and reflexive-triple is listed among the checks owed to the cold reader
+
+### Scenario: a file at or under the target passes [SCEN-DP-READING-PASSES]
+
+- part-of: [ACC-DP]
+- given: a file of 40 prose sentences scoring a grade of 7.2, and a plan with dp-reading-target 8 and the default tolerance
+- when: the file is scored
+- then: it passes, and a file scoring 3.0 also passes
+
+### Scenario: a file above target plus tolerance fails [SCEN-DP-READING-FAILS]
+
+- part-of: [ACC-DP]
+- given: the same plan, and a file scoring 8.7
+- when: the file is scored
+- then: reading_level_above_target is an ERROR naming the file, 8.7 and 8, and a file scoring 8.5 passes
+
+### Scenario: a short file is not scored, and is not a pass [SCEN-DP-READING-NOT-SCORED]
+
+- part-of: [ACC-DP]
+- given: a file with three prose sentences
+- when: the output is linted
+- then: the file is reported as not scored, and the pass count excludes it
+
+### Scenario: a plan without a reading level is named [SCEN-DP-READING-MISSING]
+
+- part-of: [ACC-DP]
+- given: a plan with no dp-reading-target, and a plan with dp-reading-formula set to a name that is not defined
+- when: the plan is linted
+- then: reading_input_missing and reading_formula_unknown are reported, and no target is assumed
+
+### Scenario: a second language is the same plan [SCEN-DP-LANGUAGE-PATHS]
+
+- part-of: [ACC-DP]
+- given: dp-languages of en then de, dp-output-dir docs/, and a section file named install.md
+- when: the output paths are computed
+- then: the English file is docs/install.md and the German file is docs/de/install.md, the sections and anchors are the same, and the absence of the German file is not a finding while only English is produced
+
+### Scenario: a file in an unlisted language is an error [SCEN-DP-LANGUAGE-UNLISTED]
+
+- part-of: [ACC-DP]
+- given: a generated file under docs/fr/ in a plan that does not list fr
+- when: the output is linted
+- then: language_unlisted is an ERROR
+
+### Scenario: a complete generated visual passes and cites what it depicts [SCEN-DP-VISUAL-GENERATED]
+
+- part-of: [ACC-DP]
+- given: a visual node of form generated with a file, a format of svg, two cited ids and a caption, and a file that cites the same two ids
+- when: the plan and output are linted
+- then: no finding is reported, and each cited id is normative and in the section's source set
+
+### Scenario: an incomplete generated visual is named [SCEN-DP-VISUAL-GENERATED-INCOMPLETE]
+
+- part-of: [ACC-DP]
+- given: a generated visual with no dp-visual-cites, one whose file is absent, and one whose cites differ from the references in its file
+- when: the plan and output are linted
+- then: visual_generated_incomplete, visual_file_missing and visual_cites_mismatch are reported
+
+### Scenario: a recommended visual states what to capture and why [SCEN-DP-VISUAL-RECOMMENDED]
+
+- part-of: [ACC-DP]
+- given: a visual node of form recommended with dp-visual-capture and dp-visual-why and no file
+- when: the plan is linted
+- then: no finding is reported, and the node is listed among the plan's recommended visuals
+
+### Scenario: a recommended visual with no reason is an error [SCEN-DP-VISUAL-RECOMMENDED-INCOMPLETE]
+
+- part-of: [ACC-DP]
+- given: a recommended visual with no dp-visual-why
+- when: the plan is linted
+- then: visual_recommended_incomplete is an ERROR naming the key
+
+### Scenario: a supplied image fulfils a recommendation and the recommendation stays [SCEN-DP-VISUAL-FULFILLED]
+
+- part-of: [ACC-DP]
+- given: a recommended visual whose dp-fulfilled-by names a declared asset
+- when: the plan is linted and the node is read
+- then: the asset is hash-checked as any asset, and the recommendation node is still present
+
+### Scenario: a visual not checked is not a pass [SCEN-DP-VISUAL-NOT-CHECKED]
+
+- part-of: [ACC-DP]
+- given: a Mermaid visual and no renderer available
+- when: the output is linted
+- then: visual_not_checked is reported as INFO, and the check count does not include it as passed
+
+### Scenario: a survey entry holds a verdict and a reason [SCEN-DP-SURVEY-ENTRY]
+
+- part-of: [ACC-DP]
+- given: survey entries for three existing documents with keep, drop and fold, and a fold with no dp-survey-lands
+- when: the plan is linted
+- then: the fold without dp-survey-lands is survey_entry_incomplete, and the others are clean
+
+### Scenario: an unaccepted survey cannot support a release [SCEN-DP-SURVEY-ACCEPTED-GATES-RELEASE]
+
+- part-of: [ACC-DP]
+- given: a release whose dp-survey names a survey with no dp-survey-accepted, and the same survey after dp-survey-accepted, its role and its locator are added
+- when: the plan is linted
+- then: the first is survey_not_accepted, an ERROR, and the second is clean
+
+### Scenario: a project with no existing documents records none [SCEN-DP-SURVEY-NONE]
+
+- part-of: [ACC-DP]
+- given: a release with dp-survey: none and no survey node
+- when: the plan is linted
+- then: no finding is reported
+
+### Scenario: a release is added and never edited [SCEN-DP-RELEASE-APPEND-ONLY]
+
+- part-of: [ACC-DP]
+- given: a plan with release 1, and a run that adds release 2 with lts_add_node
+- when: the delta of the write is read
+- then: release 1's bytes are unchanged, release 2 has dp-release-seq 2, and a release that skips a number is release_malformed
+
+### Scenario: only sections whose sources changed are regenerated [SCEN-DP-UPDATE-SCOPE]
+
+- part-of: [ACC-DP]
+- given: a latest release, and a spec edit that changes one requirement cited by one section, adds a node to another section's query result, and leaves the rest alone
+- when: the update scope is computed
+- then: exactly those two sections are in scope, a section outside it whose text changed is release_section_changed_out_of_scope, and a new section is in scope
+
+### Scenario: a manifest item has the exact form [SCEN-DP-RELEASE-HASH-FORM]
+
+- part-of: [ACC-DP]
+- given: manifest items with a hash that has uppercase digits, one that is 63 digits long, and one with a missing section id
+- when: the plan is linted
+- then: each is release_malformed, and a content_hash copied from the engine's report is accepted
+
+### Scenario: an output hash is of the section's text [SCEN-DP-RELEASE-OUTPUT-HASH]
+
+- part-of: [ACC-DP]
+- given: a release with output hashes and a section's text edited by one character afterwards
+- when: the output is linted against the latest release
+- then: the edited section's hash no longer matches, and the finding names the section and language
+
+### Scenario: a release records whether the cold checks were run [SCEN-DP-VOICE-CHECK-STATE]
+
+- part-of: [ACC-DP]
+- given: a release written by the generator
+- when: the release node is read
+- then: dp-voice-check and dp-audit-check are owed, and only a reader other than the generator sets either to done on a later release record
+
+### Scenario: a retired id stays reserved [SCEN-DP-RETIRED-ID-RESERVED]
+
+- part-of: [ACC-DP]
+- given: a section retired in release 3 with dp-retired-in 3, and a new section node given the same id in a later edit
+- when: the plan is linted
+- then: the id cannot be two nodes in one corpus, and a retired node carrying no dp-retired-in is an ERROR
+
+### Scenario: a rename is a recorded map [SCEN-DP-RENAME-MAP]
+
+- part-of: [ACC-DP]
+- given: a section renamed by retiring the old node with superseded-by naming the new one
+- when: lts_traverse is run on SUPERSEDES from the new section
+- then: the old section is listed, and the lint reports no section_id_unmapped
+
+### Scenario: a released id that vanishes is an error [SCEN-DP-ID-VANISHED]
+
+- part-of: [ACC-DP]
+- given: a section id in the latest manifest whose node was deleted from the plan
+- when: the plan is linted
+- then: section_id_unmapped is an ERROR naming the id
+
+### Scenario: a retired section generated again is an error [SCEN-DP-RETIRED-RELEASED-AGAIN]
+
+- part-of: [ACC-DP]
+- given: a section retired in release 3, whose id appears in release 4's manifest
+- when: the plan is linted
+- then: retired_id_released_again is an ERROR
+
+### Scenario: FOR-LLMS.md has both roles [SCEN-DP-FOR-LLMS-BOTH-ROLES]
+
+- part-of: [ACC-DP]
+- given: a plan with dp-output-form lts-in-md and an overview and an install section, both generated
+- when: the plan and the file are linted
+- then: no for_llms_role_missing is reported
+
+### Scenario: a FOR-LLMS.md without its install section is not produced [SCEN-DP-FOR-LLMS-INSTALL-DROPPED]
+
+- part-of: [ACC-DP]
+- given: a plan whose install section is blocked because its query returns nothing
+- when: a run is made
+- then: for_llms_role_missing names install, and no FOR-LLMS.md is written with one role
+
+### Scenario: FOR-LLMS.md parses as LTS with nothing lost [SCEN-DP-FOR-LLMS-PARSES]
+
+- part-of: [ACC-DP]
+- given: a generated FOR-LLMS.md with anchors and citations, copied to a scratch name with the extension .lts
+- when: the engine's preview reads it
+- then: every section the plan declares is a node, no declared id mints nothing, the comment lines are ignorable, and the same bytes render as readable Markdown
+
+### Scenario: FOR-LLMS.md is cited like any generated file [SCEN-DP-FOR-LLMS-CITED]
+
+- part-of: [ACC-DP]
+- given: a generated FOR-LLMS.md with one uncited block
+- when: the output is linted
+- then: uncited_block is reported, as for any generated file
+
+### Scenario: with the claims gate on, a section is classified and approval is recorded [SCEN-DP-CLAIMS-GATE-ON]
+
+- part-of: [ACC-DP]
+- given: a plan with dp-claims-gate: operator, a section with no dp-claim-class, and a release in state approved with no approval locator
+- when: the plan is linted
+- then: the section is an ERROR, and the release is claims_not_approved
+
+### Scenario: with the gate off the claim keys are not required [SCEN-DP-CLAIMS-GATE-OFF]
+
+- part-of: [ACC-DP]
+- given: a plan with no dp-claims-gate and sections with no dp-claim-class
+- when: the plan is linted
+- then: no finding is reported for the claim keys
+
+### Scenario: a node the plan marks user-facing must appear [SCEN-DP-COVERAGE]
+
+- part-of: [ACC-DP]
+- given: a dp-coverage-query returning five requirements, of which four are cited by blocks of the output
+- when: the output is linted
+- then: coverage_gap names the fifth
+
+### Scenario: a plan with no coverage query is told so [SCEN-DP-COVERAGE-UNMARKED]
+
+- part-of: [ACC-DP]
+- given: a plan with no dp-coverage-query
+- when: the plan is linted
+- then: coverage_unmarked is a WARNING and no coverage is claimed
+
+### Scenario: nothing in the format names a project [SCEN-DP-GENERIC]
+
+- part-of: [ACC-DP]
+- given: this file's keys, defaults, patterns and examples
+- when: they are read for the name of any one project, product, language or person
+- then: none is found, and a plan for a different project needs no change to the format
+
+### Scenario: this file keeps its own rule [SCEN-DP-SELF-APPLIED]
+
+- part-of: [ACC-DP]
+- given: this file
+- when: lts_node and lts_find are read on its source statements and on its goals
+- then: the stakeholder's words appear only under [SRC-DP-STATEMENTS], each with a locator, and every goal restates them in other words
+
+### Scenario: undeclared keys are told until the profile lands [SCEN-DP-UNDECLARED-UNTIL-PROFILE]
+
+- part-of: [ACC-DP]
+- given: a strict plan document that uses dp- keys, linted before the profile exists and after
+- when: both runs are compared
+- then: the first reports undeclared_key for each distinct key and loses none, and the second reports none
+
+### Scenario: a cold agent given only FOR-LLMS.md can say what the software does and why, install it and validate the install [SCEN-DP-FOR-LLMS-COLD-AGENT]
+
+- part-of: [ACC-DP]
+- given: a generated FOR-LLMS.md and an agent with no other document or memory of the project
+- when: the agent is asked how the software would or would not help a named project it was not written for, where it would go for technical detail, and then to install it and validate the install
+- then: the answers match the project owner's reference list of facts, the agent names where the detail lives, and the install and its validation finish green; a file that fails any of the three is not accepted
+
+### Scenario: done means a newcomer installs and uses the software from the generated docs alone [SCEN-DP-DONE-NEWCOMER]
+
+- part-of: [ACC-DP]
+- given: the first release of a plan for the install-and-use audience, and a fresh agent in an empty sandbox given only the generated documents of that release, FOR-LLMS.md included, and nothing else
+- when: the agent installs the software, runs the project's own validation step and runs the first task that the user documents give
+- then: every step succeeds from the documents alone and the run ends green; the release is not done until this has passed, and a pass by an agent that was shown anything else does not count
+- x-note: The authors' reading of the selected option ([SRC-DP-SELECTED-DONE]) for this format: the generated set includes FOR-LLMS.md, because the stakeholder asked that the install run through that file ([SRC-DP-INSTALL-ROLE]), and the steps are named generically. For the first project the validation step is its self-check and the first task is its first query; those names are the authors' reading and belong to that project's rollout, not to the format.
+
+### Scenario: the first project's existing documents are the survey input of its first plan [SCEN-DP-TEST-CASE-EXISTING-DOCS]
+
+- part-of: [ACC-DP]
+- given: the first project documented under this format and its existing documents folder, 72 files when the stakeholder named it as the test case
+- when: the writer's survey is run over every file in it
+- then: each file has a keep, drop or fold verdict with a reason, and the survey is the first acceptance input of that project's plan; the format itself names no project, and the project's rollout records this case
+- x-note: The authors' reading of what the stakeholder's named test case tests: the survey. Confirmation pending: [OPEN-DP-TEST-CASE-MEANING].
+
+### Scenario: each defined visual format is checked as far as it can be, and an undefined one needs a check [SCEN-DP-VISUAL-FORMATS]
+
+- part-of: [ACC-DP]
+- given: four generated visuals in the formats mermaid, svg, text-diagram and raster, and a fifth with a format value that is not defined and no dp-visual-check
+- when: the plan and output are linted
+- then: the first four raise no format finding, the raster's hash is compared with dp-visual-sha256, and the fifth is visual_format_undefined
+
+### Scenario: a resolver run that drops an oversize node fails loudly [SCEN-DP-RESOLVER-OVERSIZE]
+
+- part-of: [ACC-DP]
+- given: a section query whose result includes a node larger than the token budget the engine would skip
+- when: the resolver runs
+- then: the run reports query_resolver_oversize and writes nothing for the section, and the source set is never silently smaller
+
+### Scenario: a survey records the audiences it recommends [SCEN-DP-SURVEY-AUDIENCES]
+
+- part-of: [ACC-DP]
+- given: a survey with two dp-survey-audiences lines
+- when: the plan is linted and the node read
+- then: each line is audience: reason, and a survey with none is clean
+
+### Scenario: a raster visual whose bytes differ from its recorded hash is an error [SCEN-DP-VISUAL-RASTER-HASH]
+
+- part-of: [ACC-DP]
+- given: a generated visual of format raster whose dp-visual-sha256 was recorded, and the image file then regenerated so that its bytes differ
+- when: the output is linted
+- then: visual_hash_mismatch is an ERROR naming the visual, the recorded hash and the computed hash, and the same visual with a matching hash raises no finding
+
+### Scenario: a section that depends-on a node that is neither authored nor an asset is an error [SCEN-DP-DEPENDS-ON-WRONG-KIND]
+
+- part-of: [ACC-DP]
+- given: a section that depends-on an authored node and an asset, and a copy that also depends-on another section
+- when: the plan is linted
+- then: the copy raises depends_on_wrong_kind, an ERROR naming the target, and the first raises nothing
+
+### Scenario: a FOR-LLMS.md that does not parse as LTS, or loses a declared section, is an error [SCEN-DP-FOR-LLMS-NOT-LTS-SHAPED]
+
+- part-of: [ACC-DP]
+- given: a generated FOR-LLMS.md whose frontmatter block is missing, and one that parses but has no node for a section its plan declares
+- when: the file is read as LTS
+- then: each raises for_llms_not_lts_shaped, an ERROR naming the cause, and the well-formed file raises nothing
+
+### Scenario: a language tag that is not well formed is an error [SCEN-DP-LANGUAGE-TAG-MALFORMED]
+
+- part-of: [ACC-DP]
+- given: dp-languages listing en and a value written en_US!, and a plan listing en and de
+- when: the plans are linted
+- then: the first raises language_tag_malformed, an ERROR naming the value, and the second raises nothing
+
+### Scenario: a document with two plan nodes is an error [SCEN-DP-PLAN-TWO-PLAN-NODES]
+
+- part-of: [ACC-DP]
+- given: a doc-plan document holding two nodes of kind plan, and one holding a single plan node
+- when: the documents are linted
+- then: the first raises plan_two_plan_nodes, an ERROR, and the second raises nothing
+
+### Scenario: an active section absent from its output file is an error in a release [SCEN-DP-SECTION-MISSING-FROM-OUTPUT]
+
+- part-of: [ACC-DP]
+- given: a plan with three active sections and an output file that holds the anchors of two
+- when: the release output is linted
+- then: the third section raises section_missing, an ERROR naming it and its file, and the two present raise nothing
+
+### Scenario: two active sections with one dp-order are an error [SCEN-DP-SECTION-ORDER-DUPLICATE]
+
+- part-of: [ACC-DP]
+- given: two active sections of one plan that both carry dp-order 3, and the same plan with the second renumbered 4
+- when: the plans are linted
+- then: the first raises section_order_duplicate, an ERROR naming both sections, and the second raises nothing
+
+### Scenario: a sentence over the style's limit is reported as a warning [SCEN-DP-SENTENCE-TOO-LONG]
+
+- part-of: [ACC-DP]
+- given: a style node with dp-sentence-max-words 20, a generated sentence of 31 words and one of 20 words
+- when: the output is linted
+- then: the first raises sentence_too_long, a WARNING naming the file and line, and the 20-word sentence raises nothing
+
+### Scenario: a source spec that names no node is an error [SCEN-DP-SOURCE-SPEC-UNRESOLVED]
+
+- part-of: [ACC-DP]
+- given: a plan whose dp-source-spec names a node id absent from the named corpus, and one that names an existing spec root
+- when: the plans are linted
+- then: the first raises source_spec_unresolved, an ERROR naming the reference, and the second raises nothing
+
+### Scenario: an SVG that is not well-formed XML is an error [SCEN-DP-VISUAL-SVG-INVALID]
+
+- part-of: [ACC-DP]
+- given: a generated visual of format svg whose file has an unclosed element, and one whose file is well-formed
+- when: the output is linted
+- then: the first raises visual_invalid, an ERROR naming the file and the parse position, and the second raises nothing
+
+### Scenario: a survey entry naming a document that does not exist is a warning [SCEN-DP-SURVEY-DOCUMENT-MISSING]
+
+- part-of: [ACC-DP]
+- given: a survey with one entry whose dp-survey-doc names a file absent at the survey's revision, and one whose file is present
+- when: the plan is linted
+- then: the first raises survey_document_missing, a WARNING naming the entry, and the second raises nothing; no release is blocked by the warning
+
+### Scenario: a public plan whose query reaches a private corpus is refused and the same plan marked internal releases [SCEN-DP-PUBLIC-PRIVATE-REFUSED]
+
+- part-of: [ACC-DP]
+- given: a plan with dp-publication: public whose section query names a corpus that is private and returns a node there, the same plan with dp-publication: internal, and a public plan whose own corpus is private
+- when: each plan is linted and released
+- then: the public plan raises public_cites_private_node, an ERROR naming the section and the node id, no release node is added and no output file is replaced, and the finding appears in the lint report and in no generated file; the plan whose own corpus is private raises public_cites_private_node as well; the internal plan releases without either check running, and its release node states dp-publication: internal
+
+### Scenario: a public plan whose text holds a term the deployment's vocabulary refuses is refused, and the same text without the term releases [SCEN-DP-PUBLIC-TERM-REFUSED]
+
+- part-of: [ACC-DP]
+- given: a public plan whose rendered text holds a term that the deployment's vocabulary refuses, the same text with the term removed (the control), a deployment with no vocabulary configured, and a deployment whose matcher cannot run
+- when: the rendered output is scanned before the release is recorded
+- then: the first raises public_text_policy_hit, an ERROR naming the output file, the line and the name of the matched rule and not repeating the term, and no release node is added and no output file is replaced; the text without the term releases, and its release node records dp-text-scan: vocabulary; under the deployment with no vocabulary, and under the deployment whose matcher cannot run, the release is refused with text_policy_unavailable, an ERROR, and nothing is written
+
+### Scenario: a plan with no dp-publication is an error and no value is filled in [SCEN-DP-PUBLICATION-UNDECLARED]
+
+- part-of: [ACC-DP]
+- given: a plan with no dp-publication, a plan whose dp-publication is yes, and a plan whose dp-publication is internal
+- when: the plans are linted
+- then: the first and the second raise publication_undeclared, an ERROR naming the plan, each once and neither also as plan_missing_key, and no value is filled in; the third raises nothing for the key
+
+### Scenario: a public plan whose source spec root lies in a private corpus is refused, naming the plan and the root [SCEN-DP-PUBLIC-SOURCE-SPEC-PRIVATE]
+
+- part-of: [ACC-DP]
+- given: a plan with dp-publication: public that lives in a corpus that is not private and whose dp-source-spec names a root node in a private corpus, and the same plan with dp-publication: internal
+- when: each plan is linted and released
+- then: the public plan raises public_cites_private_node, an ERROR naming the plan and the root, no release node is added and no output file is replaced, and the finding appears in the lint report and in no generated file; the internal plan releases without the check running
+
+### Scenario: a block citation in a public plan's output that names a node of a private corpus is refused [SCEN-DP-PUBLIC-CITATION-PRIVATE]
+
+- part-of: [ACC-DP]
+- given: a public plan whose rendered output holds a block citation naming a node of a private corpus, and the same output with that citation naming a node of a corpus that is not private (the control)
+- when: the rendered output is linted before the release is recorded
+- then: the first raises public_cites_private_node, an ERROR naming the section and the node id, whatever other finding the same citation raises, and no release node is added and no output file is replaced; the finding appears in the lint report and in no generated file; the control raises no public_cites_private_node
+
+### Scenario: a release node missing dp-publication or dp-text-scan is an error [SCEN-DP-RELEASE-PUBLICATION-MISSING]
+
+- part-of: [ACC-DP]
+- given: a public plan's release node with no dp-publication, a public plan's release node with dp-publication but no dp-text-scan, and an internal plan's release node with dp-publication: internal and no dp-text-scan
+- when: the plan documents are linted
+- then: the first and the second are release_malformed, an ERROR; the third raises nothing for either key, because dp-text-scan is required only for a public plan
+
+## Decision: one source spec for one plan, and one plan for one audience [DD-DP-ONE-SPEC-PER-PLAN]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D1
+- x-decision: A plan names exactly one source spec and serves one audience. A project with several audiences has several plans over several specs. A plan that spans specs, such as the plan for FOR-LLMS.md, says so with dp-also-from.
+- rationale: The reading is the authors' (the assistant's in the design session): each audience has its own source spec and its own plan. The stakeholder accepted it with the words in [SRC-DP-CONFIRM-READINGS]; the reading is not his wording. One plan per audience keeps each plan short enough to review as a whole, makes a section's source set a bounded subtree, and lets two audiences release on different days.
+- x-rejected: One plan per project. It would hold every audience's sections in one document, and its release record would be one number for what are separate documents that change at different times.
+- x-invalidating-assumption: That a project's audiences do not share sections. If they do, the plans repeat queries; a shared section kind would then be worth defining.
+
+## Decision: a section's id is its node id [DD-DP-SECTION-ID-IS-NODE-ID]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D2
+- x-decision: The section id used in the Markdown anchor is the id of the section's node in the plan, with the prefix DPSEC-. There is no separate key for it.
+- rationale: A second identifier on the node would be a place for the two to differ, and the format would have to check that they do not. The node id is already unique in the corpus, permanent under §1.1, and the target of the edges that map a rename.
+- x-cost: The id carries the audience by convention so that two plans in one corpus cannot collide, and a section's id is longer than a bare name.
+- x-invalidating-assumption: That the corpus never holds two plans whose authors choose the same id. The lint reports a collision as the parser does for any duplicate id.
+
+## Decision: a rename is recorded with superseded-by and not a map node [DD-DP-RENAME-BY-SUPERSEDED-BY]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D3
+- x-decision: The recorded map of a renamed, split or merged section is the retired old node's superseded-by, an existing core key that mints SUPERSEDES. No new node kind is defined for it.
+- rationale: The edge answers the reviewer's question, what did this section become, with lts_traverse, and a map node would hold the same two ids a second time. The cheapest node that fully owns the behaviour is the existing edge.
+- x-invalidating-assumption: That a rename needs no reason recorded. If a reviewer needs one, a note key on the retired node carries it without a new kind.
+
+## Decision: references in citations are bare ids inside comments [DD-DP-BARE-IDS-IN-COMMENTS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D4
+- x-decision: A citation is a corpus id, a colon and a node id, with no brackets, inside an HTML comment.
+- rationale: A comment shows nothing to the reader and an auditor finds it with a pattern. A bare id mints no edge when the same bytes are read as LTS, which matters for the generated FOR-LLMS.md, so a citation cannot change the graph the file parses to.
+- x-invalidating-assumption: That the project's Markdown tools keep comments. A formatter that strips them would remove every citation; a pre-integration question of [ACC-DP].
+
+## Decision: the query terms are the engine's find and traverse arguments [DD-DP-QUERY-IS-THE-ENGINE-FIND]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D5
+- x-decision: The terms of a source query are the engine's own find and traverse arguments, written as name=value, with one added filter that is always on, normative_effective true.
+- rationale: A query language of this format's own would have to be kept in step with the engine's and would define a second meaning for prefix, status and where. Reading the engine's definition keeps one meaning. The always-on filter makes the normative-only rule structural and not something a plan can forget.
+- x-invalidating-assumption: That the engine's find arguments stay compatible. A change to one is a change to this grammar and is found by the scenario that resolves every query term.
+
+## Decision: the default banned-pattern list lives in the format, and a change re-opens every plan [DD-DP-DEFAULT-LIST-IN-THE-FORMAT]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D6
+- x-decision: The default list is a set of nodes in this file, each pattern named by a stable kebab-case name, and carries a revision number that every plan records the last time it was reviewed.
+- rationale: A list in a writer's definition would be a copy that each deployment edits and that no plan can see change. In the format, the list is one queryable set, and the revision number makes a change visible as a finding on every plan, so that no plan keeps a voice rule it never reviewed. The cost is deliberate: a change to the list costs one review of every plan.
+- x-rejected: The list in the writer's definition, and the list in each plan. The first is unversioned from the plan's side, the second makes a plan carry fifteen patterns it did not choose.
+- x-invalidating-assumption: That a revision per list is fine-grained enough. If plans want to be re-opened only by patterns of a kind, the revision becomes one per pattern.
+
+## Decision: a release is a node appended and never edited [DD-DP-RELEASE-IS-APPENDED]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D7
+- x-decision: Each release adds one release node holding its manifest and its output hashes. No later run edits an earlier release.
+- rationale: The record the next update diffs against must be the record the previous run made. An editable record could be rewritten to fit the output, and an append through the typed writer shows in its whole-file delta that nothing else changed, as a confirmation does under spec 39.
+- x-invalidating-assumption: That a release record is not wrong when written. If one is, the correction is a later release, and the lint's limit stated in [REQ-DP-RELEASE-RECORD] applies.
+
+## Decision: a visual is one node kind with two forms [DD-DP-VISUAL-ONE-KIND-TWO-FORMS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D8
+- x-decision: The generated and recommended visuals are one kind, visual, with a form key, and not two kinds.
+- rationale: A recommended visual becomes a generated one or an asset when someone supplies it, and both stand in the same place in a section. One kind keeps the position and the history in one node, and the form decides which keys are required.
+- x-invalidating-assumption: That the two forms share enough keys. They share the section and the form; the rest differ, and the lint reads the form first.
+
+## Decision: FOR-LLMS.md is the output of an ordinary plan [DD-DP-FOR-LLMS-IS-A-PLAN]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D9
+- x-decision: FOR-LLMS.md has a plan of its own, audience llm, with the output form lts-in-md and a role on each section. It is not a special file with its own generator.
+- rationale: It then has the same citations, release record, style, reading-level and claims rules as any generated document, and the rule that its install role is never dropped is a lint on the plan and not a promise in a procedure.
+- x-invalidating-assumption: That the style and reading-level rules suit a file an LLM reads. A plan may set a generous dp-reading-target for it; the key still has to be recorded.
+
+## Decision: the formats a generated visual may take are open to what an agent can generate and check [DD-DP-VISUAL-FORMATS-OPEN]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: D10
+- x-decision: dp-visual-format is not a closed pair. The format defines mermaid, svg, text-diagram and raster, and admits another value when the plan states how it is checked.
+- rationale: The stakeholder's limit is the graphics within the realm of what a model instance could generate, in [SRC-DP-VISUAL-LIMIT]. A closed pair of text formats would have excluded forms that limit allows. Measured by the architect on the public repository at commit cd41cee: no image file is present; 1 Markdown document uses a fenced Mermaid block; 3 Markdown files use box-drawing text diagrams. In that repository the visuals are Mermaid and text diagrams, and the format must at least name those two. The stakeholder's words ([SRC-DP-VISUAL-CORRECTION]) do not say which repository's visuals he meant: the public repository's docs folder and the internal repository's docs folder differ, and these counts are from the public one only.
+- x-measured-limit: The count is of one repository at one commit and is not rechecked by lint. A rendered chart as an image file is allowed because a model instance can generate it with code, though none exists in that repository.
+- x-invalidating-assumption: That a raster rendered by code can be checked. Its hash proves only that the file is the one declared, not that it depicts the cited nodes; the cold audit reads it.
+
+## Open: where the doc lint runs [OPEN-DP-LINT-HOME]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O1
+- x-open: Whether the checks of [MECH-DP-LINT] are an engine tool, a command beside the engine, or inline commands run by the writer. The checks over a plan, and the check of a release record against its append-only rule, need the engine's parse; the checks over generated Markdown need only the plan and the corpus.
+- x-owner: The engine owner, with the writer's owner. Decided before the build change that adds the lint ([PLAN-DP]); the release event that ends it is that change landing.
+
+## Open: what the contract of the text-policy matcher seam is [OPEN-DP-TEXT-POLICY-SEAM]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O9
+- x-open: [REQ-DP-PUBLIC-NO-PRIVATE] names the deployment's text-policy matcher as a seam and does not yet state the seam's contract: how a lint finds the matcher, what it means that the matcher cannot run, how a finding names the matched rule without echoing the matched text, and which files make up the vocabulary.
+- x-position: Until the contract is settled, anything short of the matcher's publication mode running is text_policy_unavailable, an ERROR that blocks the release.
+- x-owner: The engine owner, with the spec owner, as for [OPEN-DP-LINT-HOME]. Decided before the build change that adds the lint ([PLAN-DP]).
+
+## Open: whether FOR-LLMS.md has fixed sections under its two roles [OPEN-DP-FOR-LLMS-FIXED-SECTIONS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O2
+- x-open: The format fixes two roles for the file and not a list of sections under them. Whether a fixed list of sections, the same across projects, is worth defining is open.
+- x-owner: The spec owner, once two projects have generated the file.
+
+## Open: whether a plan may draw from several specs [OPEN-DP-ALSO-FROM]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O3
+- x-open: dp-also-from lets the FOR-LLMS.md plan reach the audience specs. Whether any other plan may use it, or whether a project-wide overview spec should be that plan's one source spec instead, is open.
+- x-owner: The spec owner.
+
+## Open: how an education level maps to a grade [OPEN-DP-READING-LEVEL-MAPPING]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O4
+- x-open: The format records the education level in words and a target as a Flesch-Kincaid grade, and defines no mapping between them. The default tolerance of 0.5 and the minimum of five sentences are the architects' choice and have not been measured against real documents.
+- x-owner: The spec owner, after the first real plan.
+
+## Open: spec 39 and the profile are not yet built [OPEN-DP-DEPENDENCIES]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O5
+- x-open: This format reads normative_effective, which spec 39 defines and which no engine carries yet; and its keys, prefixes and tag need the profile. Neither exists on the branch this file was written on.
+- x-owner: The spec owner.
+
+## Open: publishing beyond the docs folder [OPEN-DP-PUBLISH-BEYOND-DOCS]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O6
+- x-open: The output is Markdown in the repository's docs folder, and dp-output-dir is the one place that changes. Whether documentation is later published to a site is not decided and is not excluded; the format would then gain an output form.
+- x-owner: The stakeholder, with the spec owner.
+
+## Open: whether the plan is the reference file the stakeholder named [OPEN-DP-READING-LEVEL-HOME]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O7
+- x-open: The stakeholder asked that the reader's target education level be asked for and embedded in the reference file the agent creates ([SRC-DP-EDUCATION]). This file reads that as the doc plan, one per audience, and stores dp-reader-education and dp-reading-target there ([REQ-DP-READING-LEVEL]). In the same turn he also raised a configuration file in LTS that describes the writer's procedure, which is a different file. Nothing in the sources shows him confirming which file he meant.
+- x-position: The authors' reading, confirmation pending. If he meant the writer's own configuration, the keys move there and the plan keeps only a reference; the checks of [REQ-DP-READING-LEVEL] are unchanged.
+- x-owner: The stakeholder.
+
+## Traceability [TRACE-DP]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- see-also: [SCEN-DP-ALSO-FROM], [SCEN-DP-SECTION-NO-SOURCES], [SCEN-DP-RESOLVER-OVERSIZE], [SCEN-DP-AUTHORED-CITED], [SCEN-DP-ASSET-HASH], [SCEN-DP-GRAMMAR-ONE-DEFINITION], [SCEN-DP-COVERAGE], [SCEN-DP-PROGRAM-RENDER-EXACT], [SCEN-DP-STYLE-MISSING-SAMPLES], [SCEN-DP-BANNED-COLD-READER], [SCEN-DP-READING-MISSING], [SCEN-DP-LANGUAGE-UNLISTED], [SCEN-DP-VISUAL-FORMATS], [SCEN-DP-TEST-CASE-EXISTING-DOCS], [SCEN-DP-DONE-NEWCOMER], [SCEN-DP-RETIRED-RELEASED-AGAIN], [SCEN-DP-FOR-LLMS-COLD-AGENT], [SCEN-DP-CLAIMS-GATE-OFF], [SCEN-DP-COVERAGE-UNMARKED], [SCEN-DP-CITES-NON-NORMATIVE], [SCEN-DP-ONE-PLAN-ONE-SPEC], [SCEN-DP-PLAN-MISSING-KEY], [SCEN-DP-TWO-AUDIENCES], [SCEN-DP-QUERY-NORMATIVE-ONLY], [SCEN-DP-QUERY-ORDER], [SCEN-DP-EMPTY-QUERY], [SCEN-DP-OUTSIDE-SPEC], [SCEN-DP-HAND-LIST-REFUSED], [SCEN-DP-QUERY-MALFORMED], [SCEN-DP-AUTHORED-ORIGIN], [SCEN-DP-AUTHORED-NO-QUOTE], [SCEN-DP-ASSET-UNDECLARED], [SCEN-DP-ANCHOR-OK], [SCEN-DP-ANCHOR-BAD], [SCEN-DP-SECTION-CITATION], [SCEN-DP-CITATION-MALFORMED], [SCEN-DP-UNCITED-BLOCK], [SCEN-DP-CITATION-UNRESOLVED], [SCEN-DP-CITES-OUTSIDE-SECTION], [SCEN-DP-STYLE-REQUIRED], [SCEN-DP-BANNED-HIT], [SCEN-DP-BANNED-REMOVE], [SCEN-DP-BANNED-REMOVE-UNKNOWN], [SCEN-DP-BANNED-ADD], [SCEN-DP-BANNED-DEFAULT-REV], [SCEN-DP-READING-PASSES], [SCEN-DP-READING-FAILS], [SCEN-DP-READING-NOT-SCORED], [SCEN-DP-LANGUAGE-PATHS], [SCEN-DP-VISUAL-GENERATED], [SCEN-DP-VISUAL-GENERATED-INCOMPLETE], [SCEN-DP-VISUAL-RECOMMENDED], [SCEN-DP-VISUAL-RECOMMENDED-INCOMPLETE], [SCEN-DP-VISUAL-FULFILLED], [SCEN-DP-VISUAL-NOT-CHECKED], [SCEN-DP-SURVEY-ENTRY], [SCEN-DP-SURVEY-ACCEPTED-GATES-RELEASE], [SCEN-DP-SURVEY-NONE], [SCEN-DP-RELEASE-APPEND-ONLY], [SCEN-DP-UPDATE-SCOPE], [SCEN-DP-RELEASE-HASH-FORM], [SCEN-DP-RELEASE-OUTPUT-HASH], [SCEN-DP-VOICE-CHECK-STATE], [SCEN-DP-RETIRED-ID-RESERVED], [SCEN-DP-RENAME-MAP], [SCEN-DP-ID-VANISHED], [SCEN-DP-FOR-LLMS-BOTH-ROLES], [SCEN-DP-FOR-LLMS-INSTALL-DROPPED], [SCEN-DP-FOR-LLMS-PARSES], [SCEN-DP-FOR-LLMS-CITED], [SCEN-DP-CLAIMS-GATE-ON], [SCEN-DP-GENERIC], [SCEN-DP-SELF-APPLIED], [SCEN-DP-UNDECLARED-UNTIL-PROFILE], [SCEN-DP-SURVEY-AUDIENCES], [SCEN-DP-VISUAL-RASTER-HASH], [SCEN-DP-DEPENDS-ON-WRONG-KIND], [SCEN-DP-FOR-LLMS-NOT-LTS-SHAPED], [SCEN-DP-LANGUAGE-TAG-MALFORMED], [SCEN-DP-PLAN-TWO-PLAN-NODES], [SCEN-DP-SECTION-MISSING-FROM-OUTPUT], [SCEN-DP-SECTION-ORDER-DUPLICATE], [SCEN-DP-SENTENCE-TOO-LONG], [SCEN-DP-SOURCE-SPEC-UNRESOLVED], [SCEN-DP-VISUAL-SVG-INVALID], [SCEN-DP-SURVEY-DOCUMENT-MISSING], [SCEN-DP-PUBLIC-PRIVATE-REFUSED], [SCEN-DP-PUBLIC-TERM-REFUSED], [SCEN-DP-PUBLICATION-UNDECLARED], [SCEN-DP-PUBLIC-SOURCE-SPEC-PRIVATE], [SCEN-DP-PUBLIC-CITATION-PRIVATE], [SCEN-DP-RELEASE-PUBLICATION-MISSING]
+- x-g1: G1 [GOAL-DP-GENERATED-FROM-SPECS] -> R1, R2, R3, R5, R6, R8, R15, R20 ([REQ-DP-PLAN-PER-AUDIENCE], [REQ-DP-SECTIONS], [REQ-DP-QUERY], [REQ-DP-ASSETS], [REQ-DP-CITATION-GRAMMAR], [REQ-DP-PROGRAM-RENDERED], [REQ-DP-RELEASE-RECORD], [REQ-DP-PUBLIC-NO-PRIVATE]) -> the plan, its queries and its release record ([MECH-DP-PROFILE]) -> [SCEN-DP-ONE-PLAN-ONE-SPEC], [SCEN-DP-QUERY-ORDER], [SCEN-DP-UPDATE-SCOPE], [SCEN-DP-PUBLIC-PRIVATE-REFUSED], [SCEN-DP-PUBLICATION-UNDECLARED].
+- x-g2: G2 [GOAL-DP-BY-AUDIENCE] -> R1 ([REQ-DP-PLAN-PER-AUDIENCE]) -> [SCEN-DP-TWO-AUDIENCES], [SCEN-DP-ONE-PLAN-ONE-SPEC].
+- x-g3: G3 [GOAL-DP-SPEC-SOURCES] -> R3, R7, R8, R19 and [INV-DP-NORMATIVE-SOURCES-ONLY] -> the always-on filter ([MECH-DP-LINT]) -> [SCEN-DP-QUERY-NORMATIVE-ONLY], [SCEN-DP-CITES-NON-NORMATIVE], [SCEN-DP-PROGRAM-RENDER-EXACT].
+- x-g4: G4 [GOAL-DP-WHY-FROM-SPECS] -> R3 and R7 (a section's why is a goal or requirement it cites) -> [SCEN-DP-EMPTY-QUERY], [SCEN-DP-UNCITED-BLOCK]. The recovery of missing goals is the writer's procedure and is not defined here.
+- x-g5: G5 [GOAL-DP-SURVEY-AND-FOLD] -> R4, R14 ([REQ-DP-AUTHORED], [REQ-DP-SURVEY]) -> [SCEN-DP-SURVEY-ENTRY], [SCEN-DP-SURVEY-ACCEPTED-GATES-RELEASE], [SCEN-DP-AUTHORED-ORIGIN].
+- x-g6: G6 [GOAL-DP-FOR-LLMS] -> R17 ([REQ-DP-FOR-LLMS]) -> [SCEN-DP-FOR-LLMS-BOTH-ROLES], [SCEN-DP-FOR-LLMS-INSTALL-DROPPED], [SCEN-DP-FOR-LLMS-PARSES].
+- x-g7: G7 [GOAL-DP-ANY-PROJECT] -> R12, R18, R20 ([REQ-DP-LANGUAGES], [REQ-DP-CLAIMS-GATE], [REQ-DP-PUBLIC-NO-PRIVATE]) -> [SCEN-DP-LANGUAGE-PATHS], [SCEN-DP-CLAIMS-GATE-ON], [SCEN-DP-GENERIC], [SCEN-DP-PUBLIC-PRIVATE-REFUSED], [SCEN-DP-PUBLIC-TERM-REFUSED], [SCEN-DP-PUBLICATION-UNDECLARED], [SCEN-DP-PUBLIC-SOURCE-SPEC-PRIVATE], [SCEN-DP-PUBLIC-CITATION-PRIVATE], [SCEN-DP-RELEASE-PUBLICATION-MISSING].
+- x-g8: G8 [GOAL-DP-STYLE-AND-LEVEL] -> R9, R10, R11 ([REQ-DP-STYLE-PROFILE], [REQ-DP-BANNED-DEFAULTS], [REQ-DP-READING-LEVEL]) -> [BANNED-DEFAULTS] -> [SCEN-DP-BANNED-HIT], [SCEN-DP-BANNED-DEFAULT-REV], [SCEN-DP-READING-FAILS].
+- x-g9: G9 [GOAL-DP-VISUALS] -> R13 ([REQ-DP-VISUALS]) -> [SCEN-DP-VISUAL-GENERATED], [SCEN-DP-VISUAL-RECOMMENDED], [SCEN-DP-VISUAL-NOT-CHECKED].
+- x-done: G10 [GOAL-DP-REVIEWABLE-RELEASES] and the stakeholder's selection of the definition of done ([SRC-DP-SELECTED-DONE]) -> [SCEN-DP-DONE-NEWCOMER]. G5 and his named test case -> [SCEN-DP-TEST-CASE-EXISTING-DOCS].
+- x-g10: G10 [GOAL-DP-REVIEWABLE-RELEASES] -> R2, R6, R7, R15, R16, R19 and [INV-DP-SECTION-ID-STABLE] -> [SCEN-DP-ANCHOR-OK], [SCEN-DP-RELEASE-APPEND-ONLY], [SCEN-DP-RENAME-MAP], [SCEN-DP-COVERAGE].
+- x-self: This file is checked by [SCEN-DP-SELF-APPLIED].
+
+## Build order and rollout [PLAN-DP]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-order: One change adds the domain profile (the keys reaching every consumer of a profile, per rule 13 of x-sdlc) that declares the dp- keys, the id prefixes and the document tag DOCPLAN, with the nodes of [BANNED-DEFAULTS] carried as the profile's data. The same change renames the default nodes' x-dp-* keys to dp-*; the rename is a spelling change and does not increment dp-banned-rev. The lint of [MECH-DP-LINT] follows, the plan checks first and the output checks after. A generator that reads a plan follows the lint, and it is not part of this format.
+- x-before-use: No strict plan uses a dp- key before the profile lands, or it gets undeclared_key errors. This file is the first document of the format and carries the default-pattern data of [BANNED-DEFAULTS] as x-dp-* keys until the profile lands.
+- x-depends: Spec 39 must be built before the always-on normative filter and the citation checks mean anything, because normative_effective is minted there.
+- x-sdlc: In the same change, SDLC 7.6 gains a rule for each extension point of this format, drafted with the engine owner at build time: (1) a doc-plan section names its source nodes by query and never by a hand list; (2) a section id is never reused, and a rename carries a recorded map (superseded-by); (3) generation of FOR-LLMS.md preserves the install section; (4) a new dp-kind value adds its id prefix to the profile after a prior-use check across the registered corpora, with its lint rules and a scenario, in one change; (5) a change to the default banned-pattern list increments dp-banned-rev, which re-opens every plan; (6) a new find or traverse argument, where operator or match mode is added to this format's query terms, or listed there as not available, in the same change; (7) the plan-query resolver is an internal find caller and passes semantic off, word_fallback false and an unbounded token budget, and fails loudly on oversize_skipped; (8) any tool that reads or writes the anchor and citation comments imports the one grammar of the citation requirement, and a second pattern is a finding; (9) a new doc-plan finding code joins the lint's lists with its severity and a scenario in the same change; (10) a new way for a section to acquire a source (a query term, a citation form, a visual's cited ids, dp-also-from) applies the normative_effective filter, and a change to normative_effective is checked against this format; (11) a change to the form or scope of content_hash is checked against the release manifest and update-scope rules; (12) a new dp-reading-formula name lands with its formula, counting rules and scenarios together; (13) the banned-pattern defaults and the profile ship as package data, with a wheel test, and the profile's keys reach both profile loaders, the profile validator, SPEC.md and the profile audit in the one change. (14) a new named dp-visual-format joins the format list of the visual requirement with its check, its lint codes and a scenario in one change, and a value admitted only through dp-visual-check is never given a lint pass. (15) a new way for a section to acquire a source, or a new plan-level reference to a node, is covered by public_cites_private_node in the same change, with a scenario; (16) a feature that scans text against the deployment's policy calls the one matcher, defines no vocabulary of its own, never echoes matched text in a finding, and reports cannot-run as an error, never as a pass; (17) dp-publication and dp-text-scan never gain a default, and a new value of either lands with its lint behaviour, its release-record meaning and a scenario; (18) whether a corpus is private is decided only by the engine's one privacy rule (SPEC.md 4.6.4b), and a new condition goes into that rule and that section in the same change; (19) the x-dp-* to dp-* rename is one step of the profile change (x-order) and is checked after it by finding no property line in this file whose key begins x-dp- (zero hits).
+- x-rollback: Remove the profile and the lint. A plan document then parses as ordinary properties, and a strict one reports undeclared_key; no data format changes.
+- x-not-in-scope: The writer agent and its procedure, and the software-development extension. They read this format and are specified apart from it.
+
+## Open: what the stakeholder's named test case is a test of [OPEN-DP-TEST-CASE-MEANING]
+
+- part-of: [FL-DOC-PLAN]
+- status: draft
+- x-label: O8
+- x-open: The stakeholder called the project's existing documents folder the best test case possible ([SRC-DP-WHY-IN-SPECS]). This file reads it as the acceptance input of the survey ([GOAL-DP-SURVEY-AND-FOLD], [SCEN-DP-TEST-CASE-EXISTING-DOCS]). It could instead, or also, test that the generated documentation covers what the existing files cover.
+- x-question: What are the existing documents to test: (a) the survey, where each file gets keep, drop or fold and folded content must land; (b) the generated documentation as a whole, which must cover what those files cover; (c) both; (d) other.
+- x-owner: The stakeholder.

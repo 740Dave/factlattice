@@ -4,8 +4,6 @@
 
 This document describes the session lifecycle machinery that ensures an Intelligence receives the right context at session start and leaves a clean audit trail at session end. It is framework documentation -- anyone adopting FactLattice for their own domain can follow it to set up context loading from scratch.
 
-> **Design example, not shipped code.** Sections 1-5 specify the behaviour of two hook scripts, `session_start.sh` and `session_end.sh`. Those scripts are NOT part of this repository: everything below describes what you would build and wire up yourself (section 6), and nothing here can be run as-is from a clone.
-
 ---
 
 ## 1. Session Start -- Manifest-Driven Context Discovery
@@ -358,8 +356,6 @@ The session canary file is deleted. If it was already missing (e.g., the hook wa
 
 ## 6. Installation
 
-> **This is a design example.** `session_start.sh` and `session_end.sh` are NOT part of this repository. This section describes what you would wire up if you write those two hook scripts yourself, following the behaviour specified in sections 2-5. Nothing below can be run as-is from a clone.
-
 ### Prerequisites
 
 - Claude Code installed and functional
@@ -368,11 +364,11 @@ The session canary file is deleted. If it was already missing (e.g., the hook wa
 
 ### Step 1: Create the Scripts Directory
 
-Write your own `session_start.sh` and `session_end.sh` (they are not shipped here) and place them in `~/.claude/scripts/`:
+Place `session_start.sh` and `session_end.sh` in `~/.claude/scripts/`:
 
 ```bash
 mkdir -p ~/.claude/scripts
-# put your own session_start.sh and session_end.sh here
+# Copy or symlink session_start.sh and session_end.sh here
 ```
 
 ### Step 2: Configure Hooks

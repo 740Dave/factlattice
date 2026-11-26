@@ -20,10 +20,12 @@ import pytest
 
 from factlattice_engine.extent import Extent, did_you_mean, unknown_corpus
 from factlattice_engine.lifecycle import (
-    LIFECYCLE_KEYS, lifecycle_matches, lifecycle_values,
+    LIFECYCLE_KEYS,
+    lifecycle_matches,
+    lifecycle_values,
 )
 from factlattice_engine.store import LtsStore, Partition
-from factlattice_engine.tools import LtsEngine, dispatch
+from factlattice_engine.tools import LtsEngine
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -227,8 +229,8 @@ def test_the_lifecycle_key_set_is_shared_with_the_rule_that_validates_it():
     """One definition, two consumers. V6 validating three `lifecycle-position: contingent`
     nodes the query layer could not see is what two independent notions of "the lifecycle
     key" costs."""
-    from factlattice_engine.lint import profile_rules
     from factlattice_engine import lifecycle as lc
+    from factlattice_engine.lint import profile_rules
     assert profile_rules.LIFECYCLE_PROPERTY is lc.LIFECYCLE_PROPERTY
     assert profile_rules.LIFECYCLE_PROPERTY_ALT is lc.LIFECYCLE_PROPERTY_ALT
     assert set(LIFECYCLE_KEYS) == {"status", lc.LIFECYCLE_PROPERTY,

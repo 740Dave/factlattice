@@ -24,10 +24,13 @@ from __future__ import annotations
 import pytest
 
 from factlattice_engine import (
-    LtsEngine, LtsStore, Partition,
-    is_bare_lifecycle_token, lifecycle_token, status_matches,
+    LtsEngine,
+    LtsStore,
+    Partition,
+    is_bare_lifecycle_token,
+    lifecycle_token,
+    status_matches,
 )
-
 
 # ---------------------------------------------------------------------------
 # THE TOKENIZER — what it normalizes, and what it deliberately REFUSES to

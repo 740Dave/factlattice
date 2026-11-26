@@ -28,13 +28,11 @@ import hashlib
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional
 
 from .constants import FACTLATTICE_PROFILE_VERSION, GENERATOR
 from .hashing import files_hash, list_lts_files
 from .parser import (
     CANONICAL_LAYERS,
-    DEFAULT_REGISTERED_NS,
     is_profile_document,
     parse_file,
 )
@@ -43,13 +41,13 @@ SCHEMA_VERSION = "1.0"
 
 
 
-def build_alias_index(node_map: Dict[str, dict]) -> Dict[str, str]:
+def build_alias_index(node_map: dict[str, dict]) -> dict[str, str]:
     """alias id -> canonical node id, from each node's `properties["aliases"]` ([LTS-PARSER] alias-form).
 
     THE ONE definition of the dangling check's resolution namespace: `resolvable = node ids | this index's keys`. The index
     builder, the incremental builder and the reviewer's `dangles` helper all call it, so a reference resolves the same way in
     every one of them. A real node id always wins over an alias claim (no silent clobber)."""
-    alias_index: Dict[str, str] = {}
+    alias_index: dict[str, str] = {}
     for cid, nd in node_map.items():
         for alias in (nd.get("properties") or {}).get("aliases") or []:
             if alias not in node_map and alias not in alias_index:
@@ -60,17 +58,17 @@ def build_index(
     corpus_root: str,
     corpus_id: str = "example",
     domain_suffix: str = "demo.example",
-    built_at: Optional[str] = None,
+    built_at: str | None = None,
     registered_ns=None,
-    profile_layers: Optional[Dict[str, str]] = None,
-    domain_verbs: Optional[frozenset] = None,
-    property_edges: Optional[Dict[str, tuple]] = None,
-    config: Optional[object] = None,
-    commit_ref: Optional[str] = None,
-    snapshot_version: Optional[int] = None,
-    snapshot_hash: Optional[str] = None,
-    parent_snapshot_version: Optional[int] = None,
-    parent_snapshot_hash: Optional[str] = None,
+    profile_layers: dict[str, str] | None = None,
+    domain_verbs: frozenset | None = None,
+    property_edges: dict[str, tuple] | None = None,
+    config: object | None = None,
+    commit_ref: str | None = None,
+    snapshot_version: int | None = None,
+    snapshot_hash: str | None = None,
+    parent_snapshot_version: int | None = None,
+    parent_snapshot_hash: str | None = None,
 ) -> dict:
     """Parse every .lts under corpus_root and assemble the graph index dict.
 
@@ -98,11 +96,11 @@ def build_index(
 
     rel_files = list_lts_files(corpus_root)
 
-    node_map: Dict[str, dict] = {}
-    id_collisions: List[dict] = []
-    all_edges: List[dict] = []
-    parse_errors: List[dict] = []
-    profile_documents: List[str] = []
+    node_map: dict[str, dict] = {}
+    id_collisions: list[dict] = []
+    all_edges: list[dict] = []
+    parse_errors: list[dict] = []
+    profile_documents: list[str] = []
 
     for rel in rel_files:
         abs_path = os.path.join(corpus_root, rel)
@@ -157,12 +155,12 @@ def build_index(
             unresolved_target_count += 1
 
     # --- per-layer adjacency + reverse_adjacency ---------------------------
-    layers: Dict[str, dict] = {}
-    edges_by_layer: Dict[str, int] = {}
+    layers: dict[str, dict] = {}
+    edges_by_layer: dict[str, int] = {}
     for layer in CANONICAL_LAYERS:
         layer_edges = [e for e in all_edges if e["layer"] == layer]
-        adjacency: Dict[str, List[str]] = {}
-        reverse: Dict[str, List[str]] = {}
+        adjacency: dict[str, list[str]] = {}
+        reverse: dict[str, list[str]] = {}
         for e in layer_edges:
             adjacency.setdefault(e["source"], []).append(e["target"])
             reverse.setdefault(e["target"], []).append(e["source"])

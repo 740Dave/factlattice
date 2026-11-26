@@ -19,8 +19,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "input": "Borrower card CONTENTS (required)"
+      "input": "Borrower card CONTENTS (required)",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -204,8 +208,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "kind": "plan"
+      "kind": "plan",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -228,8 +236,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -256,8 +268,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -365,8 +381,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -393,8 +413,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -505,8 +529,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -612,8 +640,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -640,8 +672,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -664,8 +700,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -686,8 +726,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "tier": "gold"
+      "tier": "gold",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -707,8 +751,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -812,8 +860,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -840,8 +892,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -864,8 +920,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -886,8 +946,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "tier": "gold"
+      "tier": "gold",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -907,8 +971,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -1010,8 +1078,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "kind": "plan"
+      "kind": "plan",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1039,8 +1111,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1064,8 +1140,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1087,8 +1167,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "tier": "gold"
+      "tier": "gold",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1109,8 +1193,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1131,8 +1219,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": null,
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1154,8 +1246,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "input": "Borrower card CONTENTS (required)"
+      "input": "Borrower card CONTENTS (required)",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1177,8 +1273,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "description": "card contents differ"
+      "description": "card contents differ",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1199,8 +1299,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1225,8 +1329,12 @@
       "ykey": [
        "a",
        "b"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1251,8 +1359,12 @@
       "ykey": [
        "a",
        "x"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1276,8 +1388,12 @@
       "status": "operational",
       "ymap": {
        "sub": "a"
-      }
+      },
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1299,8 +1415,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "ykey": "a"
+      "ykey": "a",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1322,8 +1442,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "ykey": "x"
+      "ykey": "x",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1444,8 +1568,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -1467,8 +1595,12 @@
      "status": "draft",
      "properties": {
       "status": "draft",
-      "kind": "note"
+      "kind": "note",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "UNT-ROOT",
      "document_tag": null,
      "definition_form": "header",
@@ -1489,8 +1621,12 @@
      "token_count": 11,
      "status": "draft",
      "properties": {
-      "status": "draft"
+      "status": "draft",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": null,
      "document_tag": null,
      "definition_form": "header",
@@ -1674,8 +1810,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -1698,8 +1838,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -1804,8 +1948,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -1828,8 +1976,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -1932,8 +2084,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2033,8 +2189,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2219,8 +2379,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2241,8 +2405,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "tier": "gold"
+      "tier": "gold",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2265,8 +2433,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2293,8 +2465,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2395,7 +2571,7 @@
      "id": "PROC-ALANTERN",
      "title": "Alantern quality Aqaba",
      "token_count": 34,
-     "property_count": 4,
+     "property_count": 5,
      "edge_count": 1,
      "source_file": "a.lts",
      "line_range": [
@@ -2410,7 +2586,7 @@
      "id": "PROC-LANTERN-ARCH",
      "title": "Lantern architect note",
      "token_count": 54,
-     "property_count": 5,
+     "property_count": 6,
      "edge_count": 1,
      "source_file": "a.lts",
      "line_range": [
@@ -2425,7 +2601,7 @@
      "id": "PROC-LIVE",
      "title": "go-live checklist",
      "token_count": 31,
-     "property_count": 4,
+     "property_count": 5,
      "edge_count": 1,
      "source_file": "a.lts",
      "line_range": [
@@ -2440,7 +2616,7 @@
      "id": "PROC-LIVE2",
      "title": "go live now",
      "token_count": 16,
-     "property_count": 2,
+     "property_count": 3,
      "edge_count": 1,
      "source_file": "a.lts",
      "line_range": [
@@ -2455,7 +2631,7 @@
      "id": "PROC-LIVE3",
      "title": "go to live",
      "token_count": 12,
-     "property_count": 1,
+     "property_count": 2,
      "edge_count": 1,
      "source_file": "a.lts",
      "line_range": [
@@ -2565,8 +2741,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2590,8 +2770,12 @@
       "ykey": [
        "a",
        "b"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2615,8 +2799,12 @@
       "ykey": [
        "a",
        "x"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2639,8 +2827,12 @@
       "status": "operational",
       "ymap": {
        "sub": "a"
-      }
+      },
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2661,8 +2853,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "ykey": "a"
+      "ykey": "a",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2683,8 +2879,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "ykey": "x"
+      "ykey": "x",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2793,8 +2993,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "input": "Borrower card CONTENTS (required)"
+      "input": "Borrower card CONTENTS (required)",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2815,8 +3019,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "description": "card contents differ"
+      "description": "card contents differ",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2923,8 +3131,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -2947,8 +3159,12 @@
       "status": "operational",
       "function": "alpha",
       "service": "svc1",
-      "decided-in-session": "2026-09-15"
+      "decided-in-session": "2026-09-15",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -3054,8 +3270,12 @@
      "token_count": 12,
      "status": "operational",
      "properties": {
-      "status": "operational"
+      "status": "operational",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -3079,8 +3299,12 @@
       "ykey": [
        "a",
        "b"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -3104,8 +3328,12 @@
       "ykey": [
        "a",
        "x"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -3205,8 +3433,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "input": "Borrower card CONTENTS (required)"
+      "input": "Borrower card CONTENTS (required)",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -3245,8 +3477,12 @@
      "status": "operational",
      "properties": {
       "status": "operational",
-      "description": "card contents differ"
+      "description": "card contents differ",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header",
@@ -3365,8 +3601,12 @@
       "status": "draft",
       "kind": "Note",
       "tier": "silver",
-      "decided-in-session": "2026-10-01"
+      "decided-in-session": "2026-10-01",
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -3393,8 +3633,12 @@
       "alias": [
        "lantern qa checklist",
        "second alias"
-      ]
+      ],
+      "normative_effective": "true"
      },
+     "minted_keys": [
+      "normative_effective"
+     ],
      "parent_section": "QS-ROOT",
      "document_tag": "SPEC",
      "definition_form": "header"
@@ -4147,17 +4391,19 @@
      "function",
      "input",
      "kind",
+     "normative_effective",
      "service",
      "status",
      "tier",
      "ykey",
      "ymap"
     ],
-    "used_count": 11,
+    "used_count": 12,
     "declared": "no profile loaded",
     "used_but_unregistered": "no profile loaded",
     "declared_but_unused": "no profile loaded",
     "frequency": {
+     "normative_effective": 18,
      "status": 18,
      "kind": 4,
      "ykey": 4,
@@ -4172,9 +4418,10 @@
     },
     "distribution": {
      "tail_threshold": 5,
-     "core_count": 1,
+     "core_count": 2,
      "tail_count": 10,
      "core": {
+      "normative_effective": 18,
       "status": 18
      },
      "tail": [
@@ -4255,6 +4502,8 @@
      "attaches-to-hook",
      "branches",
      "canonical-node",
+     "checked-against",
+     "confirmation-of",
      "contrast-with",
      "converges-to",
      "depends-on",
@@ -4268,6 +4517,7 @@
      "related-to",
      "relates-to",
      "resolves",
+     "restates",
      "see-also",
      "spawns",
      "superseded-by",
@@ -4284,6 +4534,8 @@
      "attaches-to-hook",
      "branches",
      "canonical-node",
+     "checked-against",
+     "confirmation-of",
      "contrast-with",
      "converges-to",
      "depends-on",
@@ -4297,6 +4549,7 @@
      "related-to",
      "relates-to",
      "resolves",
+     "restates",
      "see-also",
      "spawns",
      "superseded-by",
@@ -4312,6 +4565,8 @@
      "attaches-to-hook",
      "branches",
      "canonical-node",
+     "checked-against",
+     "confirmation-of",
      "contrast-with",
      "converges-to",
      "depends-on",
@@ -4325,6 +4580,7 @@
      "related-to",
      "relates-to",
      "resolves",
+     "restates",
      "see-also",
      "spawns",
      "superseded-by",
@@ -4358,6 +4614,8 @@
      "attaches-to-hook",
      "branches",
      "canonical-node",
+     "checked-against",
+     "confirmation-of",
      "contrast-with",
      "converges-to",
      "depends-on",
@@ -4371,6 +4629,7 @@
      "related-to",
      "relates-to",
      "resolves",
+     "restates",
      "see-also",
      "spawns",
      "superseded-by",

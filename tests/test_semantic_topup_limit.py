@@ -29,8 +29,8 @@ def _corpus(root):
     root.mkdir(parents=True, exist_ok=True)
     (root / "00-c.lts").write_text(
         "# Corpus [DOC-C]\n\n"
-        "## Tile map version field [XL-LEDGER-PROTOBUF]\n\n- status: active\n"
-        "- what: the tile map version field records which extractor made it\n\ntile map version prose\n\n"
+        "## Zero map version field [XL-LEDGER-PROTOBUF]\n\n- status: active\n"
+        "- what: the zero map version field records which extractor made it\n\nzero map version prose\n\n"
         "## Hello world [N-HELLO]\n\n- what: hello world greeting\n\nhello world prose\n\n"
         "## Map overview [MAP-1]\n\n- what: map overview\n", encoding="utf-8")
 
@@ -46,9 +46,9 @@ def bg(tmp_path, monkeypatch):
                             pin=pin, build_mode="background")
     eng = LtsEngine(config.build_store(reg))
     eng.semantic = svc
-    eng.semantic_find(corpus="c", text="tile map")
+    eng.semantic_find(corpus="c", text="zero map")
     assert svc.wait_idle(30)
-    assert eng.semantic_find(corpus="c", text="tile map")["status"] == "ok"
+    assert eng.semantic_find(corpus="c", text="zero map")["status"] == "ok"
     return tmp_path, svc, reg
 
 

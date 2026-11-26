@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
 from factlattice import CorpusFileError, files_hash
 
@@ -44,7 +43,7 @@ def main(argv=None) -> int:
 
     index_hash = None
     try:
-        with open(args.index, "r", encoding="utf-8") as fh:
+        with open(args.index, encoding="utf-8") as fh:
             index = json.load(fh)
         index_hash = index.get("source_corpus", {}).get("files_hash")
         if not index_hash:

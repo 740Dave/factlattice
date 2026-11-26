@@ -107,10 +107,10 @@ def test_unstemmed_variant_also_matches():
 
 def test_exact_score_ties_break_by_id_ascending_like_the_reference():
     """The real corpus has no top-10 ties, so the tie rule is pinned on identical documents."""
-    cards = {nid: [("head", "tile map version")] for nid in ("N-C", "N-A", "N-B")}
+    cards = {nid: [("head", "zero map version")] for nid in ("N-C", "N-A", "N-B")}
     cards["N-D"] = [("head", "unrelated words")]
-    assert [i for i, _ in LexRank(cards).search("tile map", 10)] == ["N-A", "N-B", "N-C"]
-    assert [i for i, _ in _ReferenceBM25(cards).search("tile map", 10)] == ["N-A", "N-B", "N-C"]
+    assert [i for i, _ in LexRank(cards).search("zero map", 10)] == ["N-A", "N-B", "N-C"]
+    assert [i for i, _ in _ReferenceBM25(cards).search("zero map", 10)] == ["N-A", "N-B", "N-C"]
 
 
 EDGE = ["", "   ", "the of and what is", "zzqxv nonexistentterm", "Zéro-map ΟΔΟΣ versión", "a-b_c/d.e"]

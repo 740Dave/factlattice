@@ -22,18 +22,16 @@ error is C5's Era-1 ratchet (the maintainer's 2026-08-16 ruling), not this rule'
 """
 from __future__ import annotations
 
-from typing import Dict, List
-
 import factlattice
 from factlattice.parser import FINDING_MALFORMED_REF
 
 ORIGIN = "malformed_ref"
 KIND = FINDING_MALFORMED_REF
 
-MALFORMED_REF_SEVERITY: Dict[str, str] = {KIND: "warning"}
+MALFORMED_REF_SEVERITY: dict[str, str] = {KIND: "warning"}
 
 
-def find_malformed_refs(corpus: "factlattice.ParsedCorpus") -> list:
+def find_malformed_refs(corpus: factlattice.ParsedCorpus) -> list:
     """Every `malformed_ref` ParseFinding in `corpus`, in parse order.
 
     ⛔ Reads `corpus.property_findings` for what it IS: `factlattice.corpus.parse()`'s
@@ -49,15 +47,15 @@ def find_malformed_refs(corpus: "factlattice.ParsedCorpus") -> list:
            if f.kind == FINDING_MALFORMED_REF]
 
 
-def malformed_ref_stats(findings: list) -> Dict[str, int]:
-    by_position: Dict[str, int] = {}
+def malformed_ref_stats(findings: list) -> dict[str, int]:
+    by_position: dict[str, int] = {}
     for f in findings:
         pos = f.detail.get("position", "?")
         by_position[pos] = by_position.get(pos, 0) + 1
     return {"malformed_refs": len(findings), "by_position": by_position}
 
 
-def summary_line(stats: Dict[str, int]) -> str:
+def summary_line(stats: dict[str, int]) -> str:
     return (f"-- malformed refs: {stats['malformed_refs']} bracket token(s) are "
             f"id-SHAPED but not well-formed ids at a ref-expecting position "
             f"(SPEC A4 MALFORMED-REF) and became neither an edge nor a diagnostic "

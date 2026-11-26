@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import FrozenSet, List, Optional
 
 from .conformance import POSITIONS, relationship_verb_cells
 from .parser import CORE_EDGE_LAYER, rel_property_edge_map
@@ -42,7 +41,7 @@ class FamilyCensus:
     cells_defined: int
     cells_generated: int
     note: str = ""
-    missing: List[str] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
 
     @property
     def gap(self) -> int:
@@ -55,8 +54,8 @@ def control_corpus_text() -> str:
         return fh.read()
 
 
-def verb_census(domain_verbs: FrozenSet[str] = frozenset(),
-                control_text: Optional[str] = None) -> FamilyCensus:
+def verb_census(domain_verbs: frozenset[str] = frozenset(),
+                control_text: str | None = None) -> FamilyCensus:
     """How many relationship verbs exist, how many the control corpus touches, the gap."""
     text = control_corpus_text() if control_text is None else control_text
     key_map = rel_property_edge_map(domain_verbs)

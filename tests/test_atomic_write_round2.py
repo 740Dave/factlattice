@@ -1,4 +1,4 @@
-"""[ISSUE-WRITE-ATOMICITY] round 2: compare-and-swap, symlinked corpus file,
+"""[DEC-LTS-WRITES-NOT-ATOMIC-NO-LOCK] round 2: compare-and-swap, symlinked corpus file,
 write_document on the shared step, metadata preservation, read-only refusal, flock-unsupported.
 
 Fault injection is by patching `os.replace` (the swap point), which exists in the new writer; the
@@ -19,7 +19,7 @@ import pytest
 from factlattice.authoring import edit
 from factlattice.authoring.edit import EditRefused, set_property
 from factlattice.parser import parse_text
-from tests.test_atomic_write_lock import _doc, _props, _KILL_CHILD, REPO
+from tests.test_atomic_write_lock import REPO, _doc, _props
 
 
 @pytest.fixture
@@ -126,8 +126,8 @@ def test_the_temp_name_never_ends_in_dot_lts(f, monkeypatch):
 
 # ---- P2-1: write_document on the shared step --------------------------------------------------
 def _doc_obj():
-    from tests.test_sanctioned_surface import _fm
     from factlattice.authoring.schema import Document, Node, Property
+    from tests.test_sanctioned_surface import _fm
     return Document(frontmatter=_fm(), document_tag="SPEC", section="Body",
                     nodes=[Node(node_id="D-ITEM", title="An item with a long title",
                                 properties=[Property(key="kind", value="measurement")])])
@@ -179,7 +179,7 @@ write_document(_doc_obj(), sys.argv[1], _fake_preview)
 
 
 def test_write_document_creates_a_new_file_and_backs_up_an_existing_one(env, tmp_path):
-    from factlattice.authoring.schema import write_document, _render
+    from factlattice.authoring.schema import _render, write_document
     new = env / "n.lts"
     r = write_document(_doc_obj(), str(new), _fake_preview)
     assert new.read_text() == _render(_doc_obj()) and r["written"] == str(new)
@@ -200,13 +200,22 @@ def test_group_and_xattr_survive_the_replace(f):
     other = [g for g in os.getgroups() if g != f.stat().st_gid]
     if other:
         os.chown(f, -1, other[0])
-    subprocess.run(["xattr", "-w", "com.example.test", "v", str(f)], check=True)
+    if hasattr(os, "setxattr"):  # Linux: the stdlib calls, in the user namespace
+        try:
+            os.setxattr(f, "user.example.test", b"v")
+        except OSError as e:
+            pytest.skip(f"this filesystem refuses user extended attributes ({errno.errorcode.get(e.errno, e.errno)})")
+    else:  # macOS: no os.setxattr; the system xattr tool
+        subprocess.run(["xattr", "-w", "com.example.test", "v", str(f)], check=True)
     st0 = f.stat()
     set_property(f, "AW-N5", "gamma", "G")
     if other:
         assert f.stat().st_gid == other[0]
-    out = subprocess.run(["xattr", "-p", "com.example.test", str(f)], capture_output=True, text=True)
-    assert out.stdout.strip() == "v"
+    if hasattr(os, "getxattr"):
+        assert os.getxattr(f, "user.example.test") == b"v"
+    else:
+        out = subprocess.run(["xattr", "-p", "com.example.test", str(f)], capture_output=True, text=True)
+        assert out.stdout.strip() == "v"
 
 
 def test_a_hard_linked_corpus_file_is_refused_not_severed(f):

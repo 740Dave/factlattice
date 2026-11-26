@@ -34,7 +34,11 @@ import time
 
 import factlattice.hashing as _hashing
 from factlattice_engine import (
-    FreshnessKernel, LtsEngine, LtsStore, PollVerifiedFreshness, SelfHealer,
+    FreshnessKernel,
+    LtsEngine,
+    LtsStore,
+    PollVerifiedFreshness,
+    SelfHealer,
 )
 from factlattice_engine.config import build_merged_partition, build_partition
 
@@ -174,7 +178,7 @@ def main(argv=None) -> int:
             fh.write("\n- amended: yes\n")
         kernel.hash_ops = 0
         changed = kernel.poll_once(part2)
-        print(f"\nINCREMENTAL CHANGE DETECTION")
+        print("\nINCREMENTAL CHANGE DETECTION")
         print(f"  edited 1 of {args.files} files -> root moved: {changed}; "
               f"leaves re-hashed: {kernel.hash_ops} (not {args.files})")
         res = eng2.find(corpus="bench", prefix="BEN-")
@@ -239,7 +243,7 @@ def main(argv=None) -> int:
         run_workload_named(eng4, "bench2", args.queries)
         verify_t = time.perf_counter() - t4
         meter.uninstall()
-        print(f"\nVERIFY-ON-QUERY (the server default; closes the watch-lag window)")
+        print("\nVERIFY-ON-QUERY (the server default; closes the watch-lag window)")
         print(f"  maintained-root gate  : {post_t * 1000:>8.1f} ms  "
               f"{0:>5} content hashes")
         print(f"  + stat-only hint pass : {verify_t * 1000:>8.1f} ms  "

@@ -8,10 +8,13 @@ emits a page for content the caller didn't hand it.
 
 from __future__ import annotations
 
-import re
-
 from factlattice_engine.render import (
-    escape_html, render_index, render_markdown_lite, render_page, slugify, write_site,
+    escape_html,
+    render_index,
+    render_markdown_lite,
+    render_page,
+    slugify,
+    write_site,
 )
 
 

@@ -201,7 +201,9 @@ def test_lint_refs_only_values_pass_the_shape_rule(tmp_path, value):
 def test_prior_use_scanner_finds_free_text_use_of_a_key(tmp_path):
     """§7.6 land-time step: tools/key_prior_use.py scans roots READ-ONLY for every
     existing use of a candidate minting key and says whether each value is refs-only."""
-    import subprocess, sys, json
+    import json
+    import subprocess
+    import sys
     d = tmp_path / "c"
     d.mkdir()
     (d / "a.lts").write_text(_doc("- canonical: false -- not yet; see [N-CANON]"))
@@ -243,7 +245,7 @@ def test_f1_canonical_keys_are_not_suggestion_candidates_binding():
 
 
 def test_f1_canonical_keys_are_not_suggestion_candidates_undeclared_key():
-    from factlattice.core_keys import suggestion_excluded_keys, suggest_keys, core_keys
+    from factlattice.core_keys import suggestion_excluded_keys
     # 2026-10-07: the review-extension verbs join the pool exclusion (tests/test_review_edge_verbs.py)
     assert suggestion_excluded_keys() == frozenset({"canonical-node", "attaches-to-hook", "applies-rule"})
     text = "---\ntitle: t\nid: \"SPEC:DOC\"\nlts: \"1.1\"\n---\n" + _doc("- canonical-home: [N-CANON]")

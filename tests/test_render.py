@@ -14,7 +14,11 @@ from factlattice import parse_text
 from factlattice.parser import DECISION_PROPERTY, FLOW_PROPERTY_EDGES, REL_PROPERTY_EDGES
 from factlattice_engine import LtsEngine, LtsStore, Partition, dispatch
 from factlattice_engine.render import (
-    FLOW_EDGE_TYPES, escape_label, render_mermaid, safe_node_id, walk_flow,
+    FLOW_EDGE_TYPES,
+    escape_label,
+    render_mermaid,
+    safe_node_id,
+    walk_flow,
 )
 
 from .mermaid_check import assert_valid_mermaid, check_structure, real_parse_available

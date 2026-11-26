@@ -74,7 +74,12 @@ class PollVerifiedFreshness:
         kernel = getattr(part, "_kernel", None)
         if kernel is not None:
             try:
-                kernel.poll_once(part)
+                # [MECH-BR-PROBE] x-verify: waits for a probe begun after this call, on the root's pool worker, until it answers or
+                # its root has made no progress for the deadline. `verify` may reuse a probe begun after a corpus-omitted read began.
+                (getattr(kernel, "verify", None) or kernel.poll_once)(part)
             except Exception:  # noqa: BLE001 — a hint pass must never break a query;
                 pass           # the maintained root simply does not advance this call
+            # the probe kept the observation of the registered roots (even one that raised kept it), so the root-set check reads
+            # that answer and does not ask again
+            return part.freshness(observed=True)
         return part.freshness()

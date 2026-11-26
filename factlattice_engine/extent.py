@@ -70,8 +70,9 @@ inspected nothing. The query layer made exactly that claim on every zero.
 from __future__ import annotations
 
 import difflib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from factlattice import registry
 
@@ -94,31 +95,31 @@ class Extent:
     look alike, which is the same rule `budget.declare()` enforces one level down.
     """
 
-    corpora_consulted: List[str] = field(default_factory=list)
-    corpora_skipped: List[Dict[str, Any]] = field(default_factory=list)
-    corpora_available: Optional[List[str]] = None
+    corpora_consulted: list[str] = field(default_factory=list)
+    corpora_skipped: list[dict[str, Any]] = field(default_factory=list)
+    corpora_available: list[str] | None = None
     nodes_in_scope: int = 0
-    keys_consulted: List[str] = field(default_factory=list)
-    index_fresh: Optional[bool] = None
-    built_at: Dict[str, Any] = field(default_factory=dict)
-    root_paths: Dict[str, List[str]] = field(default_factory=dict)
-    scope: Optional[Dict[str, Any]] = None
-    rules_inert: List[str] = field(default_factory=list)
-    notes: List[str] = field(default_factory=list)
+    keys_consulted: list[str] = field(default_factory=list)
+    index_fresh: bool | None = None
+    built_at: dict[str, Any] = field(default_factory=dict)
+    root_paths: dict[str, list[str]] = field(default_factory=dict)
+    scope: dict[str, Any] | None = None
+    rules_inert: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
     # [FL-PROSE-BLIND]. Tri-state ON PURPOSE: None = this layer does not deal in bodies at
     # all (lint, preview, list_corpora) and claims nothing; False = it could have and did
     # NOT, which is a fact the caller needs; True = it did. A layer that omits the field is
     # silent, and a layer that says False has DECLARED — those must never look alike, which
     # is the same rule the block itself exists to enforce one level up.
-    body_scanned: Optional[bool] = None
-    scope_note: Optional[str] = None
+    body_scanned: bool | None = None
+    scope_note: str | None = None
     # [REGISTRY-SOURCE-EXTENT-KEY] ABSENT unless the read named no corpus AND the registry in use is the
     # built-in EXAMPLE (`"example"`): the one case where a reader could mistake the example corpora for
     # their own. A stable key, never a free-text note.
-    registry_source: Optional[str] = None
+    registry_source: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
             "corpora_consulted": sorted(self.corpora_consulted),
             "corpora_skipped": list(self.corpora_skipped),
             "nodes_in_scope": int(self.nodes_in_scope),
@@ -151,7 +152,7 @@ class Extent:
         return out
 
 
-def declare_extent(**kwargs: Any) -> Dict[str, Any]:
+def declare_extent(**kwargs: Any) -> dict[str, Any]:
     """`{"extent": {...}}`, ready to merge into a response.
 
     Built in one place so no layer can spell the contract its own way or emit half of it
@@ -162,7 +163,7 @@ def declare_extent(**kwargs: Any) -> Dict[str, Any]:
 
 def did_you_mean(unknown: str, known: Iterable[str],
                  *, cutoff: float = SUGGESTION_CUTOFF,
-                 limit: int = MAX_SUGGESTIONS) -> List[str]:
+                 limit: int = MAX_SUGGESTIONS) -> list[str]:
     """Near-matches for an unknown identifier, closest first.
 
     [FL-RECALL-WORKAROUNDS] friction-6: "a misspelled corpus returns nothing rather than
@@ -185,7 +186,7 @@ def did_you_mean(unknown: str, known: Iterable[str],
 
 
 def unknown_corpus(corpus: str, known: Iterable[str],
-                   private: Iterable[str] = ()) -> Dict[str, Any]:
+                   private: Iterable[str] = ()) -> dict[str, Any]:
     """The not-found response for a corpus id, carrying the discrimination a zero cannot.
 
     ⛔ THE ERROR STRING NAMES THE SUGGESTION. Some callers read `error` and nothing else,
@@ -195,7 +196,7 @@ def unknown_corpus(corpus: str, known: Iterable[str],
     """
     # `known` MUST already be the PUBLIC ids only (`LtsEngine._public_corpus_ids`): a private
     # corpus name never appears in an error, a suggestion or a list
-    # (ISSUE-PRIVATE-NAMES-IN-ERRORS). One line says why they are absent.
+    # (DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA). One line says why they are absent.
     available = sorted(str(k) for k in known)
     leaked = set(available) & {str(x) for x in private}
     assert not leaked, "unknown_corpus: `known` contains a private corpus id (leak guard)"

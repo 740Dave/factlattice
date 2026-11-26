@@ -179,7 +179,7 @@ def test_corpus_parse_threads_the_profile_verbs_end_to_end(tmp_path):
 # what makes it bite is the SHAPE -- a dotted namespace with a lowercase trailing
 # segment -- not which domain owns it.
 # ---------------------------------------------------------------------------
-from factlattice.parser import _find_edge_type, _TOKEN_RE  # noqa: E402
+from factlattice.parser import _TOKEN_RE, _find_edge_type  # noqa: E402
 
 _VERBS = frozenset({"GOVERNS", "ROUTES_TO"})
 

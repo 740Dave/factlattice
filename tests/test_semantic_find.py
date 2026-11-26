@@ -1,6 +1,6 @@
 """[SEM-FIND] S3: `lts_semantic_find`, the explicit, opt-in semantic suggestion tool, and its CLI.
 
-Ratified rules ([DEC-SEMANTIC-ASSIST]; ISSUE-SEMANTIC-DESIGN honesty
+Ratified rules ([DEC-SEMANTIC-ASSIST]; LTS-SEMANTIC-QUERY-DESIGN-AND-BUILD-MODEL honesty
 rules 1-8; the architect + the maintainer rulings 2026-10-02):
   * suggestions live in their OWN labelled block: never `nodes`, never a `count` of matches,
     `is_assertion: false`, and an empty list is not evidence of absence;
@@ -37,8 +37,8 @@ def _corpus(root):
     root.mkdir(parents=True, exist_ok=True)
     (root / "00-c.lts").write_text(
         "# Corpus [DOC-C]\n\n"
-        "## Tile map version field [XL-LEDGER-PROTOBUF]\n\n- status: active\n"
-        "- what: the tile map version field records which extractor made it\n\ntile map version prose\n\n"
+        "## Zero map version field [XL-LEDGER-PROTOBUF]\n\n- status: active\n"
+        "- what: the zero map version field records which extractor made it\n\nzero map version prose\n\n"
         "## Hello world [N-HELLO]\n\n- what: hello world greeting\n\nhello world prose\n\n"
         "## Map overview [MAP-1]\n\n- what: map overview\n", encoding="utf-8")
 
@@ -59,13 +59,13 @@ def world(tmp_path):
 
 def test_corpus_is_required(world):
     _t, eng, *_ = world
-    r = eng.semantic_find(text="tile map")
+    r = eng.semantic_find(text="zero map")
     assert r["success"] is False and "corpus" in r["error"]
 
 
 def test_response_is_a_labelled_suggestion_block_never_matches(world):
     _t, eng, svc, *_ = world
-    r = eng.semantic_find(corpus="c", text="tile map version")
+    r = eng.semantic_find(corpus="c", text="zero map version")
     assert r["success"] and r["status"] == "ok", r
     assert r["kind"] == "semantic-suggestions-not-matches" and r["is_assertion"] is False
     for forbidden in ("nodes", "count", "total_matched"):
@@ -83,7 +83,7 @@ def test_response_is_a_labelled_suggestion_block_never_matches(world):
 
 def test_unknown_terms_are_reported_as_unmatched(world):
     _t, eng, *_ = world
-    r = eng.semantic_find(corpus="c", text="tile map smart tv")
+    r = eng.semantic_find(corpus="c", text="zero map smart tv")
     top = r["candidates"][0]
     assert "smart" in top["unmatched_terms"] and "tv" in top["unmatched_terms"]
     assert top["label"] == "medium"                     # an unknown term can never be 'high'
@@ -93,7 +93,7 @@ def test_missing_model_is_a_status_not_an_error(world, tmp_path):
     _t, eng, svc, pin, _reg = world
     eng.semantic = S.SemanticService(state_root=str(tmp_path / "s2"), model_root=str(tmp_path / "nowhere"),
                                      pin=pin, build_mode="sync")
-    r = eng.semantic_find(corpus="c", text="tile map")
+    r = eng.semantic_find(corpus="c", text="zero map")
     assert r["success"] is True and r["status"] == "unavailable"
     assert r["reason"] == "weights-missing" and "nowhere" in r["live_detail"] and r["candidates"] == []
 
@@ -103,16 +103,16 @@ def test_background_mode_says_index_building_then_serves(world, tmp_path):
     svc = S.SemanticService(state_root=str(tmp_path / "s3"), model_root=str(tmp_path / "models"),
                             pin=pin, build_mode="background")
     eng.semantic = svc
-    first = eng.semantic_find(corpus="c", text="tile map")
+    first = eng.semantic_find(corpus="c", text="zero map")
     assert first["success"] and first["status"] == "index_building" and first["candidates"] == []
     assert svc.wait_idle(30)
-    second = eng.semantic_find(corpus="c", text="tile map")
+    second = eng.semantic_find(corpus="c", text="zero map")
     assert second["status"] == "ok" and second["candidates"]
 
 
 def test_a_small_edit_is_topped_up_synchronously(world):
     tmp, eng, svc, _pin, reg = world
-    eng.semantic_find(corpus="c", text="tile map")
+    eng.semantic_find(corpus="c", text="zero map")
     p = tmp / "corpus" / "00-c.lts"
     p.write_text(p.read_text().replace("hello world prose", "hello world prose, edited"), encoding="utf-8")
     eng2 = LtsEngine(config.build_store(reg))
@@ -124,13 +124,13 @@ def test_a_small_edit_is_topped_up_synchronously(world):
 
 def test_filters_apply_to_candidates(world):
     _t, eng, *_ = world
-    r = eng.semantic_find(corpus="c", text="tile map version", prefix="MAP")
+    r = eng.semantic_find(corpus="c", text="zero map version", prefix="MAP")
     assert r["candidates"] and all(c["id"].startswith("MAP") for c in r["candidates"])
 
 
 def test_a_private_corpus_is_searchable_only_by_name(world):
     _t, eng, *_ = world
-    r = eng.semantic_find(corpus="someone-personality", text="tile map")
+    r = eng.semantic_find(corpus="someone-personality", text="zero map")
     assert r["success"] and r["extent"]["corpora_consulted"] == ["someone-personality"]
 
 
@@ -141,7 +141,7 @@ def test_no_network_during_a_query(world, monkeypatch):
         raise AssertionError("network access attempted")
     monkeypatch.setattr(socket, "socket", _deny)
     monkeypatch.setattr(socket, "create_connection", _deny)
-    assert eng.semantic_find(corpus="c", text="tile map")["status"] == "ok"
+    assert eng.semantic_find(corpus="c", text="zero map")["status"] == "ok"
 
 
 def test_high_requires_both_rankers_to_agree_with_margin_and_known_terms():
@@ -158,7 +158,7 @@ def test_tool_is_registered_and_dispatchable(world):
     assert "lts_semantic_find" in LTS_ALL_TOOL_NAMES
     from factlattice_engine import server
     assert any(t["name"] == "lts_semantic_find" for t in server.TOOLS)
-    r = dispatch("lts_semantic_find", {"corpus": "c", "text": "tile map"}, tools=eng)
+    r = dispatch("lts_semantic_find", {"corpus": "c", "text": "zero map"}, tools=eng)
     assert r["success"] and r["kind"] == "semantic-suggestions-not-matches"
 
 
@@ -169,12 +169,28 @@ def test_cli_human_and_json(world):
     env = {**os.environ, "FACTLATTICE_CORPUS_CONFIG": str(tmp / "reg.json"),
            "LTS_SEMANTIC_MODEL_DIR": str(tmp / "models"), "LTS_SEMANTIC_PIN_FILE": str(tmp / "pin.json"),
            "LTS_ENGINE_STATE_DIR": str(tmp / "cli-state"), "PYTHONPATH": REPO}
-    human = subprocess.run([sys.executable, "-m", "factlattice_engine", "semantic", "tile map version",
+    human = subprocess.run([sys.executable, "-m", "factlattice_engine", "semantic", "zero map version",
                             "--corpus", "c"], capture_output=True, text=True, env=env, cwd=REPO, timeout=120)
     assert human.returncode == 0, human.stderr[-2000:]
     assert "NOT matches" in human.stdout and "XL-LEDGER-PROTOBUF" in human.stdout
     assert "matched:" in human.stdout
-    js = subprocess.run([sys.executable, "-m", "factlattice_engine", "semantic", "tile map version",
+    js = subprocess.run([sys.executable, "-m", "factlattice_engine", "semantic", "zero map version",
                          "--corpus", "c", "--json"], capture_output=True, text=True, env=env, cwd=REPO, timeout=120)
     assert js.returncode == 0, js.stderr[-2000:]
     assert json.loads(js.stdout)["kind"] == "semantic-suggestions-not-matches"
+
+
+def test_index_building_note_beside_an_exact_zero_says_the_zero_is_final(world, tmp_path):
+    """2026-11-15: a reader took "ask again shortly" beside an exact zero as covering the zero. The exact matcher never
+    uses the semantic index, so the building note must say the suggestions are pending and exact matching is unaffected."""
+    _t, eng, _svc, pin, _reg = world
+    svc = S.SemanticService(state_root=str(tmp_path / "s4"), model_root=str(tmp_path / "models"),
+                            pin=pin, build_mode="background")
+    eng.semantic = svc
+    r = eng.find(corpus="c", text="zz no such phrase anywhere zz", semantic="on_miss")
+    assert r["success"] and r["total_matched"] == 0
+    blk = r["did_you_mean_semantic"]
+    assert blk["status"] == "index_building" and blk["candidates"] == []
+    assert "exact matching does not use this index" in blk["live_detail"].lower()
+    assert "suggestions" in blk["live_detail"].lower()
+    assert svc.wait_idle(30)

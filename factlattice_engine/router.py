@@ -13,7 +13,7 @@ local MCP client, so there is no other tenant to gate against.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Protocol, Tuple
+from typing import Protocol
 
 from .store import FreshnessResult, LtsStore, Partition
 
@@ -51,16 +51,16 @@ class StalePartitionError(RuntimeError):
 class RouteResult:
     ok: bool
     status: str  # resolved | not_found | unresolved_corpus | ambiguous_domain
-    corpus_id: Optional[str]
-    node_id: Optional[str]
-    node: Optional[dict]
-    freshness: Optional[FreshnessResult]
+    corpus_id: str | None
+    node_id: str | None
+    node: dict | None
+    freshness: FreshnessResult | None
 
 
 class Router:
     """Thin routing layer over a LtsStore. Holds no graph of its own."""
 
-    def __init__(self, store: LtsStore, acl: Optional[AclCheck] = None,
+    def __init__(self, store: LtsStore, acl: AclCheck | None = None,
                  freshness_provider: object = None, healer: object = None):
         self.store = store
         self.acl: AclCheck = acl if acl is not None else AllowAllAcl()
@@ -73,7 +73,7 @@ class Router:
         # neighbour no longer permanently amputates cross-corpus routing.
         self.healer = healer
         # Boundary-call ledger so tests can assert the ACL hook is CALLED at the seam.
-        self.acl_calls: List[Tuple[object, str]] = []
+        self.acl_calls: list[tuple[object, str]] = []
 
     def _evaluate_freshness(self, part: Partition) -> FreshnessResult:
         fr = self.freshness_provider.evaluate(part)
@@ -82,9 +82,11 @@ class Router:
         self.healer.heal(part)
         return self.freshness_provider.evaluate(part)  # re-verify; never trust the heal
 
-    def _resolve_corpus(self, target_domain: str) -> Tuple[str, Optional[Partition]]:
-        """Resolve a domain suffix to exactly one partition (or a status)."""
-        candidates = self.store.filter_by_domain(target_domain)
+    def _resolve_corpus(self, target_domain: str, parts: list[Partition] | None = None) -> tuple[str, Partition | None]:
+        """Resolve a domain suffix to exactly one partition (or a status). `parts` is the caller's ONE look at the served partitions; without it
+        the store is asked (a library caller of the router with no look of its own)."""
+        candidates = ([p for p in parts if p.domain_suffix == target_domain] if parts is not None
+                      else self.store.filter_by_domain(target_domain))
         if not candidates:
             return "unresolved_corpus", None
         if len(candidates) > 1:
@@ -93,10 +95,10 @@ class Router:
         return "resolved", candidates[0]
 
     def route(self, target_domain: str, node_id: str,
-              caller_identity: object = None) -> RouteResult:
+              caller_identity: object = None, parts: list[Partition] | None = None) -> RouteResult:
         """Resolve `[target_domain:…:node_id]` to a node in the TARGET partition,
         applying the (permissive) ACL hook then the target's freshness check."""
-        status, part = self._resolve_corpus(target_domain)
+        status, part = self._resolve_corpus(target_domain, parts)
         if part is None:
             return RouteResult(False, status, None, node_id, None, None)
 
@@ -115,10 +117,10 @@ class Router:
             return RouteResult(False, "not_found", part.corpus_id, node_id, None, fresh)
         return RouteResult(True, "resolved", part.corpus_id, node_id, node, fresh)
 
-    def route_edge(self, edge: dict, caller_identity: object = None) -> RouteResult:
+    def route_edge(self, edge: dict, caller_identity: object = None, parts: list[Partition] | None = None) -> RouteResult:
         """Route a cross-corpus edge dict (uses its authored `target_domain`)."""
         target_domain = edge.get("target_domain")
         if not target_domain:
             return RouteResult(False, "unresolved_corpus", None, edge.get("target"),
                                None, None)
-        return self.route(target_domain, edge["target"], caller_identity)
+        return self.route(target_domain, edge["target"], caller_identity, parts)

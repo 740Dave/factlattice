@@ -71,6 +71,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+from factlattice.core_keys import ENGINE_MINTED_KEYS
 from factlattice.coverage import IGNORABLE_KINDS, UNACCOUNTED_KINDS, account_file
 from factlattice.parser import parse_file
 
@@ -128,8 +129,8 @@ from factlattice.parser import parse_file
 # previous digest while TWO more loss classes bled through the corpora, because it
 # contained neither shape: no property-shaped bullet whose KEY REGION carried a
 # PARENTHETICAL qualifier (SL-21) and none carrying an EN/EM-DASH qualifier (SL-22).
-# Measured on the day they were named: 163 across the Acme corpora (151 paren, 12
-# dash) in 21 files — including several inside the preview layer's own "clean" negative
+# Measured on the day they were named: 281 across the Acme corpora (272 paren, 9
+# dash) in 30 files — including SEVEN inside the preview layer's own "clean" negative
 # control, which `lts_preview` was reporting at 100.0% coverage / 0 lost.
 # Four cases and 12 lines were APPENDED (SL-21 + its paren-in-the-VALUE exclusion,
 # SL-22 + its dash-and-later-colon-in-the-VALUE exclusion). Lines 1-188 and every one of
@@ -167,7 +168,7 @@ from factlattice.parser import parse_file
 # the property-edge minting classes. A control_digest change is the EXPECTED and
 # REQUIRED consequence of adding a class to the list; it is a reviewed code diff, not
 # tampering. The prior digest certified an engine on which `relates-to` minted nothing
-# across 140 occurrences: PASS 34/34, digest matching, graph wrong.
+# across 222 occurrences: PASS 34/34, digest matching, graph wrong.
 #   was: sha256:ce355e65d275612e85e841e240562bf87da1e035e26498a0aac937e71e44e7bb
 # ⛔ CHANGED AGAIN 2026-08-15 — FOUR cases (SL-29..SL-32) and NOT ONE SOURCE LINE.
 # `control.lts` is BYTE-IDENTICAL across this change; the entire delta is 301 inserted
@@ -186,7 +187,7 @@ from factlattice.parser import parse_file
 # version is that `load_profile(dict)` shares no reader with `json`, so the
 # correlated-corruption rule the sidecar exists to enforce is not being bent.
 #
-# The same commit repaired `measured_against`, which 3f9a2c1 left claiming `SL-1 .. SL-23`
+# The same commit repaired `measured_against`, which 9819d48 left claiming `SL-1 .. SL-23`
 # after adding SL-24..SL-28. That string is returned VERBATIM in every verdict, so a green
 # run was naming the wrong class list — standing rule 4 made mechanically false by the
 # very commit that widened the list.
@@ -262,15 +263,21 @@ from factlattice.parser import parse_file
 # with the OLD oracle and went FAIL 56/58 -- the valid twin reported the four new required keys as missing and the
 # stripped twin's finding list differed from the old 65 -- then PASS 58/58 with the new oracle.
 #   was: sha256:1e252cdfcb98a28481e767ea27420b957095fe66e6df91bf5cfc976f64cf10b8
-# CHANGED 2026-10-27 -- VOCABULARY-ONLY ORACLE CHANGE (a second publication scrub, not a re-baseline of a red run): in
-# `control.expected.json` (17 prose lines: commentary, notes, a case title and reasons) the names of two private spec files, a sibling
-# project's test path and a commit abbreviation, and the measured counts quoted beside them, were replaced by invented
-# names and figures of the same shape; the three corpus DATA dates (`created`, `authored_at`, `assessed_at`) moved
-# identically in `control.lts` (3 lines) and in the oracle (3 lines), so the oracle has 20 changed lines and the corpus 3. No expectation, case, assertion or line count changed (both
-# files keep their line counts): the same 58 cases give the same verdict, 58 passed, 0 failed. The oracle prose was
-# edited by hand, as it always is (there is no regeneration path, by design), and no value the parser measures was touched.
-#   was: sha256:d33ac77dd96ee2d22c99534cd7bc142b3d2dec6c6a5ccd42d1ac8c546c223076
-CONTROL_DIGEST = "sha256:bb5a2f2fe033eb410e08129d63f4edef64eacd184e060c8159ddc05b0546a9ed"
+# CHANGED (spec 39, normative content, source statements and confirmations) -- A NEW CLASS, SL-41, ADDED TO THE
+# CONTROL, NOT A RE-BASELINE OF A RED RUN. `control.lts` gained five nodes (a section marked `normative: false`, its
+# descendant, a source statement, a node that restates it, a confirmation: lines 258-285) and the oracle gained their
+# lines, nodes and edges, four cases (MINT-NORMATIVE-STATE, MINT-RESTATES-CONFIRMS, NS-FINDINGS-STRICT,
+# NS-FINDINGS-LEGACY) and the totals (nodes 42 -> 47, edges 63 -> 71, lines 257 -> 285). EVERY existing node's
+# expected `properties` also gained `normative_effective: "true"`: the engine now mints that property on every node, and
+# the value is pinned per node in the ORACLE (read by `json`), not derived from the parser. The closure check
+# `LINE-PROPERTY-CLOSURE` leaves engine-minted keys out, since no source line claims one. Negative control (run, not
+# assumed): the NEW pair was run against the OLD parser (the spec-only commit cb53f21) and went FAIL, then PASS with the
+# new parser. The first 58 cases are unchanged in meaning.
+#   was (before spec 39): sha256:d33ac77dd96ee2d22c99534cd7bc142b3d2dec6c6a5ccd42d1ac8c546c223076
+# CHANGED AGAIN (spec 39, round 2): the key `confirms` is renamed `confirmation-of` in control.lts (one line) and in the oracle (the node's expected
+# property, the line's `contributes`, the inline documents and one title); no case, count or expectation changed otherwise. Run, not assumed: 62/62 PASS.
+#   was (spec 39 round 1): sha256:4aa18229bb4b3822933ebaa16e997337ae8f02462179186953de54e577eba7c4
+CONTROL_DIGEST = "sha256:16c2932522807adf71986034d66a7dd71d34e9493e1a8e1c2be09c839a4f52fa"
 
 VERDICT_PASS = "PASS"
 VERDICT_FAIL = "FAIL"
@@ -293,7 +300,7 @@ def control_dir() -> str:
     return os.path.dirname(os.path.abspath(_pkg.__file__))
 
 
-def compute_control_digest(directory: Optional[str] = None) -> str:
+def compute_control_digest(directory: str | None = None) -> str:
     """`sha256:` over control.lts THEN control.expected.json. Order is part of the contract."""
     d = directory or control_dir()
     h = hashlib.sha256()
@@ -306,7 +313,7 @@ def compute_control_digest(directory: Optional[str] = None) -> str:
 # ---------------------------------------------------------------------------
 # Comparison helpers
 # ---------------------------------------------------------------------------
-def _edge_tuple(e: Any) -> Tuple:
+def _edge_tuple(e: Any) -> tuple:
     """Edge identity for comparison: the six declared fields plus the optional label."""
     if isinstance(e, dict):
         return (e.get("source"), e.get("type"), e.get("target"), e.get("layer"),
@@ -320,7 +327,7 @@ class _CaseRun:
 
     def __init__(self, spec: dict) -> None:
         self.spec = spec
-        self.failures: List[dict] = []
+        self.failures: list[dict] = []
         self.checks = 0
 
     def check(self, what: str, expected: Any, produced: Any, *, where: str = "") -> bool:
@@ -599,8 +606,8 @@ def _check_era1_assertion(run: _CaseRun, a: dict, kind: str) -> bool:
         return False
 
     if kind == "entry_point_equivalent":
-        from factlattice_engine.selfcheck.entry_point_equivalence import (
-            run as epc_run, run_negative_control as epc_neg)
+        from factlattice_engine.selfcheck.entry_point_equivalence import run as epc_run
+        from factlattice_engine.selfcheck.entry_point_equivalence import run_negative_control as epc_neg
         got = epc_run()
         run.check("every production path agrees with the reference",
                   True, got["equivalent"], where=where)
@@ -690,8 +697,7 @@ def _check_reviewer_shapes(run: _CaseRun, a: dict) -> None:
     from factlattice.parser import parse_text
     from factlattice.parser_config import ParserConfig
     from factlattice.profile import load_profile
-    from factlattice_engine.lint.profile_rules import (
-        KIND_MISSING_REQUIRED_PROPERTY, find_profile_violations, profile_is_loaded)
+    from factlattice_engine.lint.profile_rules import KIND_MISSING_REQUIRED_PROPERTY, find_profile_violations, profile_is_loaded
 
     where = "assert reviewer_shapes"
     ppath = reviewer_profile_path()
@@ -803,15 +809,15 @@ def _check_assertion(run: _CaseRun, a: dict, ctx: dict) -> None:
 # ---------------------------------------------------------------------------
 # Oracle self-consistency — the partition must be TOTAL
 # ---------------------------------------------------------------------------
-def _partition_failures(oracle: dict, line_total: int, node_ids: set) -> List[dict]:
+def _partition_failures(oracle: dict, line_total: int, node_ids: set) -> list[dict]:
     """Every line and every node belongs to EXACTLY ONE case.
 
     Checked before any case runs, so a line cannot be quietly dropped from the oracle to
     make a failure disappear — the drop itself becomes the failure.
     """
-    out: List[dict] = []
-    seen_lines: Dict[int, str] = {}
-    seen_nodes: Dict[str, str] = {}
+    out: list[dict] = []
+    seen_lines: dict[int, str] = {}
+    seen_nodes: dict[str, str] = {}
     for case in oracle["cases"]:
         cid = case["case_id"]
         for ln in case.get("lines", []):
@@ -847,7 +853,7 @@ def _partition_failures(oracle: dict, line_total: int, node_ids: set) -> List[di
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-def run_selfcheck(directory: Optional[str] = None) -> dict:
+def run_selfcheck(directory: str | None = None) -> dict:
     """Re-parse the control corpus and check the result against the hand-authored oracle.
 
     Returns a structured verdict::
@@ -893,7 +899,7 @@ def run_selfcheck(directory: Optional[str] = None) -> dict:
                           "update CONTROL_DIGEST in factlattice_engine/selfcheck as a "
                           "reviewed code diff.")}
 
-    with open(os.path.join(d, _CONTROL_EXPECTED), "r", encoding="utf-8") as fh:
+    with open(os.path.join(d, _CONTROL_EXPECTED), encoding="utf-8") as fh:
         oracle = json.load(fh)          # ⛔ `json`, never the system under test
     base["measured_against"] = oracle.get("measured_against")
 
@@ -901,14 +907,14 @@ def run_selfcheck(directory: Optional[str] = None) -> dict:
     verdicts = account_file(parsed.coverage)
     nodes_by_id = {n.id: n for n in parsed.nodes}
 
-    edges_by_line: Dict[int, list] = {}
+    edges_by_line: dict[int, list] = {}
     for e in parsed.edges:
         edges_by_line.setdefault(e.source_line, []).append(e)
 
     ctx = {"oracle": oracle, "parsed": parsed, "verdicts": verdicts,
            "nodes_by_id": nodes_by_id}
 
-    results: List[dict] = []
+    results: list[dict] = []
 
     partition = _partition_failures(oracle, len(verdicts), set(nodes_by_id))
     results.append({
@@ -919,7 +925,7 @@ def run_selfcheck(directory: Optional[str] = None) -> dict:
         "checks": 4, "failures": partition,
     })
 
-    prop_claims: Dict[str, set] = {}
+    prop_claims: dict[str, set] = {}
     for spec in oracle["cases"]:
         run = _CaseRun(spec)
         for ln in spec.get("lines", []):
@@ -946,7 +952,10 @@ def run_selfcheck(directory: Optional[str] = None) -> dict:
     # missing, and the half a per-node equality check on its own would still pass.
     unclaimed = sorted(
         f"{nid}.{k}" for nid, n in nodes_by_id.items()
-        for k in n.properties if k not in prop_claims.get(nid, set()))
+        for k in n.properties
+        # the engine-minted state is claimed by no source line by construction; its VALUE is pinned per
+        # node in the oracle (each expected `properties` carries it) and by the MINT-NORMATIVE-STATE case.
+        if k not in ENGINE_MINTED_KEYS and k not in prop_claims.get(nid, set()))
     results.append({
         "case_id": "LINE-PROPERTY-CLOSURE",
         "title": "every parsed property was claimed by a declared source line",

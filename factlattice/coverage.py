@@ -26,11 +26,11 @@ coverage, and both are the reason this docstring can no longer end at three:
 
   4. a WRAPPED property value. The head parsed; the continuation lines classified
      `prose` and were therefore ACCOUNTED-AS-IGNORABLE while carrying two thirds of
-     what the author wrote. On `41-example-wrapped-values.lts`, 61
-     of 61 wrapped properties truncated to their first physical line and this module
+     what the author wrote. On `57-substrate-agnostic-subscription-filtering.lts`, 93
+     of 93 wrapped properties truncated to their first physical line and this module
      reported `coverage 100.0%, unaccounted 0`.
   5. an ID TABLE. A table whose first column is an identifier column is the acceptance
-     contract of a spec, and `table_row` is in IGNORABLE_KINDS, so 14 rows of
+     contract of a spec, and `table_row` is in IGNORABLE_KINDS, so 18 rows of
      machine-and-bench verification handles scored as legitimately-not-data.
 
 Both are now CONSUMED by named parser branches (`property_continuation`,
@@ -89,7 +89,6 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from .parser import (
     CORE_EDGE_LAYER,
@@ -193,7 +192,7 @@ _LOWER_KEY_RE = re.compile(r"^[a-z][a-z0-9_\-]*$")
 # dash), and neither matches `_KEY_COLON_RE` above — so the near-miss classifier returns
 # None and `classify_line` calls the line LIST PROSE. Prose is IGNORABLE, so line
 # accounting is satisfied at 100% and `lts_preview`'s `lost` channel is empty. The line
-# is accounted for; the property is gone. Measured cost: rewriting `[ACME-EXAMPLE-COLD]`'s one
+# is accounted for; the property is gone. Measured cost: rewriting `[ACME-ICL-COLD]`'s one
 # bare `- requirement:` into the parenthetical form destroyed that node's only parsed
 # requirement, and both instruments stayed green.
 #
@@ -265,7 +264,7 @@ _ART_MIN_LEN = 4
 _ART_THRESHOLD = 0.85
 
 
-def _strip_pictographs(s: str) -> Tuple[str, bool]:
+def _strip_pictographs(s: str) -> tuple[str, bool]:
     """Strip a LEADING run of pictographic symbols (Unicode category `So`) plus the
     emoji joiners that trail them.
 
@@ -288,7 +287,7 @@ def _strip_pictographs(s: str) -> Tuple[str, bool]:
     return s[i:], stripped
 
 
-def _triple_why(verb: str, bare: str, bulleted: bool, section: Optional[str]) -> str:
+def _triple_why(verb: str, bare: str, bulleted: bool, section: str | None) -> str:
     """Name the ACTUAL cause, not a disjunction of possible ones. The three are
     mechanically distinguishable from what we already know about the line."""
     if section != SECTION_RELATIONSHIPS:
@@ -303,8 +302,8 @@ def _triple_why(verb: str, bare: str, bulleted: bool, section: Optional[str]) ->
                 f"the parser, so `_find_edge_type` returned None and the whole triple "
                 f"was discarded (a profile's `relationship_verbs` block does not reach "
                 f"the parser)")
-    return (f"a bulleted core-verb triple that still produced no edge -- this should "
-            f"be unreachable; report it")
+    return ("a bulleted core-verb triple that still produced no edge -- this should "
+            "be unreachable; report it")
 
 
 def _is_diagram(text: str) -> bool:
@@ -327,9 +326,9 @@ class LineVerdict:
     line_number: int             # 1-based, what an editor shows
     text: str
     kind: str
-    consumed_by: Optional[str] = None
-    near_branch: Optional[str] = None   # the parser branch that ALMOST took it
-    detail: Dict[str, object] = field(default_factory=dict)
+    consumed_by: str | None = None
+    near_branch: str | None = None   # the parser branch that ALMOST took it
+    detail: dict[str, object] = field(default_factory=dict)
 
     @property
     def unaccounted(self) -> bool:
@@ -478,7 +477,7 @@ def classify_line(cov: LineCoverage, idx: int) -> LineVerdict:
         near = _key_colon_near_miss(body, in_node_body=in_body)
         if near is not None:
             variant, key, has_value, qualifier = near
-            detail: Dict[str, object] = {
+            detail: dict[str, object] = {
                 "why": _WHY[variant], "variant": variant,
                 "key": key, "has_value": has_value,
             }
@@ -572,7 +571,7 @@ _WHY = {
 
 def _key_colon_near_miss(body: str, *,
                          in_node_body: bool
-                         ) -> Optional[Tuple[str, str, bool, Optional[str]]]:
+                         ) -> tuple[str, str, bool, str | None] | None:
     """Is this list-item body one enumerated decoration away from SPEC §2.2?
 
     Returns `(variant, key, has_value, qualifier)` or None. The decorations are exactly
@@ -589,7 +588,7 @@ def _key_colon_near_miss(body: str, *,
     if not text:
         return None
 
-    variant: Optional[str] = None
+    variant: str | None = None
 
     # Class A: `**key: value**` -- the wrapper spans the whole item.
     wrapped = _BOLD_WRAP_RE.match(text)
@@ -646,7 +645,7 @@ def _key_colon_near_miss(body: str, *,
     return variant, key, value is not None, None
 
 
-def _qualified_key_near_miss(text: str) -> Optional[Tuple[str, str, bool, str]]:
+def _qualified_key_near_miss(text: str) -> tuple[str, str, bool, str] | None:
     """(QUAL) SL-21 / SL-22 — does the KEY REGION carry a qualifier before the colon?
 
     Returns `(variant, key, has_value, qualifier)` or None. `variant` is
@@ -673,18 +672,18 @@ def _qualified_key_near_miss(text: str) -> Optional[Tuple[str, str, bool, str]]:
     return None
 
 
-def account_file(cov: LineCoverage) -> List[LineVerdict]:
+def account_file(cov: LineCoverage) -> list[LineVerdict]:
     """Every line of one file, accounted for. Total by construction."""
     return [classify_line(cov, i) for i in range(len(cov.lines))]
 
 
-def unaccounted_lines(cov: LineCoverage) -> List[LineVerdict]:
+def unaccounted_lines(cov: LineCoverage) -> list[LineVerdict]:
     """Only the findings: structure-shaped lines no parser branch consumed."""
     return [v for v in account_file(cov) if v.unaccounted]
 
 
-def account_summary(verdicts: List[LineVerdict]) -> Dict[str, int]:
-    out: Dict[str, int] = {}
+def account_summary(verdicts: list[LineVerdict]) -> dict[str, int]:
+    out: dict[str, int] = {}
     for v in verdicts:
         out[v.kind] = out.get(v.kind, 0) + 1
     out["_total"] = len(verdicts)

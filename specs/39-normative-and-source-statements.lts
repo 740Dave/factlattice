@@ -1,0 +1,653 @@
+---
+lts: "1.1"
+title: Normative content and source statements: what a document requires is kept apart from what was said
+domain: MET.FACTLATTICE
+doctype: SPEC
+---
+
+# Normative content and source statements: what a document requires is kept apart from what was said [FL-NORMATIVE-SOURCE]
+
+- status: draft
+- x-created: 2026-11-15
+- scope: A document can mark a node, or a whole section, non-normative. A node that records what a stakeholder said is a source statement: it keeps the words, where and when they were said, whether they were typed or selected, and the speaker's role. The normative part is the default when in doubt. A normative node can point at the source statements it restates. A confirmation, a small node added over time, records that the stakeholder was asked about a quote and what was checked.
+- boundary: The parser mints the marks and the edge, and lint reports what is missing or misplaced. Nothing checks that a statement was really said, that a locator is true, or that a role word is generic. A source statement is data and binds nothing.
+- not-this: Not a signature and not proof of speech. Not a new document type tag and not a second file: statements sit beside the normative nodes they inform, in one file. Not a change to any existing document: nothing has to adopt it, and a document that uses none of the new keys reads as before.
+- rationale: Before this spec the format used the word normative only for its own text. No construct let a document mark a node non-normative, or record who said what beside the requirements. Without one in the base format, every project that writes in it would need its own extension, and those extensions would not agree.
+- x-authority: Requirement: a stakeholder's request, restated in [GOAL-NS-SEPARATE]. The stakeholder asked for a check and advice, and then selected building and landing this spec as a §16 amendment, conditional on a clean spec audit and a cross-systems review: see [DD-NS-BUILD-SELECTED]. That is the stakeholder's selection of an option the authors wrote, not his words. The stakeholder is the maintainer, so the selection is the maintainers' ruling on the route ([DD-NS-AMENDMENT-ROUTE]). The design, the key names and the eight-word threshold of [REQ-NS-LINT] are the architects' judgement, not derived. So are the confirmation design of [REQ-NS-CONFIRM] and the quote states and recipes of [REQ-NS-CONFIRM-QUERY], apart from the stakeholder's direction credited at [GOAL-NS-KEEP-WORDS] x-extension.
+- x-built: Built on the branch that carries this file. The parser mints the keys, the edges and the state; lint raises the findings; the typed writers refuse normative_effective; SPEC.md carries the key tables and the precedence node; the control corpus holds the SL-41 cases; SDLC 7.6 carries the rules. This file lints with no findings. Every scenario is a test in tests/test_normative_source.py, or in tests/test_normative_alias.py for the yes and no alias, except SCEN-NS-COUNT-EXCLUDES (pending until scenario detection, rule N4, exists) and SCEN-NS-AUDIT-READS-STATEMENTS (checked by a spec audit). The counting consumers of [MECH-NS-COUNTING] are not built: no tool counts requirements today.
+- x-applies-itself: This file follows its own rule. The stakeholder's words appear in three nodes, each a source statement inside a section marked non-normative: [SRC-NS-REQUEST], [SRC-NS-DIRECTION-QUOTES] and [SRC-NS-DIRECTION-CONFIRMATIONS]. Each normative node that restates one of them links to it with restates.
+- see-also: [TRACE-NS], [PLAN-NS]
+
+## Goal: normative content and source statements are separated in the base format [GOAL-NS-SEPARATE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: G1
+- x-goal: A FactLattice document can separate what it requires, its normative content, from what a stakeholder said, its source statements, in a way any parser, query and lint can see. Every project that uses the format then gets the rule from the base format and not from an extension of its own.
+- x-whose: The stakeholder's request, typed. This goal restates it; the words are in [SRC-NS-REQUEST].
+- restates: [SRC-NS-REQUEST]
+
+## Goal: the stakeholder's exact words stay beside the normative text [GOAL-NS-KEEP-WORDS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: G2
+- x-goal: The stakeholder's exact words stay available beside the normative text, each with where and when it was said, so any reader can compare the two.
+- x-whose: The stakeholder's typed direction of 2026-11-15 (about 20:38Z): keep his exact words out of the normative part and in a separate non-normative part, so that they can be compared, and let the normative part be the default when in doubt. Giving each quote its transcript line and time is the authors' design, not his words. The words are in [SRC-NS-DIRECTION-QUOTES]; this goal restates them in the authors' words and links to that node.
+- x-extension: This goal is extended by the stakeholder's later typed direction of 2026-11-15 (about 21:40Z), whose words are in [SRC-NS-DIRECTION-CONFIRMATIONS]: a confirmation records who confirmed with the stakeholder and when; it is appended over time; and no cryptographic proof is required for now. The rest is the authors' design and not the stakeholder's words: the checked-against nodes, the corrected verdict, room for a later proof key, and that a confirmation never promotes the quote.
+- restates: [SRC-NS-DIRECTION-QUOTES], [SRC-NS-DIRECTION-CONFIRMATIONS]
+
+## Goal: when in doubt, the normative content is the default [GOAL-NS-NORMATIVE-GOVERNS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: G3
+- x-goal: When normative content and a source statement differ or are in doubt, the normative content is the default. A reader may still ask the source to confirm that the normative text reflects the intent.
+- x-whose: The same typed direction as [GOAL-NS-KEEP-WORDS], in [SRC-NS-DIRECTION-QUOTES]: when in doubt the normative part is the default, and an agent may still ask the stakeholder to confirm that it reflects his intent. This goal restates it in the authors' words and links to that node.
+- restates: [SRC-NS-DIRECTION-QUOTES]
+
+## Source statements (non-normative) [SRC-NS-STATEMENTS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- normative: false
+- x-note: Everything in this section, and below it, is non-normative. It records what was said. It is never read as a requirement, an acceptance criterion or a test target.
+
+### Source statement: the stakeholder's request to put this in the base format [SRC-NS-REQUEST]
+
+- part-of: [SRC-NS-STATEMENTS]
+- source-text: Suggest that this enhancement to how we author specifications is something that needs to be put in the fact lattice spec itself, I don't recall there being a specific non-normative section for capturing human authored guidance in these kinds of interactive design sessions. If we don't make a default broadchange to the fact lattice specs, then arguably we would need to make project specific extensions for all the projects that are using LTS. However, I could be an error and the base fact lattice spec might already address this. Can you please double-check and advise?
+- source-locator: session transcript, line 21378, 2026-11-15T20:42:07Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the stakeholder's direction on quoting him in specifications [SRC-NS-DIRECTION-QUOTES]
+
+- part-of: [SRC-NS-STATEMENTS]
+- source-text: I have been noting the pattern of quoting me verbatim in LTS specifications. I have been wrestling with this because I know it means quite a bit to all agents to be able to look back to my exact verbiage. However the point of LTS specifications is to remove all ambiguity about design intent and engineering objectives. Quoting me inherently and necessarily introduces ambiguity that makes me uncomfortable. While I personally would prefer that I not be quoted in specifications, I would not object to a non-normative section of the specification that includes the direct quotes from me so that they can be compared if desired by any agent to the normative parts of the specification. When in doubt, following the normative part of the spec should be the default; this should not prevent an agent from asking me clarifying questions to confirm that the normative parts of the spec are a better reflection of my intent than the direct quote implies. Trying to find a middle point that addresses your desire to capture my exact words while also removing ambiguity downstream.
+- source-locator: session transcript, line 21297, 2026-11-15T20:38:02Z
+- source-kind: typed
+- source-role: product owner
+
+### Source statement: the stakeholder's direction on confirmation tags [SRC-NS-DIRECTION-CONFIRMATIONS]
+
+- part-of: [SRC-NS-STATEMENTS]
+- source-text: Suggest that the non-normative section. can also support reviewer tags. that can be appended dynamically over time, for instance, if the a spec reviewer pops a question to me to say, "Is this what you meant?" and I confirm, it should be able to mark the non-normative section as confirmed with operator by insert agent name on XYZ date. For the moment, we don't need to worry about adding any sort of cryptographic hash that proves that that statement was actually authored by the agent named in the tag. Again, honest Claude.
+- source-locator: session transcript, line 22696, 2026-11-15T21:40:01Z
+- source-kind: typed
+- source-role: product owner
+
+## Requirement: one core key marks a node or section non-normative [REQ-NS-MARK]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R1
+- implements: [GOAL-NS-SEPARATE]
+- verified-by: [SCEN-NS-ABSENT-DEFAULT], [SCEN-NS-INHERIT], [SCEN-NS-NO-OVERRIDE], [SCEN-NS-BAD-VALUE], [SCEN-NS-LEGACY-FREE-TEXT], [SCEN-NS-MODE-SAME-GRAPH], [SCEN-NS-FRONTMATTER], [SCEN-NS-RESERVED-EFFECTIVE], [SCEN-NS-YES-NO-ALIAS], [SCEN-NS-MINTED-KEYS-NAMED]
+- see-also: [INV-NS-ONE-STATE], [DD-NS-NAMESPACED-KEYS], [DD-NS-INHERIT-NO-OVERRIDE], [DD-NS-STRICT-ENFORCES]
+- x-key: A new core key, normative, in the classification table of §1.3. Only the value false, or its alias no, marks content non-normative. Absence means normative: that is the default, and there is no other. The value true, or its alias yes, is legal and changes nothing.
+- x-scope: The key applies to the node that carries it and to every node below it in the heading tree, along the parent-section chain the parser already records for each node (parent_section in lts_node). A section is marked through the node of its heading.
+- x-not-file-wide: The document type tag (§1.7) is inherited by the whole file. Frontmatter classification keys reach every node of the file unless overridden inline (§1.5). This key is neither: it is section-scoped, it has no override, and it is not a frontmatter key. A normative line in frontmatter is a lint ERROR in a strict document and a warning in a legacy one, and has no effect: the §1.5 inheritance does not apply to it.
+- x-no-override: A descendant of a non-normative node cannot mark itself normative. normative: true there is a lint ERROR in a strict document and has no effect: the node stays non-normative.
+- x-value-check: The values true, false, yes and no are all accepted in any case (True, FALSE, Yes, NO), one case rule for the four. The values yes and no are aliases of true and false: a node or section marked no is non-normative exactly like false, and yes behaves exactly like true, including the override error inside a non-normative section; the authored line stays as authored. An alias raises no value finding and no per-node spelling finding; the override finding applies to yes exactly as to true. Lint says the alias at most once per file, in one info-level line (normative_alias_spelling) that suggests the canonical spelling false or true, never one line per node, in strict and legacy documents alike (info in both modes; a different case of true or false raises no such line). In a strict document, any other value than true, false, yes or no is a lint finding that names the value. A legacy document parses the key as it does today, free text included, and reports that finding as a warning. In both, a value that is not false or no marks nothing.
+- x-effective: The effective value is minted per node as the property normative_effective, true or false. It is visible in lts_node and filterable in lts_find (a where condition on normative_effective). The authored line stays as authored. A text search (lts_find text, all_of or any_of) does not read normative_effective, because the words true and false would match every node; filter it with a where condition. A node is effectively non-normative if it, or any node on its parent-section chain, carries normative: false (or its alias no), or if it carries source-text ([REQ-NS-SOURCE]), or if it carries confirmation-of ([REQ-NS-CONFIRM]). So normative_effective is false for a source statement and for a confirmation. Every other node is effectively normative. Strict and legacy documents mint the same value.
+- x-reserved: normative_effective is reserved and engine-minted. An authored normative_effective line is a lint ERROR in a strict document and a warning in a legacy one, and the minted value is the one kept. The typed writers refuse to write normative_effective: the write is refused and nothing is written. A repair may still REMOVE an authored normative_effective line (lts_remove_property), which lint reports and tells the author to remove.
+- x-minted-keys: Consumers can tell minted keys from authored ones. The set of keys the engine mints into a node's properties is defined once in the engine (today the set holds normative_effective only) and stated in SPEC.md §1.3. A node object in a reply is an object with a string id and a properties mapping. Every node object in a reply that a served tool returns also carries minted_keys beside properties: the sorted list of the keys in that properties object that the engine minted, empty when there are none. A minted key stays inside properties so that a where condition can filter on it. A consumer that compares a node's authored lines with its read-back properties removes the keys minted_keys names, and a renderer that shows a node's properties to a reader skips them unless asked. property_count counts every key in properties, minted keys included. A library caller that reads parsed nodes directly uses the engine's one definition of the set.
+
+## Requirement: a node that carries source-text is a source statement [REQ-NS-SOURCE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R2
+- implements: [GOAL-NS-SEPARATE], [GOAL-NS-KEEP-WORDS]
+- verified-by: [SCEN-NS-STATEMENT-IN-NORMATIVE], [SCEN-NS-STATEMENT-INCOMPLETE], [SCEN-NS-KIND-VALUE], [SCEN-NS-SELF-APPLIED]
+- see-also: [INV-NS-WORDS-ONLY-IN-STATEMENTS], [DD-NS-PRESENCE-MAKES-STATEMENT], [DD-NS-NAMESPACED-KEYS]
+- x-rule: A node carrying the core key source-text IS a source statement. It is always non-normative, whatever section it sits in, as if it carried normative: false. The usual form is a section marked normative: false that holds the source statements ([SRC-NS-STATEMENTS] is one); a source statement placed singly beside normative nodes is also allowed, and is non-normative by its own key.
+- x-source-text: The words, verbatim: as recorded at the locator, with no word replaced and no typo corrected. One value. A source-text may be a contiguous excerpt of one record, with no word replaced inside it, and the locator names the record. A long quote uses the existing wrapped-value form of §2.2.
+- x-source-locator: Where and when the words were said: a transcript line and time, a decision-record id, or a document and line.
+- x-source-kind: typed, the stakeholder's own words; or selected, the stakeholder chose an option that someone else wrote. No other value is legal.
+- x-source-role: A generic role word such as stakeholder, operator or product owner. Never a person's name and never a deployment's name.
+- x-source-option-author: Present when source-kind is selected: the role of whoever wrote the option.
+- x-lint: In a strict document, a source statement missing source-locator, source-kind or source-role is a lint ERROR naming the key. A selected statement missing source-option-author is a WARNING. A source-kind with a value other than typed or selected is a lint ERROR naming the value. A normative: true on a source statement is the override error of [REQ-NS-MARK].
+- x-defaults: None. A missing value is a finding and is never filled in.
+- x-not-checked: The parser does not check that a locator is true or that a role word is generic. Stated, not enforced.
+
+## Requirement: the normative content is the default, and the source can be asked [REQ-NS-PRECEDENCE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R3
+- implements: [GOAL-NS-NORMATIVE-GOVERNS]
+- verified-by: [SCEN-NS-PRECEDENCE-TEXT], [SCEN-NS-AUDIT-READS-STATEMENTS]
+- x-rule: SPEC.md states: when normative content and a source statement differ or are in doubt, the normative content is the default. A reader may ask the source to confirm that the normative text reflects the intent. A non-normative node is never read as a requirement, an acceptance criterion or a test target.
+- x-audit-reads-statements: Leaving non-normative content out is for counting and building only, never for auditing. A tool or agent that counts requirements, acceptance criteria or test targets, or builds from the normative text, excludes non-normative nodes; a spec audit reads every source statement and compares it with the normative text that restates it (following RESTATES both ways), because finding where the two differ is the audit's job.
+
+## Requirement: lint flags quoted speech in normative scope and counts exclude non-normative nodes [REQ-NS-LINT]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R4
+- implements: [GOAL-NS-KEEP-WORDS], [GOAL-NS-NORMATIVE-GOVERNS]
+- verified-by: [SCEN-NS-QUOTE-FLAGGED], [SCEN-NS-QUOTE-DOCTYPE], [SCEN-NS-COUNT-EXCLUDES]
+- see-also: [DD-NS-QUOTE-LINT-IS-A-TRIPWIRE]
+- x-a: In a STRICT-mode document (§1.5.1) whose doctype is SPEC (§1.7: the header tag when the document has one, otherwise the frontmatter doctype line, which is how the create writer declares it), lint reports a WARNING for a node in normative scope with a property value that contains a run of at least eight words between a pair of straight double quote characters. A word is a run of characters with no space in it. A node in non-normative scope, including every source statement, is exempt, and so is any x- key. A legacy document gets no such finding, because the tripwire is the one exception to "mode changes severity only", stated and reasoned in [DD-NS-STRICT-ENFORCES] (a document that has not upgraded gains nothing when a rule lands); it gets the tripwire when it upgrades by adding the format-version marker. In a document of any other doctype the check does not run: decision records and every other doctype keep a stakeholder's words verbatim as provenance and are never flagged.
+- x-a-limits: This is a lexical tripwire and says so. It cannot see a quotation that has no quotation marks. It flags quoted specimens and code as readily as speech. It does not tell a human's speech from anyone else's. Curly quotation marks are not seen.
+- x-b: The findings of [REQ-NS-MARK] and [REQ-NS-SOURCE], and the restates finding of [REQ-NS-TRACE], are part of this requirement. [MECH-NS-LINT] lists each with its severity.
+- x-c: Every tool or construct that counts requirements, acceptance criteria or test targets excludes nodes whose normative_effective is false. The clause binds each such construct from the time it exists: a construct that is built later meets it when built. [MECH-NS-COUNTING] names each one SPEC.md names. A tool that cannot exclude is listed as open in [OPEN-NS-COUNTING-TOOLS].
+
+## Requirement: a normative node links to the source statements it restates [REQ-NS-TRACE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R5
+- implements: [GOAL-NS-KEEP-WORDS]
+- verified-by: [SCEN-NS-RESTATES-EDGE], [SCEN-NS-RESTATES-NOT-A-STATEMENT], [SCEN-NS-RESTATES-FROM-NONNORMATIVE], [SCEN-NS-PROFILE-REFUSES], [SCEN-NS-PROFILE-FAILS-PER-CORPUS]
+- see-also: [OPEN-NS-ADOPTION-BY-CHECKERS], [OPEN-NS-CORE-COUNT]
+- x-key: A new relationship-bearing core key, restates, minting the edge type RESTATES, forward: from the normative node that carries it to each referenced source statement. Its value is a reference list, as for every minting key (§1.3).
+- x-layer: semantic. The brief did not name a layer; semantic is where the existing review-extension edge types are minted.
+- x-lookup: An auditor lists the source statements a goal restates with lts_traverse on RESTATES, and the nodes that restate a statement with lts_reverse on it. No prose search is needed.
+- x-lint: A restates whose target exists and is not a source statement is a lint WARNING. A restates on a node that is itself non-normative, a source statement included, is a lint WARNING. A target that does not exist is already a dangling reference and is reported as one.
+- x-profile-guard: A domain profile that declares the bare edge type RESTATES, CONFIRMS or CHECKED_AGAINST, or the property key restates, confirmation-of or checked-against, is refused at profile load, as a bare core edge type is (§1.3.1, §1.3.2). A namespaced type that shares the bare name, such as ns.RESTATES, is a distinct type and still loads, as §1.3.2 allows for every core name. The guard reads the reserved set of [MECH-NS-PARSER] x-edge, derived from the edge table, because RESTATES, like CANONICAL, is deliberately not in CORE_EDGE_LAYER. A profile the loader refuses fails ONLY the corpora whose registry entry names it, never the registry and never another corpus, and such a corpus is never served on core vocabulary as if nothing were wrong. There are two cases, and the record says which. (1) A NAME COLLISION: the profile declares a name the engine reserves or owns (a bare reserved or core edge type, a reserved or built-in property key, or an edge type at a layer that disagrees with the engine's own profile configuration). The record in failed_corpora carries the code corpus-load-error, the error class ProfileCollisionError, the reason profile-collision and names, the colliding name or names. (2) AN INVALID PROFILE: the profile is malformed and no name collided (a property_keys that is not a list; a key or type name that cannot parse; a property_key with no edge type; a layer that is not canonical; one key or type declared twice with conflicting definitions). The record carries the same code and class, the reason profile-invalid and detail, a short fixed phrase, and no names. Neither record carries a path or the exception's message. A tool call that names the corpus is refused with the code corpus-load-error and the fields profile_failure (profile-collision or profile-invalid) with names or detail, and its text says which case it is; the runtime lts_register_corpus gives the same answer and registers nothing. What changed, measured with the repository's boot-verdict drivers on the release af4cfc2 and on the trunk c3d7242, for a registry entry with a roots list and for one with a single root: a refusal from the property_keys half of a profile (3 raise sites: a property_keys that is not a list, a key name that cannot parse, a key that is built in) and a layer that disagrees with the engine's own profile configuration (1 site) stopped the whole registry from loading on the release in both entry forms; on the trunk they still stopped it for an entry with a roots list, while an entry with a single root already failed only its own corpus there, with a plain corpus-load-error. A refusal from the edge_types half (8 raise sites: a property_key with no edge type, a key or type name that cannot parse, a built-in key, a core edge type, a layer that is not canonical, a key or a type declared twice) was ignored silently on both, in both forms: the corpus was served without its profile. A ninth shape, a bare RESTATES, was a legitimate profile on both and was served with it applied. This spec makes every one of them fail only the corpus whose entry names the profile, in both forms, and refuses a bare RESTATES, CONFIRMS or CHECKED_AGAINST the same way. This rule covers a profile that a registry entry names. The engine's own profile directory (FACTLATTICE_PROFILE_DIR) is engine configuration and not a corpus's profile: a layer disagreement between two profiles in it still stops the registry from loading, as it did before this spec, because no corpus names them. A write by path into a corpus that failed for its profile behaves as a write into any other failed corpus does on the trunk before this change: it lands, and the receipt does not flag the failure (measured for a corpus failed on an unreadable member; a receipt flag for writes into failed corpora, for every failure kind, is [OPEN-NS-FAILED-CORPUS-WRITE-FLAG]).
+
+## Requirement: a confirmation is its own non-normative node that a writer can append [REQ-NS-CONFIRM]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R6
+- implements: [GOAL-NS-KEEP-WORDS], [GOAL-NS-NORMATIVE-GOVERNS]
+- verified-by: [SCEN-NS-CONFIRM-APPEND], [SCEN-NS-CONFIRM-NO-LOCATOR], [SCEN-NS-CONFIRM-TARGETS], [SCEN-NS-CONFIRM-NOT-REQUIREMENT]
+- see-also: [DD-NS-CONFIRMATION-IS-A-NODE], [REQ-NS-CONFIRM-QUERY]
+- x-rule: A node that carries the core key confirmation-of IS a confirmation, and is always non-normative, whatever section it sits in, as a source statement is. It records that the stakeholder was asked about a quote and what was checked. It is not a source statement and holds none of the stakeholder's words.
+- x-append: A confirmation is added over time as a node of its own with the typed writer lts_add_node. That writer's whole-file delta shows no existing node changed. Adding a confirmation never changes the quote's text, the normative part, or any other node. Being non-normative by its key, it needs no section of its own and is exempt from the quote tripwire of [REQ-NS-LINT].
+- x-confirmation-of: confirmation-of is required and names exactly one source statement. It mints the edge type CONFIRMS, forward, from the confirmation to that statement. More than one id is a finding. That a confirmation names exactly one quote is the authors' choice, not the stakeholder's words.
+- x-checked-against: checked-against is required and names one or more normative nodes the quote was checked against. It mints the edge type CHECKED_AGAINST, forward, from the confirmation to each.
+- x-verdict: confirmation-verdict is required: confirmed, or corrected when the stakeholder changed what the quote was taken to mean. No other value is legal.
+- x-by: confirmation-by is required: who asked the stakeholder. In a public spec it is a generic role word. In a deployment's own document it may name an agent or a person. Not checked, as for source-role.
+- x-date: confirmation-date is required, as YYYY-MM-DD or as a full ISO 8601 UTC timestamp, such as 2026-11-15T21:40:01Z: seconds required, fractional seconds allowed, and the zone is always Z (no numeric offset), so values compare as text and as time alike. A date-only value is read as the start of that day, 00:00:00 UTC.
+- x-locator: confirmation-locator is required: where the stakeholder's confirming words are recorded, such as a transcript line and time, or a decision-record id, so that anyone can check what was said. Honest authorship of the tag is assumed, and the locator is how it is checked.
+- x-lint: A missing required key is an ERROR in a strict document and a warning in a legacy one. A bad verdict or date, or more than one confirmation-of id, is an ERROR in strict and a warning in legacy. A confirmation-of target that exists and is not a source statement is a WARNING. A checked-against target that is non-normative is a WARNING. normative: true on a confirmation is the override error of [REQ-NS-MARK]. [MECH-NS-LINT] lists each.
+- x-no-defaults: None. A missing value is a finding and is never filled in.
+- x-free-text-limit: The free text in confirmation-by and confirmation-locator is not checked for form beyond being present. A locator that points nowhere is not found by lint.
+- x-one-kind: A node carrying both source-text and confirmation-of is a strict ERROR (a legacy warning): a node is one kind.
+- x-precedence-unchanged: A confirmation never makes a source statement, or any node, normative, and precedence is unchanged: when normative content and a source statement differ or are in doubt, the normative content is the default ([REQ-NS-PRECEDENCE]). A confirmation records agreement. It does not promote the quote.
+- x-no-signature: No cryptographic proof of authorship is defined. A later key, for example confirmation-proof, can be added without a format break, because a new key is additive. It is not defined here.
+- x-guards: A profile that declares the bare types CONFIRMS or CHECKED_AGAINST, or the keys confirmation-of or checked-against, is refused at load, as for RESTATES ([REQ-NS-TRACE] x-profile-guard), and a namespaced type still loads. The typed writers and the profile guard treat these keys and edges as they treat restates.
+- restates: [SRC-NS-DIRECTION-CONFIRMATIONS]
+
+## Requirement: confirmed and unconfirmed quotes are found by traversal, and a correction warns [REQ-NS-CONFIRM-QUERY]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: R7
+- implements: [GOAL-NS-KEEP-WORDS]
+- verified-by: [SCEN-NS-CONFIRM-RECIPE], [SCEN-NS-CONFIRM-CORRECTED], [SCEN-NS-CONFIRM-LATEST], [SCEN-NS-CONFIRM-AWAITING], [SCEN-NS-CONFIRM-SAME-DAY], [SCEN-NS-REVISED-PER-NO-UNMINTED]
+- see-also: [REQ-NS-CONFIRM], [REQ-NS-TRACE]
+- x-latest: When one quote has several confirmations, the one with the latest confirmation-date, compared by the full value, decides the quote's state. Corrected wins only on exactly equal values, so the quote is checked again. A same-day correction and re-confirmation are therefore ordered by their times. The states below read that deciding confirmation.
+- x-states: Each quote is in one of four states: confirmed (its deciding confirmation is confirmed); corrected and pending revision (its deciding confirmation is corrected and some checked-against node lacks revised-per naming it); revised and awaiting re-confirmation (its deciding confirmation is corrected and every checked-against node carries revised-per naming it: the normative text was changed per the correction, and a reviewer confirms the revised text with the stakeholder, appending a new confirmation that then decides); or unconfirmed (no reverse CONFIRMS). Recipe for the third: the same walk as the second, where every CHECKED_AGAINST target carries revised-per naming the deciding confirmation.
+- x-confirmed-nodes: State confirmed. The deciding confirmation of a source statement S has the verdict confirmed. A normative node N then has a stakeholder-confirmed quote when N restates S (the path normative -RESTATES-> S) and the deciding confirmation C confirms S (S <-CONFIRMS- C) and is checked against N (C -CHECKED_AGAINST-> N). Recipe: lts_reverse on S lists its restating nodes and its confirmations; lts_find with a where condition that confirmation-verdict equals confirmed lists the confirmations that read confirmed, and each one's confirmation-date is read with lts_node to find the deciding one; lts_traverse from C on CHECKED_AGAINST lists the nodes it was checked against; N qualifies when it is in both lists and C is the deciding confirmation.
+- x-unconfirmed-quotes: State unconfirmed. A source statement with no reverse CONFIRMS edge. Recipe: lts_find with a where condition that the key source-text is present lists the statements; lts_reverse on each shows whether any confirmation points at it.
+- x-pending-revision: State corrected and pending revision. The deciding confirmation C of S has the verdict corrected, and some node it is checked against lacks revised-per naming C. Recipe: lts_find with a where condition that confirmation-verdict equals corrected lists the corrected confirmations; the deciding one is found as for the confirmed state; lts_traverse from C on CHECKED_AGAINST lists its nodes, and lts_node on each shows whether revised-per names C.
+- x-corrected: When the deciding confirmation of a quote is corrected, each node it is checked against carries a lint WARNING, with the text that the stakeholder corrected the quote this node restates, until that node carries revised-per naming the correction by id, as revised-per: [id of the confirmation]. revised-per is a plain property and mints no edge. Once it names the correction the warning clears. A later confirmed confirmation, by date, makes an earlier correction no longer the deciding one.
+- x-revised-per-lint: The value of revised-per is a bracketed id by design, so the unminted-reference-list finding must not fire for it; stated for the builder.
+
+## Invariant: every node has one effective state [INV-NS-ONE-STATE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-rule: A node is normative or non-normative, never both and never in between. The state is computed from the node's own keys and its parent-section chain, and from nothing else. The same bytes give the same state with or without the format-version marker (§1.5.1: the marker changes severity only, except the named exceptions a spec states (spec 39: the quote tripwire); see [DD-NS-STRICT-ENFORCES]).
+- implements: [GOAL-NS-SEPARATE]
+- verified-by: [SCEN-NS-NO-OVERRIDE], [SCEN-NS-MODE-SAME-GRAPH]
+- rationale: A state that depends on the mode, or that a descendant can flip, would give a reader two answers to one question.
+
+## Invariant: the stakeholder's words live only in source statements [INV-NS-WORDS-ONLY-IN-STATEMENTS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-rule: In the normative content of a SPEC-doctype document, a stakeholder's verbatim words appear only in a source statement. A normative node states the requirement in the authors' words and links with restates. Decision records and every other doctype keep a stakeholder's words verbatim as provenance, as [REQ-NS-LINT] x-a says. In this file the words appear in the three source statements of [SRC-NS-STATEMENTS] and nowhere else.
+- implements: [GOAL-NS-KEEP-WORDS]
+- verified-by: [SCEN-NS-SELF-APPLIED], [SCEN-NS-QUOTE-FLAGGED]
+- rationale: Words copied into normative text are read as requirements, and nobody can tell afterwards which parts were said and which were designed.
+
+## Mechanism: the parser mints the keys, the state and the edge [MECH-NS-PARSER]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- implements: [REQ-NS-MARK], [REQ-NS-SOURCE], [REQ-NS-TRACE], [REQ-NS-CONFIRM]
+- x-keys: The core key tables are normative-closed (§1.3.3). Seven keys join them. normative joins the classification keys, with the values false and true, their aliases no and yes (normalised in one place in the parser, where normative_effective is minted; all four accepted in any case), and the default of absence meaning normative. source-text, source-locator, source-kind, source-role and source-option-author join the descriptive keys. restates joins the relationship-bearing table, as the row restates, RESTATES, semantic, forward, in REL_PROPERTY_EDGES. The confirmation keys of [REQ-NS-CONFIRM] join too: confirmation-of and checked-against as relationship-bearing rows (CONFIRMS and CHECKED_AGAINST, semantic, forward, in the same table), and confirmation-verdict, confirmation-by, confirmation-date, confirmation-locator and revised-per as descriptive keys.
+- x-undeclared-until: Before the tables carried them, a strict document that used a new key got undeclared_key for it (this file did, until the build). The key still parses and holds its value (§1.3.3).
+- x-chain: The effective state is computed from the parent-section chain, the nearest enclosing heading with an id and a lower level, taken up to the top (parser.py, parent_section). It does not read frontmatter.
+- x-frontmatter: The parser excludes normative from the §1.5 frontmatter inheritance of classification keys. A normative line in frontmatter is therefore the finding f8 of [MECH-NS-LINT] and never sets a file-wide value: no node receives a copy of it.
+- x-edge: RESTATES is minted by the key, as CANONICAL and the review-extension edges are, and is not added to the core edge-type count of §1.4: whether it joins that count, with CONFIRMS and CHECKED_AGAINST, is open ([OPEN-NS-CORE-COUNT]). The guard of §1.3.2 read CORE_EDGE_LAYER, which does not hold RESTATES, so on its own it would let a profile declare RESTATES; it now reads the reserved set below as well. There is ONE registration of each edge: its row in REL_PROPERTY_EDGES. CONFIRMS and CHECKED_AGAINST follow the same route as RESTATES. To meet [REQ-NS-TRACE] x-profile-guard, the reserved set the profile guard reads is derived from that table as REL_PROPERTY_EDGES minus CORE_EDGE_LAYER, so no second hand-kept table exists. The key path is read from REL_PROPERTY_EDGES as before.
+- x-modes: Strict and legacy parse the same keys to the same properties and edges (§1.5.1). Mode changes severity only, with one exception: the quote tripwire (f6) runs only in strict-mode SPEC documents.
+
+## Mechanism: lint findings [MECH-NS-LINT]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- implements: [REQ-NS-LINT]
+- x-f1: normative with a value other than true, false, yes or no (any case): ERROR in a strict document, naming the value. The legacy-warning rule of x-legacy-severity applies only to other free-text values. The aliases raise no value finding and no per-node spelling finding; the override finding applies to yes exactly as to true; at most one info-level finding per file, normative_alias_spelling, suggests the canonical spelling.
+- x-f2: normative: true (or yes) on a node that is non-normative by its chain or by carrying source-text or confirmation-of: ERROR in a strict document. The node stays non-normative.
+- x-f3: A source statement missing source-locator, source-kind or source-role: ERROR in a strict document, naming each missing key.
+- x-f4: source-kind with a value other than typed or selected: ERROR in a strict document, naming the value.
+- x-f5: source-kind selected with no source-option-author: WARNING.
+- x-f6: In a strict-mode document whose doctype is SPEC (the header tag, else the frontmatter doctype line), a double-quoted run of at least eight words in a property value of a node in normative scope, not under an x- key: WARNING. Not run in any other doctype, and not run in a legacy document (the one exception to "mode changes severity only", reasoned in [DD-NS-STRICT-ENFORCES]).
+- x-f7: restates naming an existing node that is not a source statement: WARNING. restates on a node that is itself non-normative, a source statement included: WARNING.
+- x-f8: normative in frontmatter: ERROR in a strict document. It has no effect.
+- x-f9: An authored normative_effective line: ERROR in a strict document. The engine-minted value is kept.
+- x-f10: A confirmation missing confirmation-verdict, confirmation-by, confirmation-date, confirmation-locator or checked-against: ERROR in a strict document, naming each missing key.
+- x-f11: confirmation-verdict with a value other than confirmed or corrected, confirmation-date that is neither YYYY-MM-DD nor a full ISO 8601 UTC timestamp, or confirmation-of with more than one id: ERROR in a strict document, naming the value.
+- x-f14: A node carrying both source-text and confirmation-of: ERROR in a strict document.
+- x-f12: confirmation-of naming an existing node that is not a source statement: WARNING. checked-against naming an existing node that is non-normative: WARNING.
+- x-f13: A node that the deciding confirmation of a quote is checked against, when that confirmation is corrected, and that does not carry revised-per naming it: WARNING, the text of which is that the stakeholder corrected the quote this node restates. A superseded correction gives no warning. Where two corrected confirmations have exactly equal confirmation-date values, revised-per naming either clears it.
+- x-legacy-severity: Mode changes severity only, with one exception: the quote tripwire (f6) runs only in strict-mode SPEC documents (§1.5.1; the reason is in [DD-NS-STRICT-ENFORCES]). In a legacy document f1 to f4, f8, f9, f10, f11 and f14 are reported as warnings, never errors, so no existing document gains an error when this lands. The other finding that does not follow the mode rule is normative_alias_spelling, which is info in both modes (it is per file, not per node, and says nothing about a defect).
+
+## Mechanism: what SPEC.md states [MECH-NS-SPEC-TEXT]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- implements: [REQ-NS-MARK], [REQ-NS-SOURCE], [REQ-NS-PRECEDENCE]
+- x-tables: §1.3 gains the seven keys of [MECH-NS-PARSER] and the confirmation keys named there, each with its meaning, values and default, and the minted property normative_effective, stated as reserved and engine-minted. §1.4 or §1.3 names the edge types RESTATES, CONFIRMS and CHECKED_AGAINST as minted by their keys.
+- x-precedence: SPEC.md gains the precedence statement of [REQ-NS-PRECEDENCE], next to the key tables, as a node whose id is NORMATIVE-PRECEDENCE, and a sentence in §5.5.8, beside its statement that a scenario is the normative acceptance criterion, that a scenario in a non-normative section is not an acceptance criterion. The precedence statement also says that a confirmation records agreement and never makes a source statement or any other node normative.
+- x-provenance: §14 gains a sentence that its footer names the authoring model and records nothing about whose words a node holds. That is the source statement.
+- x-tag: §1.7 notes that the document type tag is file-wide and that non-normative scope is separate and section-wide.
+- x-absence-test: A test fails if SPEC.md lacks any of the seven key names, any confirmation key name, the name normative_effective, the type names RESTATES, CONFIRMS and CHECKED_AGAINST, or a node with the id NORMATIVE-PRECEDENCE. The precedence statement is recognised by that node id and not by its wording.
+
+## Mechanism: the tools that count requirements, criteria and tests [MECH-NS-COUNTING]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- implements: [REQ-NS-LINT]
+- see-also: [OPEN-NS-COUNTING-TOOLS]
+- x-rule: Each construct below excludes nodes whose normative_effective is false when it counts requirements, acceptance criteria or test targets. This list is what SPEC.md names. It was read from SPEC.md, not from the engine, except where stated.
+- x-t1: lts_find (total_matched) and lts_aggregate (§4.7, over the filter surface of §4.6.5). They count whatever a filter selects and are not requirement counters. A caller who counts requirements adds a where condition on normative_effective. Whether either excludes without being asked is open.
+- x-t2: Scenarios as the acceptance criterion (§5.5, §5.5.8) and the Test Substrate section type, which aggregates scenarios (§1.6).
+- x-t3: Scenario detection, rule N4, and the node_kind: scenario tag it mints, with the reverse-CONTAINS query of §5.5.6 that filters on that tag. N4 is RESERVED and unimplemented at conformance level 1 (§2.1.1). A search of the parser and engine packages for scenario detection found none. [SCEN-NS-COUNT-EXCLUDES] stays pending until N4 exists.
+- x-t4: The spec-gap analyzer of §3.3, which walks IMPLEMENTS edges to find coverage gaps. Not read in code.
+- x-t5: The DELTA rules for scenarios (§5.5.7): a scenario added or removed on a requirement is additive or breaking, and scenario changes are routed to test roles. A non-normative scenario is not an acceptance contract, so neither applies. Not read in code.
+
+## Acceptance [ACC-NS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-setup: Small scratch documents, one per scenario, read by the parser, lint, lts_node and lts_find, and one case each in the parser's control corpus. Each scenario below is a check.
+- x-red-first: Each check is first shown failing on the prior commit for the reason it names. For most the reason is that the keys are not yet declared or minted.
+- x-run: Each scenario is a test in tests/test_normative_source.py (the yes and no alias, in tests/test_normative_alias.py), shown failing on the commit before the build for the reason it names. Two are not tests of the build: SCEN-NS-COUNT-EXCLUDES is pending until N4 exists, and SCEN-NS-AUDIT-READS-STATEMENTS is checked by a spec audit. The control corpus (SL-41) holds one case each for the minted state, the three edges and the findings in both modes.
+
+### Scenario: with no key anywhere every node is normative [SCEN-NS-ABSENT-DEFAULT]
+
+- part-of: [ACC-NS]
+- given: a document in which no node carries normative or source-text
+- when: lts_node is read on any node
+- then: normative_effective is true
+
+### Scenario: a marked section marks everything below it and nothing else [SCEN-NS-INHERIT]
+
+- part-of: [ACC-NS]
+- given: a section node carrying normative: false, a descendant two headings down with no normative line, and a sibling section outside it
+- when: lts_node is read on each of the three, and lts_find is called with a where condition normative_effective equals false
+- then: the section and the descendant read false, the sibling reads true, and the find returns the section and the descendant and no node outside
+
+### Scenario: a descendant cannot mark itself normative again [SCEN-NS-NO-OVERRIDE]
+
+- part-of: [ACC-NS]
+- given: a descendant of a non-normative section that carries normative: true
+- when: the document is linted, in strict mode and then in legacy mode
+- then: normative_effective stays false, strict lint reports an ERROR and legacy lint reports a warning
+
+### Scenario: a value that is neither false nor true is named [SCEN-NS-BAD-VALUE]
+
+- part-of: [ACC-NS]
+- given: a node carrying normative with a value of maybe in a strict document
+- when: the document is linted
+- then: lint reports a finding that names the value, and the node reads normative_effective true
+
+### Scenario: legacy free text still parses [SCEN-NS-LEGACY-FREE-TEXT]
+
+- part-of: [ACC-NS]
+- given: a legacy document with a node whose normative line holds a sentence of free text
+- when: the document is parsed
+- then: the property holds the sentence, the node reads normative_effective true, no error is raised, and lint reports a warning that names the value
+
+### Scenario: the format-version marker changes severity and nothing else, except the strict-only quote tripwire [SCEN-NS-MODE-SAME-GRAPH]
+
+- part-of: [ACC-NS]
+- given: one set of bytes using every new key
+- when: it is parsed with the marker and without it
+- then: the nodes, properties (normative_effective included) and edges are identical, and the findings differ only in severity, with one exception: the quote tripwire (f6) runs only in strict-mode SPEC documents
+
+### Scenario: a source statement is non-normative inside a normative section [SCEN-NS-STATEMENT-IN-NORMATIVE]
+
+- part-of: [ACC-NS]
+- given: a normative section holding a node with source-text and a sibling without it
+- when: lts_node is read on both
+- then: the statement reads normative_effective false and the sibling reads true
+
+### Scenario: a source statement missing a required key is an error [SCEN-NS-STATEMENT-INCOMPLETE]
+
+- part-of: [ACC-NS]
+- given: a strict document with source statements missing source-locator, source-kind or source-role in turn, and a selected statement missing source-option-author
+- when: the document is linted
+- then: each of the first three is an ERROR naming the key, the selected statement is a WARNING, and a typed statement with no source-option-author raises nothing
+
+### Scenario: a source-kind outside the two values is named [SCEN-NS-KIND-VALUE]
+
+- part-of: [ACC-NS]
+- given: a strict document with a source statement whose source-kind is heard
+- when: the document is linted
+- then: lint reports an ERROR that names the value
+
+### Scenario: restates mints an edge that can be walked both ways [SCEN-NS-RESTATES-EDGE]
+
+- part-of: [ACC-NS]
+- given: a goal node carrying restates with the id of a source statement
+- when: lts_traverse is run from the goal on RESTATES, and lts_reverse on the statement
+- then: the traverse reaches the statement, and the reverse lists the goal
+
+### Scenario: restates aimed at a node that is not a statement is warned [SCEN-NS-RESTATES-NOT-A-STATEMENT]
+
+- part-of: [ACC-NS]
+- given: a node carrying restates with the id of an existing node that has no source-text
+- when: the document is linted
+- then: lint reports a WARNING for that target
+
+### Scenario: a long quotation in normative scope is flagged and its controls are not [SCEN-NS-QUOTE-FLAGGED]
+
+- part-of: [ACC-NS]
+- given: a strict-mode SPEC document with a quoted run of nine words in a descriptive property, planted in a normative node, in a source statement, under an x- key, and as a run of seven words in a normative node
+- when: the document is linted
+- then: only the normative node with the nine-word run is flagged, and the finding is a WARNING
+
+### Scenario: a non-normative scenario is not counted as an acceptance criterion [SCEN-NS-COUNT-EXCLUDES]
+
+- part-of: [ACC-NS]
+- x-status: pending. It has no subject until N4 scenario detection exists, and it is not counted as passing before then.
+- given: one scenario in a normative section and one in a non-normative section, and each counting construct of [MECH-NS-COUNTING] that exists
+- when: each counts acceptance criteria
+- then: each counts the first and not the second, and each one that cannot exclude is listed in [OPEN-NS-COUNTING-TOOLS]
+
+### Scenario: a normative line in frontmatter is an error and marks nothing [SCEN-NS-FRONTMATTER]
+
+- part-of: [ACC-NS]
+- given: a strict document with normative: false in its frontmatter, and the same bytes with no format-version marker
+- when: the document is linted and lts_node is read on any node
+- then: the strict lint reports an ERROR, the legacy lint a warning, and every node reads normative_effective true
+
+### Scenario: an authored normative_effective line is an error and the minted value is kept [SCEN-NS-RESERVED-EFFECTIVE]
+
+- part-of: [ACC-NS]
+- given: a strict document with a normative_effective: true line on a node under a non-normative section
+- when: the document is linted and lts_node is read on that node
+- then: lint reports an ERROR naming the reserved key, and the node reads normative_effective false
+
+### Scenario: restates on a non-normative node is warned [SCEN-NS-RESTATES-FROM-NONNORMATIVE]
+
+- part-of: [ACC-NS]
+- given: a node under a non-normative section, and a source statement, each carrying restates with the id of a source statement
+- when: the document is linted
+- then: lint reports a WARNING for each
+
+### Scenario: a profile that declares RESTATES or the key restates is refused [SCEN-NS-PROFILE-REFUSES]
+
+- part-of: [ACC-NS]
+- given: a domain profile declaring the bare edge type RESTATES with a layer other than semantic, a second declaring it with semantic, a third declaring the property key restates, a fourth declaring the namespaced type ns.RESTATES, and further profiles declaring the bare types CONFIRMS and CHECKED_AGAINST and the keys confirmation-of and checked-against
+- when: each profile is loaded
+- then: every load that declares a bare reserved type or a reserved key is refused and names the reserved name, and the namespaced ns.RESTATES profile and a control profile declaring an unrelated type both load
+
+### Scenario: the quote check does not run outside SPEC documents [SCEN-NS-QUOTE-DOCTYPE]
+
+- part-of: [ACC-NS]
+- given: a decision-record document of a doctype other than SPEC, with a nine-word double-quoted run of a stakeholder's words in a descriptive property of a normative node, a SPEC document that declares its doctype in frontmatter with a plain id on its header, and a document whose header tag names another doctype than its frontmatter, and a SPEC document with the same run and no format-version marker (legacy mode)
+- when: the document is linted
+- then: lint reports no quote finding, and the same run in a SPEC document is flagged, the same run is flagged in the frontmatter-doctype SPEC document, and the header tag decides when the two differ, and the legacy document gets none (legacy mode only parses; it gets the tripwire when it upgrades)
+
+### Scenario: SPEC.md states the keys, the edge and the precedence [SCEN-NS-PRECEDENCE-TEXT]
+
+- part-of: [ACC-NS]
+- given: the SPEC.md at the commit that lands the parser change
+- when: the absence test of [MECH-NS-SPEC-TEXT] runs
+- then: it passes, and it fails on a copy of SPEC.md with the precedence statement removed
+
+### Scenario: this file keeps its own rule [SCEN-NS-SELF-APPLIED]
+
+- part-of: [ACC-NS]
+- given: this file and the paragraphs recorded in [SRC-NS-REQUEST], [SRC-NS-DIRECTION-QUOTES] and [SRC-NS-DIRECTION-CONFIRMATIONS]
+- when: each paragraph is searched for in this file
+- then: each is found in exactly one node, that node carries source-text, and every goal or requirement that restates it links to that node with restates
+
+### Scenario: an audit reads the source statements that counting leaves out [SCEN-NS-AUDIT-READS-STATEMENTS]
+
+- part-of: [ACC-NS]
+- given: a spec with a goal that restates a source statement
+- when: a counting tool and a spec audit following the documented audit steps both read it
+- then: the counting tool excludes the source statement from its counts, and the audit reads the source statement and the goal that restates it and reports a difference between them as a finding
+- x-checked-by: audit. It is checked by a spec audit following the documented steps, not by the engine build.
+
+### Scenario: appending a confirmation moves no other node [SCEN-NS-CONFIRM-APPEND]
+
+- part-of: [ACC-NS]
+- given: a document with a source statement, a normative node that restates it, and a normative section
+- when: a confirmation carrying confirmation-of, checked-against and every required key is added with lts_add_node
+- then: the writer's whole-file delta shows the new node only, the quote text and every other node are unchanged, and the new node reads normative_effective false
+
+### Scenario: a confirmation with a missing required key is an error [SCEN-NS-CONFIRM-NO-LOCATOR]
+
+- part-of: [ACC-NS]
+- given: strict and legacy copies of a confirmation, each missing confirmation-locator, and others missing confirmation-verdict, confirmation-by, confirmation-date or checked-against in turn
+- when: the documents are linted
+- then: strict lint reports an ERROR naming each missing key, legacy lint reports a warning, and a complete confirmation raises nothing
+
+### Scenario: a confirmation aimed at the wrong kind of node is warned [SCEN-NS-CONFIRM-TARGETS]
+
+- part-of: [ACC-NS]
+- given: a strict document with a confirmation whose confirmation-of names a node with no source-text, one whose checked-against names a node under a non-normative section, one with a verdict of heard, one with a confirmation-date that is neither YYYY-MM-DD nor a full ISO 8601 UTC timestamp, one with two confirmation-of ids, and a node carrying both source-text and confirmation-of
+- when: the document is linted
+- then: lint reports a WARNING for each of the first two and an ERROR for each of the other four
+
+### Scenario: the traversal recipe finds a confirmed node and an unconfirmed quote [SCEN-NS-CONFIRM-RECIPE]
+
+- part-of: [ACC-NS]
+- given: two source statements, one restated by a normative node and confirmed by a confirmation with verdict confirmed that is checked against that node, and one with no confirmation
+- when: the recipe of [REQ-NS-CONFIRM-QUERY] is run with lts_find, lts_reverse and lts_traverse
+- then: the confirmed recipe returns the first normative node and not any other, and the unconfirmed recipe returns the second statement and not the first
+
+### Scenario: a corrected verdict warns until revised-per names it [SCEN-NS-CONFIRM-CORRECTED]
+
+- part-of: [ACC-NS]
+- given: a confirmation with verdict corrected, checked against a normative node
+- when: the document is linted, then revised-per naming the confirmation is added to that node and the document is linted again
+- then: the first lint reports the WARNING on the node, and the second does not
+
+### Scenario: a revised quote awaits re-confirmation and then moves to confirmed [SCEN-NS-CONFIRM-AWAITING]
+
+- part-of: [ACC-NS]
+- given: a source statement whose deciding confirmation is corrected, and every node checked against carries revised-per naming it
+- when: the states of [REQ-NS-CONFIRM-QUERY] are read, then a confirmation with verdict confirmed and a later confirmation-date, checked against the same nodes, is appended with lts_add_node, and the states are read again
+- then: the first reading is revised and awaiting re-confirmation, with no lint warning on the nodes, and the second reading is confirmed because the later confirmation decides
+
+### Scenario: a re-confirmation later on the same day decides over the correction [SCEN-NS-CONFIRM-SAME-DAY]
+
+- part-of: [ACC-NS]
+- given: a source statement with a corrected confirmation dated 2026-11-15T10:00:00Z and a confirmed one dated 2026-11-15T16:30:00Z, a second pair with exactly equal timestamps, and a third pair using date-only values 2026-11-15 for both
+- when: the states of [REQ-NS-CONFIRM-QUERY] are read for each
+- then: the first is confirmed because the later time decides, the second and the third are corrected and pending revision because corrected wins only on exactly equal values
+
+### Scenario: a confirmation is not counted as a requirement and promotes nothing [SCEN-NS-CONFIRM-NOT-REQUIREMENT]
+
+- part-of: [ACC-NS]
+- given: a confirmation placed in a normative section, and a source statement it confirms
+- when: lts_node is read on both, and a count of requirements is taken by a tool of [MECH-NS-COUNTING] that exists
+- then: both read normative_effective false, the count excludes the confirmation, and where the quote and a normative node differ, the normative node is still the default
+
+### Scenario: the latest confirmation decides a quote's state [SCEN-NS-CONFIRM-LATEST]
+
+- part-of: [ACC-NS]
+- given: one source statement with a confirmed confirmation dated earlier and a corrected one dated later, a second with a corrected one and a confirmed one on exactly the same date, and a third with a corrected one dated earlier and a confirmed one dated later, where no node checked against carries revised-per
+- when: the states of [REQ-NS-CONFIRM-QUERY] are read for each
+- then: the first is corrected and pending revision, the second is corrected and pending revision because corrected wins on equal dates, and the third is confirmed
+
+### Scenario: revised-per raises no unminted-reference finding [SCEN-NS-REVISED-PER-NO-UNMINTED]
+
+- part-of: [ACC-NS]
+- given: a node carrying revised-per with a bracketed confirmation id
+- when: the document is linted
+- then: lint reports no unminted-reference-list finding for revised-per, and the same bracketed id under an undeclared key still does
+
+### Scenario: a profile that declares a reserved name fails only the corpora that use it [SCEN-NS-PROFILE-FAILS-PER-CORPUS]
+
+- part-of: [ACC-NS]
+- given: a registry of three corpora: one whose entry names a profile the loader refuses, and two whose entries name no such profile; the refused profile is, in turn, one that declares a name the engine reserves or owns (a bare reserved or core edge type, or a reserved or built-in property key) and one that is malformed (a property_keys that is not a list, a layer that is not canonical, a type declared twice with conflicting layers); and a control registry whose profile declares a name nothing reserves
+- when: the registry is loaded, lts_list_corpora is called, one tool is called naming each corpus, and the same refused profile is given to lts_register_corpus
+- then: the registry loads; the two clean corpora serve; the corpus that names the refused profile is not served and is in failed_corpora with the code corpus-load-error, and with the reason profile-collision and names for a collision or the reason profile-invalid and detail (no names) for a malformed profile, and no path; a tool that names it is refused with that code, with profile_failure and the same names or detail, and text that says which case; lts_register_corpus answers the same and registers nothing; and in the control registry all three corpora serve and failed_corpora is empty
+
+### Scenario: no and yes are read as false and true, with one info line per file [SCEN-NS-YES-NO-ALIAS]
+
+- part-of: [ACC-NS]
+- given: a SPEC document with a quotes section marked normative: no that holds a source statement whose text has a nine-word double-quoted run, a descendant of it marked normative: yes, a normative node outside it marked normative: Yes, a node marked NO, and another node holding the same nine-word run; and a second document marked with false, true and free text only
+- when: the documents are parsed and linted, strict and legacy
+- then: the quotes section and everything under it read normative_effective false, the Yes node and the other nodes read true, the yes inside the no section is the override error (an error in strict, a warning in legacy) and stays false, the nine-word run raises the quote warning only on the node in normative scope in the strict run, and the legacy run raises no quote warning, no normative_bad_value is raised for yes or no in any case, the first document gets exactly one normative_alias_spelling finding at info level however many nodes use the alias, the second document gets none, and a free-text value such as maybe still gets its normative_bad_value finding
+
+### Scenario: every reply that carries a node's properties names the minted keys [SCEN-NS-MINTED-KEYS-NAMED]
+
+- part-of: [ACC-NS]
+- given: a corpus with one node that carries authored properties and one that carries none
+- when: each tool reply that carries a node's properties is read for both nodes (the test derives the list of such replies from the code, not from this text)
+- then: each such reply object carries minted_keys equal to ["normative_effective"], every key it names is present in properties, removing those keys from properties leaves exactly the authored keys, and the engine's one definition of the minted set equals the set SPEC.md §1.3 states
+
+## Decision: the new keys are prefixed and the old bare words are left alone [DD-NS-NAMESPACED-KEYS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D1
+- x-decision: The source statement keys are source-text, source-locator, source-kind and source-role, with source-option-author, and the edge key is restates. No bare source, role, statement or kind is used.
+- rationale: Measured on one deployment, 2026-11-15: the bare words source, role, statement and kind are already used in its corpora with other meanings, on 716, 221, 363 and 1,264 lines. The five new names source-text, source-locator, source-kind, source-role and restates had no uses. normative is measured at x-prior-use. The existing core key source-file shares the prefix and keeps its meaning.
+- x-prior-use: Prior use of the later keys, checked 2026-11-16 at 20:14Z over every registered corpus (39 public corpora, 28,305 nodes, and 16 private corpora, 603 nodes, each queried by name; counts only): confirmation-of 0, checked-against 0, revised-per 0, confirmation-verdict 0, confirmation-by 0, confirmation-date 0, confirmation-locator 0, restates 0, source-text 0, source-locator 0, source-kind 0, source-role 0. The bare word confirms has 1 use, free text, in one public corpus, and one deployment's profile declares it as a plain key, which is why the key is confirmation-of and not confirms. normative had 76 uses at that time (37 at about 19:10Z the same day: the corpora change while this is written), all in legacy documents, none false or true. Measured again 2026-11-16 at 23:31Z over every registered corpus: 84 uses, of which 66 are no, 17 are yes and 1 is other free text; so almost every use is the alias of [DD-NS-YES-NO-ALIAS], which reads it as the state it was written to mean.
+
+## Decision: the presence of source-text makes a node a source statement [DD-NS-PRESENCE-MAKES-STATEMENT]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D2
+- x-decision: A node is a source statement because it carries source-text. It is not a reserved value of kind and not a new document type tag.
+- rationale: kind is a free key with 1,264 uses, so a reserved value would collide with them. Document tags are file-wide, and statements sit beside the normative nodes in the same file.
+
+## Decision: the state is inherited down the section chain and cannot be overridden [DD-NS-INHERIT-NO-OVERRIDE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D3
+- x-decision: Non-normative scope runs down the parent-section chain with no override. It is section-scoped on purpose, unlike the file-wide document tag.
+- rationale: One state per node keeps the question answerable from the node and its ancestors. A section scope lets a non-normative quotes section sit inside a normative spec file.
+
+## Decision: the quote lint is a tripwire with stated limits [DD-NS-QUOTE-LINT-IS-A-TRIPWIRE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D4
+- x-decision: The quote check is a lexical warning and is named as one, with its limits written beside it ([REQ-NS-LINT] x-a-limits).
+- rationale: Whether a string is a human's speech cannot be read from its characters. A check that claimed to would pass the quotations it cannot see and read as a verdict.
+
+## Decision: strict documents raise errors and legacy documents get the same findings as warnings [DD-NS-STRICT-ENFORCES]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D5
+- x-decision: Errors are raised in strict documents. A legacy document parses the new keys to the same graph and reports the same findings at warning severity, except the quote tripwire, which it does not run. Mode changes severity only, with one exception: the quote tripwire (f6) runs only in strict-mode SPEC documents. The reason is the authors' design, on the chief architect's ruling: legacy documents commonly quote the stakeholder as provenance, and the tripwire there added 1,311 warnings across 37 legacy specs of one product (measured on the trunk at 720285d), burying real findings; a document gets the check when it upgrades.
+- rationale: This land adds no error-severity finding to any legacy document: in a legacy document every finding spec 39 defines is reported as a warning or an info line, and the quote tripwire does not run there at all. Upgrading a document to strict mode is where those findings become errors, by §1.5.1's design. The deliberate exception to "changes meaning" is the yes/no alias of [DD-NS-YES-NO-ALIAS]: a node marked no now leaves normative scope, which is what its author meant, and that is measured in that decision's rationale (84 uses, 66 no, 17 yes). §1.5.1: the marker changes severity only, with the one exception stated in x-decision.
+
+## Decision: a confirmation is a node of its own and not a property of the quote [DD-NS-CONFIRMATION-IS-A-NODE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-decision: A confirmation is its own small node, appended over time. It is not a property added to the source statement.
+- rationale: Adding a property to a quote would edit an existing node, and the quote is the stakeholder's words. Appending a node leaves every existing node as it was, and the writer's whole-file delta can prove it. A source statement can have any number of confirmations, each with its own date and locator.
+
+## Open: which engine tools count requirements and tests today [OPEN-NS-COUNTING-TOOLS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: O1
+- x-open: Which engine tools count requirements, acceptance criteria or test targets today, and which of them can exclude non-normative nodes.
+- x-found: [MECH-NS-COUNTING] lists what SPEC.md names. lts_find and lts_aggregate can exclude when given a filter on normative_effective; whether they should by default is not decided. Scenario detection and the scenario queries built on it are reserved and unimplemented, so no engine tool counts scenarios today and [SCEN-NS-COUNT-EXCLUDES] has no subject there until rule N4 ships. The spec-gap analyzer and the DELTA scenario rules are named in SPEC.md and were not read in code.
+- x-owner: The spec owner, with whoever builds the parser change.
+
+## Open: whether the review profile and spec-checking agents adopt RESTATES [OPEN-NS-ADOPTION-BY-CHECKERS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: O2
+- x-open: Whether the reviewer profile and any agent that audits specifications adopt RESTATES in their own checks.
+- x-owner: The owners of the reviewer profile and of each such agent decide. This spec does not.
+
+## Open: migration of existing specs [OPEN-NS-MIGRATION]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: O3
+- x-open: Whether existing specs are migrated to the new keys.
+- x-position: None is required by this spec. The rule applies at each spec's next touch.
+
+## Decision: the stakeholder selected building and landing this spec as a section 16 amendment [DD-NS-BUILD-SELECTED]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-state: decided
+- x-decision: The stakeholder selected building and landing this spec as a §16 amendment, conditional on a clean spec audit and a cross-systems review. This is the stakeholder's selection of an option the authors wrote, not his speech. It answers the earlier question whether this design is what was wanted.
+- rationale: The stakeholder had suggested a base-format change and asked for a check and advice. The selection turns that into a go for the build, once the audit and the review are clean.
+
+## Decision: the new keys and edges enter the base format as a section 16 amendment [DD-NS-AMENDMENT-ROUTE]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-state: decided
+- x-decision: Adding the core keys normative, source-text, source-locator, source-kind, source-role, source-option-author and restates, with the confirmation keys confirmation-of, checked-against, confirmation-verdict, confirmation-by, confirmation-date, confirmation-locator and revised-per, and the edges RESTATES, CONFIRMS and CHECKED_AGAINST, is an amendment under §16.
+- x-ruling: The stakeholder is the maintainer. His selection of [DD-NS-BUILD-SELECTED] is therefore the maintainers' ruling on this route.
+- x-why-not-a-profile: A key or edge declared by a domain profile (§1.3.1, §1.3.2) works only where that profile is loaded. The stakeholder's concern is that, without a base-format change, every project using LTS would arguably need its own extension. A profile-declared key would be such a per-project extension.
+- x-not-decided: Whether RESTATES, CONFIRMS and CHECKED_AGAINST join the core edge count stays open ([OPEN-NS-CORE-COUNT]).
+
+## Open: whether RESTATES joins the core edge count [OPEN-NS-CORE-COUNT]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-open: Whether RESTATES, CONFIRMS and CHECKED_AGAINST are added to the core edge types of §1.4 and to CORE_EDGE_LAYER, or stays a key-minted type with a reserved name ([MECH-NS-PARSER] x-edge). The requirement that a profile cannot declare any of them holds either way.
+- x-owner: The maintainers.
+
+## Traceability [TRACE-NS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- see-also: [SCEN-NS-CONFIRM-AWAITING], [SCEN-NS-CONFIRM-SAME-DAY], [SCEN-NS-CONFIRM-LATEST], [SCEN-NS-REVISED-PER-NO-UNMINTED], [SCEN-NS-AUDIT-READS-STATEMENTS], [SCEN-NS-CONFIRM-APPEND], [SCEN-NS-CONFIRM-NO-LOCATOR], [SCEN-NS-CONFIRM-TARGETS], [SCEN-NS-CONFIRM-RECIPE], [SCEN-NS-CONFIRM-CORRECTED], [SCEN-NS-CONFIRM-NOT-REQUIREMENT], [MECH-NS-PARSER], [MECH-NS-LINT], [MECH-NS-SPEC-TEXT], [MECH-NS-COUNTING], [SCEN-NS-ABSENT-DEFAULT], [SCEN-NS-INHERIT], [SCEN-NS-NO-OVERRIDE], [SCEN-NS-BAD-VALUE], [SCEN-NS-LEGACY-FREE-TEXT], [SCEN-NS-MODE-SAME-GRAPH], [SCEN-NS-STATEMENT-IN-NORMATIVE], [SCEN-NS-STATEMENT-INCOMPLETE], [SCEN-NS-KIND-VALUE], [SCEN-NS-RESTATES-EDGE], [SCEN-NS-RESTATES-NOT-A-STATEMENT], [SCEN-NS-QUOTE-FLAGGED], [SCEN-NS-COUNT-EXCLUDES], [SCEN-NS-PRECEDENCE-TEXT], [SCEN-NS-SELF-APPLIED], [SCEN-NS-FRONTMATTER], [SCEN-NS-RESERVED-EFFECTIVE], [SCEN-NS-RESTATES-FROM-NONNORMATIVE], [SCEN-NS-PROFILE-REFUSES], [SCEN-NS-QUOTE-DOCTYPE], [OPEN-NS-MIGRATION], [DD-NS-BUILD-SELECTED], [DD-NS-AMENDMENT-ROUTE], [OPEN-NS-CORE-COUNT], [SCEN-NS-PROFILE-FAILS-PER-CORPUS], [SCEN-NS-YES-NO-ALIAS], [DD-NS-YES-NO-ALIAS]
+- x-g1: G1 [GOAL-NS-SEPARATE] -> R1, R2 ([REQ-NS-MARK], [REQ-NS-SOURCE]) -> core keys normative and source-text, and the minted effective value ([MECH-NS-PARSER]) -> parser control cases: the effective value inherits down a section ([SCEN-NS-INHERIT]); a source statement is non-normative inside a normative section ([SCEN-NS-STATEMENT-IN-NORMATIVE]); legacy free text still parses ([SCEN-NS-LEGACY-FREE-TEXT]).
+- x-g2: G2 [GOAL-NS-KEEP-WORDS] -> R2, R5 ([REQ-NS-SOURCE], [REQ-NS-TRACE]) -> the source statement keys and the RESTATES edge ([MECH-NS-PARSER]) -> lts_reverse on a source statement lists its restating goals ([SCEN-NS-RESTATES-EDGE]); a lint error on a statement with no locator ([SCEN-NS-STATEMENT-INCOMPLETE]).
+- x-g3: G3 [GOAL-NS-NORMATIVE-GOVERNS] -> R3, R4(c) ([REQ-NS-PRECEDENCE], [REQ-NS-LINT]) -> the precedence text in SPEC.md and the counting tools ([MECH-NS-SPEC-TEXT], [MECH-NS-COUNTING]) -> a non-normative scenario is not counted as an acceptance criterion ([SCEN-NS-COUNT-EXCLUDES]), with the precedence absence test ([SCEN-NS-PRECEDENCE-TEXT]).
+- x-r4a: R4(a) [REQ-NS-LINT] -> the quote warning ([MECH-NS-LINT]) -> a planted quote in a normative node is flagged, and the same quote in a source statement is not ([SCEN-NS-QUOTE-FLAGGED]).
+- x-confirm: G2 [GOAL-NS-KEEP-WORDS] extended -> R6, R7 ([REQ-NS-CONFIRM], [REQ-NS-CONFIRM-QUERY]) -> the confirmation keys and the CONFIRMS and CHECKED_AGAINST edges ([MECH-NS-PARSER]) -> [SCEN-NS-CONFIRM-APPEND], [SCEN-NS-CONFIRM-NO-LOCATOR], [SCEN-NS-CONFIRM-TARGETS], [SCEN-NS-CONFIRM-RECIPE], [SCEN-NS-CONFIRM-CORRECTED], [SCEN-NS-CONFIRM-NOT-REQUIREMENT], [SCEN-NS-CONFIRM-LATEST], [SCEN-NS-CONFIRM-AWAITING], [SCEN-NS-CONFIRM-SAME-DAY], [SCEN-NS-REVISED-PER-NO-UNMINTED]. G3 [GOAL-NS-NORMATIVE-GOVERNS] -> R6 (precedence unchanged) -> [SCEN-NS-CONFIRM-NOT-REQUIREMENT].
+- x-self: G1 and G2 are also checked on this file ([SCEN-NS-SELF-APPLIED]).
+- x-invariants: [INV-NS-ONE-STATE] -> G1 ([GOAL-NS-SEPARATE]) -> [SCEN-NS-NO-OVERRIDE], [SCEN-NS-MODE-SAME-GRAPH]. [INV-NS-WORDS-ONLY-IN-STATEMENTS] -> G2 ([GOAL-NS-KEEP-WORDS]) -> [SCEN-NS-SELF-APPLIED], [SCEN-NS-QUOTE-FLAGGED].
+- x-r5: R5 [REQ-NS-TRACE] -> the RESTATES edge and its profile guard ([MECH-NS-PARSER]) -> [SCEN-NS-RESTATES-EDGE], [SCEN-NS-PROFILE-REFUSES], [SCEN-NS-RESTATES-FROM-NONNORMATIVE], [SCEN-NS-PROFILE-FAILS-PER-CORPUS].
+
+## Build order and rollout [PLAN-NS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-order: One change adds the seven keys, the confirmation keys and the RESTATES, CONFIRMS and CHECKED_AGAINST rows to the parser's tables, mints normative_effective, and brings the SPEC.md text and its absence test with it. Lint ([MECH-NS-LINT]) follows. The counting consumers ([MECH-NS-COUNTING]) follow lint, each when its owner has said yes.
+- x-before-use: No strict document may use a new key before the change that makes it core lands, or it gets undeclared_key errors. This file lands with that change, so it is the first document to use them.
+- x-amendment-step: The route is decided: the stakeholder selected building and landing this spec as a §16 amendment ([DD-NS-AMENDMENT-ROUTE]), conditional on a clean spec audit and a cross-systems review ([DD-NS-BUILD-SELECTED]). Both conditions must be in hand before the land; this file does not record either as done. The maintainers still rule on [OPEN-NS-CORE-COUNT].
+- x-sdlc: In the same commit as the build, SDLC 7.6 gains a rule for each extension point of this spec. They are drafted with the engine owner at build time. The nine (the eight below, and a ninth added with the build for the confirmation locator; later rounds added more, all in SDLC 7.6): (1) a tool or lint that counts requirements, acceptance criteria or test targets filters on normative_effective, or is listed as open; (2) a new core key is added in one place and every key list (parser tables, writer accept-list, SPEC §1.3, profile collision guard) is derived from it or pinned by a test; (3) an edge type minted by a key (RESTATES, CONFIRMS and CHECKED_AGAINST among them) has one registration, its row in REL_PROPERTY_EDGES, and the reserved set the profile guard reads is derived from it as REL_PROPERTY_EDGES minus CORE_EDGE_LAYER, so no second hand-kept table exists; (4) a writer that moves or splits a section keeps the parent-section chain, and a test shows normative_effective unchanged; (5) a lexical lint states its limits and is pinned by a planted positive and a planted negative control; (6) source statement text and confirmation nodes are exempt from, or counted by, the semantic card builder as a stated choice, and any change to the cards bumps CARD_SCHEMA_VERSION; (7) the typed writers refuse to write a reserved minted property such as normative_effective, and a test shows the refusal writes nothing; (8) audits read non-normative content: leaving it out is for counting and building only, and a spec audit following the documented audit steps reads every source statement and confirmation.
+- x-rollback: Engine rollback only; no data format changes. Under the old engine a document that uses the keys parses them as ordinary properties, a strict one reports undeclared_key, and restates mints no edge.
+- x-migration: See [OPEN-NS-MIGRATION].
+
+## Open: whether a write into a failed corpus is flagged in its receipt [OPEN-NS-FAILED-CORPUS-WRITE-FLAG]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: O4
+- x-open: Whether a write by path into a corpus that is registered but failed to load (for any reason: an unreadable member, an unresponsive root, a refused profile) carries a flag in its receipt saying the corpus is not served. Today it lands and the receipt reads as for a healthy corpus, on the trunk and with this spec, for every failure kind. Later work, for all failure kinds; this spec asks nothing of it.
+- x-owner: The engine maintainers.
+
+## Decision: yes and no are aliases of true and false for normative [DD-NS-YES-NO-ALIAS]
+
+- part-of: [FL-NORMATIVE-SOURCE]
+- status: draft
+- x-label: D6
+- x-state: decided
+- x-decision: The values yes and no of the key normative are aliases of true and false, normalised where normative_effective is minted (one place in the parser), accepted in any case (as are true and false themselves). A node or section marked no leaves normative scope exactly like false, and yes behaves exactly like true, including the override error inside a non-normative section. There is no value finding and no per-node spelling finding for the alias; lint says it at most once per file, as one info-level line suggesting the canonical spelling. Any other free text keeps its finding. The cross-product question was: the specs authored to date use yes and no (measured over the registered corpora: 83 of the 84 uses are in the public specs of one product, and the 84th, a free-text one, is in a different corpus and product; the private corpora hold none; the architects report the same spelling in drafts that are not registered, which was not measured here), and a forced migration costs a constrained resource for no gain in meaning. This is the authors' design decision, taken on the chief architect's cross-product ruling; it is not the stakeholder's selection.
+- rationale: All but one use of the key spell it yes or no, as far as it was measured: over every registered corpus (the 39 public corpora and the 16 private ones queried by name, 2026-11-16 at 23:56Z) there are 84 uses of normative: 83 of the 84 are in the public specs of one product (66 no, 17 yes), and the 84th, the free-text one, is in a different corpus and product; the private corpora hold none. The architects report the same spelling in drafts that are not registered; that was not measured here. A forced migration would cost a constrained resource for no gain in meaning, and rejecting the old spelling would be strictness with no reader. A no that was read as free text left its quotes section in normative scope, so the quote tripwire fired on the quotes themselves (measured on one such spec: 32 bad-value warnings and 33 tripwire warnings, 9 of them genuine).

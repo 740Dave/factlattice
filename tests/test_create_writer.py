@@ -54,7 +54,7 @@ def test_create_writes_frontmatter_then_exactly_the_node(env):
     assert text.startswith("---\n")
     pf = parse_text(text, str(f))
     assert [n.id for n in pf.nodes] == ["REVIEW-K1"]
-    assert dict(pf.nodes[0].properties) == {"verdict": "in-progress", "kind": "review"}
+    assert {k: v for k, v in pf.nodes[0].properties.items() if k != "normative_effective"} == {"verdict": "in-progress", "kind": "review"}   # authored keys; the engine-minted state is not written
     fm = pf.frontmatter
     assert fm["lts"].strip('"') == "1.1" and fm["title"] == "A review"
     assert fm["domain"] == "reviews" and fm["doctype"] == "review" and fm["generated-by"]
@@ -161,7 +161,8 @@ def test_refuses_under_an_ephemeral_root_unless_the_documented_override_is_set(e
 
 
 def test_refuses_under_the_DEFAULT_ephemeral_roots_the_os_temp_dir(env, monkeypatch):
-    import shutil, tempfile
+    import shutil
+    import tempfile
     monkeypatch.delenv(ledger.EPHEMERAL_ENV)
     monkeypatch.setattr(tempfile, "tempdir", None)           # the production default, not the suite's
     d = Path(tempfile.mkdtemp(prefix="fltest-create-"))
@@ -194,7 +195,7 @@ def test_exactly_one_record_in_the_existing_vocabulary(env):
     f = env / "out" / "r.lts"
     _create(f)
     (rec,) = _recs(f)
-    assert set(rec) == set(ledger.FIELDS)                     # no new field
+    assert set(rec) == set(ledger.FIELDS) - {"named_root", "membership_partial"}    # no new field; named_root is there only where a root applies, membership_partial only while a registered root is not answering
     assert rec["verb"] == "add_node" and rec["node_id"] == "REVIEW-K1"
     assert rec["file_sha256_before"] is None and rec["prior_blob"] is None
     assert "created file" in rec["undo_evidence_missing"]
@@ -349,7 +350,6 @@ def test_a_busy_lock_refusal_carries_a_code(env, monkeypatch):
     monkeypatch.setenv("FACTLATTICE_LOCK_TIMEOUT_S", "0.05") if hasattr(edit, "_lock_timeout") else None
     monkeypatch.setattr(edit, "_lock_timeout", lambda: 0.05)
     with edit._file_lock(f):
-        import fcntl, os as _os
         # a second holder in the SAME process on a new fd conflicts (flock is per open file description)
         e = _refusal_of(lambda: add_node(f, "REVIEW-K1", "t", {"kind": "r"}, create=True))
     assert (e.evidence or {}).get("refusal") == "lock_busy"
@@ -357,7 +357,9 @@ def test_a_busy_lock_refusal_carries_a_code(env, monkeypatch):
 
 def test_no_raise_in_the_create_helpers_is_uncoded():
     """Static: every `raise EditRefused(...)` in the create-only helpers names an evidence code."""
-    import ast, inspect
+    import ast
+    import inspect
+
     from factlattice.authoring import edit
     for fn in (edit._create_node_file, edit._fm_value, edit._create_exclusive):
         tree = ast.parse(__import__("textwrap").dedent(inspect.getsource(fn)))

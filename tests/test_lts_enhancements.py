@@ -15,7 +15,12 @@ from __future__ import annotations
 import pytest
 
 from factlattice_engine import (
-    LtsStore, LtsEngine, Partition, combined_files_hash, dispatch, normalize_date,
+    LtsEngine,
+    LtsStore,
+    Partition,
+    combined_files_hash,
+    dispatch,
+    normalize_date,
 )
 from factlattice_engine.config import build_merged_partition
 

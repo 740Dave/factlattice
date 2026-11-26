@@ -1,0 +1,50 @@
+# leak-check: the required check that no pull request's content names what the public repository must not name.
+#
+# WHAT IT READS, AS DATA. The job runs the BASE branch's code (`pull_request_target`; the one checkout below has no `ref`, so it is the base) and reads the pull request through the
+# API only: its title and body, every commit message with its author and committer, the head branch name, and the contents of every changed file (the head commit's blobs). Nothing of the pull request is checked out, built, imported or
+# run, and no title, body or message reaches a shell: the script reads them from the API into memory and hands them to the guard's matcher.
+# WHAT IT CHECKS WITH. tools/disclosure_guard.py of the base checkout, with the private rules read from the private overlay repository through the API. The overlay is read with ONE
+# read-only token, the environment secret OVERLAY_READ_TOKEN, held by this job alone within its environment `leak-check`, the scope (the comment workflow's own job holds its own copy under its own environment; tests/test_public_workflows_lint.py pins that no job outside the named holders
+# and no workflow level references the secret, and that this job checks out nothing but the base). The generated neutrality terms are REQUIRED: the first line of the log is the mode line,
+# `neutrality terms: REQUIRED, sha256 <sha>, generated_at <time>, max age <N> h`, and the job FAILS when the terms are absent, unreadable or older than the limit below, when the secret is
+# absent (today, until the overlay exists: the check fails with a message naming the secret rather than pass without the private rules), or when the overlay cannot be read.
+# THE TERMS' AGE. The terms file must be regenerated and pushed to the overlay at least every 8 days (a daily push is the plan); this job accepts terms up to 192 hours (8 days) old
+# (`--max-terms-age-hours 192`) and fails on older ones. The guard's own 6-hour default is unchanged for local use. The mode line prints the limit it applied.
+# THE ENVIRONMENT `leak-check` MUST BE RESTRICTED TO THE DEFAULT BRANCH (deployment branches: the default branch only). The lints see the files on the branch under test; only that
+# setting keeps a workflow edited on another branch from naming the environment and reading the secret.
+# THE OUTPUT is rule names and counts, never a term and never PR text. The job's conclusion is the status the public ruleset requires; the check name is `leak-check`.
+# WHEN IT RUNS. Opened, synchronize, reopened, and edited (so a changed title or body is checked again). A newer run for the same PR cancels the older one.
+# WHO RUNS THIS (the maintainers' ruling of 2026-11-23): only collaborators open PRs here, and any collaborator is trusted. This check is not the first line; it is the one that
+# catches a name a trusted author wrote by mistake. It is a lexical tripwire over the named vocabulary; a name nobody added passes. See the script's own header for what it cannot do.
+# SCRIPT: scripts/leak_check.py and what it imports (gh_api.py).
+name: leak-check
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+concurrency:
+  group: leak-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  leak-check:
+    name: leak-check
+    runs-on: ubuntu-latest   # literal, always
+    timeout-minutes: 15
+    environment: leak-check   # the scope of the overlay secret: an environment secret is available to the jobs that name the environment, and only this job names this one (the comment workflow keeps its own copy of the secret in its own environment)
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: check the pull request's title, body, commit messages and changed files
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # read-only (contents: read, pull-requests: read)
+          OVERLAY_READ_TOKEN: ${{ secrets.OVERLAY_READ_TOKEN }}
+          LC_OVERLAY_REPO: 740Dave/factlattice-deploy
+        run: python3 .github/workflows/scripts/leak_check.py --max-terms-age-hours 192

@@ -42,12 +42,17 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
 import factlattice.hashing as _hashing
 from factlattice_engine import (
-    FreshnessKernel, LtsEngine, LtsStore, PollVerifiedFreshness, SelfHealer,
+    FreshnessKernel,
+    LtsEngine,
+    LtsStore,
+    PollVerifiedFreshness,
+    SelfHealer,
 )
 from factlattice_engine.config import build_merged_partition, build_partition
 from factlattice_engine.incremental import CorpusIndex
@@ -235,7 +240,9 @@ def test_fail_soft_deleted_root_real_on_disk(two_corpora):
     assert res["success"] is True
     c = _entry(res, "c")
     assert c["fresh"] is False
-    assert "FileNotFoundError" in c["heal_error"], c
+    # [ROOT-SET-CHANGE] a vanished root is now a root-set change: the heal refuses with a stated reason
+    # instead of a FileNotFoundError traceback on every query. Still fail-closed, still not fresh.
+    assert "vanished" in c["heal_error"], c
     assert " " in c["heal_error"].split(":")[0], c["heal_error"]          # the fixed SENTENCE, not the bare heal code
     p = _entry(res, "p")
     assert p["fresh"] is True and "heal_error" not in p
@@ -433,6 +440,11 @@ def test_real_stdio_server_heals_on_list(tmp_path):
         lc = next(t for t in tools if t["name"] == "lts_list_corpora")
         assert lc["inputSchema"]["properties"]["heal"]["type"] == "boolean"
 
+        # [MECH-BR-BOOT] slice 4: the server answers `initialize` before it has read a root, and a listing never waits, so the first listing may show
+        # the corpus pending (not fresh, null totals). The assertion below is about HEALING, so wait until the boot read has ended.
+        end = time.monotonic() + 30
+        while list_corpora({"heal": False})["stale_corpora"] and time.monotonic() < end:
+            time.sleep(0.05)
         assert list_corpora({})["stale_corpora"] == []
         (root / "y.lts").write_text(_lts("Y1", "y one"), encoding="utf-8")
 

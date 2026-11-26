@@ -29,7 +29,8 @@ that would have to hand-roll the same tiebreak).
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Callable, Sequence
+from typing import Any
 
 # The two recognized `direction` values. Anything else is a caller error, never
 # silently coerced ([PARAM-ORDER-BY]).
@@ -47,7 +48,7 @@ class OrderError(Exception):
         self.payload = payload
 
 
-def resolve_order_by(order_by: Any, default_field: Optional[str]) -> Optional[Dict[str, str]]:
+def resolve_order_by(order_by: Any, default_field: str | None) -> dict[str, str] | None:
     """Normalize the `order_by` argument to `{field, direction}`, or `None`.
 
     `None`/absent -> `None`: the caller did not ask for a re-order; the existing
@@ -93,7 +94,7 @@ def resolve_order_by(order_by: Any, default_field: Optional[str]) -> Optional[Di
     })
 
 
-def _classify(value: Any) -> Tuple[Optional[str], Any]:
+def _classify(value: Any) -> tuple[str | None, Any]:
     """`(type, comparable_value)` for one raw property value, or `(None, None)` when
     the value cannot participate in any ordering (missing, list/mapping, bool, or a
     string that is not a recognizable date).
@@ -117,11 +118,11 @@ def _classify(value: Any) -> Tuple[Optional[str], Any]:
     return None, None
 
 
-def order_and_window(items: Sequence[Any], *, order_by: Optional[Dict[str, str]],
-                     limit: Optional[int],
+def order_and_window(items: Sequence[Any], *, order_by: dict[str, str] | None,
+                     limit: int | None,
                      get_id: Callable[[Any], Any],
                      get_properties: Callable[[Any], dict],
-                     ) -> Tuple[List[Any], Optional[Dict[str, Any]]]:
+                     ) -> tuple[list[Any], dict[str, Any] | None]:
     """Apply `order_by` (if any) then `limit` (if any) to an already-filtered `items`.
 
     Returns `(windowed, order_applied)`. `order_applied` is `None` when `order_by` was
@@ -142,7 +143,7 @@ def order_and_window(items: Sequence[Any], *, order_by: Optional[Dict[str, str]]
         direction = order_by["direction"]
         reverse = direction == "desc"
 
-        typed: List[Tuple[Optional[str], Any, Any]] = []
+        typed: list[tuple[str | None, Any, Any]] = []
         for it in items:
             props = get_properties(it) or {}
             vtype, val = _classify(props.get(field))
@@ -177,7 +178,7 @@ def order_and_window(items: Sequence[Any], *, order_by: Optional[Dict[str, str]]
     return windowed, order_applied
 
 
-def bound_reason(cursor: Optional[int]) -> str:
+def bound_reason(cursor: int | None) -> str:
     """Why more of the WINDOW might still be fetchable ([SPEC-RESULT-METADATA]):
     `"token_budget"` when `cursor` (the tier's own OFFSET-AWARE "is there more of
     THIS WINDOW to page to" signal — the same one `next_offset` already carries) is
@@ -196,9 +197,9 @@ def bound_reason(cursor: Optional[int]) -> str:
     return "token_budget" if cursor is not None else "none"
 
 
-def result_metadata(*, limit: Optional[int], order_applied: Optional[Dict[str, Any]],
+def result_metadata(*, limit: int | None, order_applied: dict[str, Any] | None,
                     total_matched: int, windowed_len: int, count: int,
-                    cursor: Optional[int]) -> Dict[str, Any]:
+                    cursor: int | None) -> dict[str, Any]:
     """The four additive [SPEC-RESULT-METADATA] fields, built in ONE place so no tool
     spells the contract differently or omits a field inconsistently.
 
@@ -211,7 +212,7 @@ def result_metadata(*, limit: Optional[int], order_applied: Optional[Dict[str, A
     window is exhausted) — see `bound_reason` for why `bound_reason` is derived from
     it rather than from `count`/`windowed_len` directly.
     """
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     if limit is None and order_applied is None:
         return out
     if limit is not None:

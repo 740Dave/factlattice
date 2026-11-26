@@ -178,7 +178,7 @@ def test_selfcheck_passes_with_the_new_cases_and_digest():
     from factlattice_engine.selfcheck import run_selfcheck
     r = run_selfcheck()
     assert r["verdict"] == "PASS" and r["digest_ok"] is True, r.get("error") or [c for c in r["cases"] if c["result"] != "PASS"][:3]
-    assert r["case_count"] == 58          # 56 -> 58 with the A-E4 reviewer-shape cases (slice 2)
+    assert r["case_count"] == 62          # 56 -> 58 with the A-E4 reviewer-shape cases (slice 2); 58 -> 62 with SL-41 (spec 39)
 
 
 @pytest.mark.parametrize("key", ["attaches-to-hook", "applies-rule"])
@@ -206,8 +206,10 @@ def test_review_keys_are_never_offered_as_a_nearest_minting_alternative():
     assert {"attaches-to-hook", "applies-rule"} <= core_keys.suggestion_excluded_keys()
     assert "canonical-node" in core_keys.suggestion_excluded_keys()
     text = "# D [SPEC:D]\n\n## A [D-A]\n\n- preserves: [D-B] settled\n- relates-to-spec: [D-B]\n\n## B [D-B]\n\n- k: v\n"
+    import pathlib
+    import tempfile
+
     from factlattice_engine.lint import lint
-    import tempfile, pathlib
     p = pathlib.Path(tempfile.mkdtemp()) / "d.lts"
     p.write_text(text)
     msgs = " ".join(f.message for f in lint(str(p)).findings if f.kind == "unminted_reference_list")

@@ -35,7 +35,6 @@ A linter that carried its own idea of "id-shaped" would drift from the grammar i
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import factlattice
 from factlattice.parser import _HEADING_RE, detect_id_hijack
@@ -44,7 +43,7 @@ ORIGIN = "id_hijack"
 KIND_ID_HIJACK = "id_hijack"         # a citation ate the declaration — a SUBSTITUTION
 KIND_MULTI_ID = "multi_id_heading"   # two declarations, one heading, one minted node
 
-ID_HIJACK_SEVERITY: Dict[str, str] = {
+ID_HIJACK_SEVERITY: dict[str, str] = {
     KIND_ID_HIJACK: "error",
     # `warning`, not error: the author declared BOTH ids on purpose and the grammar can
     # only mint one. The remedy is an authoring decision (split the heading, or move the
@@ -60,15 +59,15 @@ _KIND_FOR_SHAPE = {"citation_hijack": KIND_ID_HIJACK, "multi_id": KIND_MULTI_ID}
 class HijackFinding:
     kind: str
     message: str
-    source_file: Optional[str]
-    source_line: Optional[int]
-    node_id: Optional[str] = None
+    source_file: str | None
+    source_line: int | None
+    node_id: str | None = None
     detail: dict = field(default_factory=dict)
 
 
-def scan_lines(lines: List[str], source_file: str) -> List[HijackFinding]:
+def scan_lines(lines: list[str], source_file: str) -> list[HijackFinding]:
     """Fence-aware heading sweep over one file's lines."""
-    out: List[HijackFinding] = []
+    out: list[HijackFinding] = []
     in_fence = False
     for i, line in enumerate(lines):
         s = line.strip()
@@ -115,14 +114,14 @@ def scan_lines(lines: List[str], source_file: str) -> List[HijackFinding]:
     return out
 
 
-def find_id_hijacks(corpus: "factlattice.ParsedCorpus") -> List[HijackFinding]:
+def find_id_hijacks(corpus: factlattice.ParsedCorpus) -> list[HijackFinding]:
     """Every hijacked heading in `corpus`, deterministic in file order.
 
     ⛔ Re-scans from `LineCoverage.lines`, not from the file. In `parse()`'s file-set mode
     the recorded `source_file` is a basename inside a temp dir that is deleted before the
     caller sees the result — the same reason `key_loss.find_key_losses` does.
     """
-    out: List[HijackFinding] = []
+    out: list[HijackFinding] = []
     for cov in corpus.coverage:
         out += scan_lines(list(cov.lines), cov.source_file)
     return out

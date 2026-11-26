@@ -42,13 +42,12 @@ pre-commit reachability gate. A cell with no edge and no reason breaks the build
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple
 
 from .parser import (
     CORE_EDGE_LAYER,
     FLOW_PROPERTY_EDGES,
-    REL_PROPERTY_EDGES,
     TRIPLE_ONLY_VERBS,
     _layer_for_type,
     parse_text,
@@ -59,7 +58,7 @@ from .parser import (
 # The three syntactic positions a relationship verb has. Naming them here (rather than
 # inline in the generator) is what makes "every construct × every position" a statement
 # the code can make, instead of a claim a docstring makes.
-POSITIONS: Tuple[str, ...] = ("property-key", "triple-bulleted", "triple-unbulleted")
+POSITIONS: tuple[str, ...] = ("property-key", "triple-bulleted", "triple-unbulleted")
 
 SRC, TGT = "CF-A", "CF-B"
 
@@ -72,7 +71,7 @@ class Expectation:
     target: str
     layer: str
     inference: str
-    label: Optional[str] = None
+    label: str | None = None
 
     def as_tuple(self):
         return (self.type, self.source, self.target, self.layer, self.inference, self.label)
@@ -91,11 +90,11 @@ class Cell:
     position: str
     enumerated_from: str
     fixture: str
-    domain_verbs: FrozenSet[str] = frozenset()
-    profile_layers: Optional[Dict[str, str]] = None
-    expect: Tuple[Expectation, ...] = ()
-    exemption: Optional[str] = None
-    spelling: Optional[str] = None
+    domain_verbs: frozenset[str] = frozenset()
+    profile_layers: dict[str, str] | None = None
+    expect: tuple[Expectation, ...] = ()
+    exemption: str | None = None
+    spelling: str | None = None
 
     @property
     def id(self) -> str:
@@ -138,8 +137,8 @@ def _triple_fixture(verb: str, bulleted: bool) -> str:
 # FAMILY: relationship-verb  (the worked example)
 # ---------------------------------------------------------------------------
 def relationship_verb_cells(
-    domain_verbs: FrozenSet[str] = frozenset(),
-    profile_layers: Optional[Dict[str, str]] = None,
+    domain_verbs: frozenset[str] = frozenset(),
+    profile_layers: dict[str, str] | None = None,
     profile_label: str = "core-only",
 ) -> Iterator[Cell]:
     """Every verb the vocabulary registers, × every position a verb has.
@@ -153,7 +152,7 @@ def relationship_verb_cells(
     key_map = rel_property_edge_map(domain_verbs, profile_layers)
     flow_keys = set(FLOW_PROPERTY_EDGES)
 
-    verbs: Dict[str, str] = {}
+    verbs: dict[str, str] = {}
     for v in CORE_EDGE_LAYER:
         verbs[v] = "parser.CORE_EDGE_LAYER"
     for v in sorted(domain_verbs):
@@ -162,7 +161,7 @@ def relationship_verb_cells(
     # --- position: property-key -------------------------------------------
     # one cell per SPELLING, so an alias (`relates-to`) is independently falsifiable
     # from the mechanical form (`related-to`) it sits beside.
-    spellings: Dict[str, List[str]] = {}
+    spellings: dict[str, list[str]] = {}
     for key, (etype, _layer, _rev) in key_map.items():
         spellings.setdefault(etype, []).append(key)
 
@@ -223,7 +222,7 @@ def relationship_verb_cells(
                        spelling=verb)
 
 
-CONFORMANCE_FAMILIES: Dict[str, Callable[..., Iterator[Cell]]] = {
+CONFORMANCE_FAMILIES: dict[str, Callable[..., Iterator[Cell]]] = {
     "relationship-verb": relationship_verb_cells,
 }
 
@@ -236,7 +235,7 @@ class CellResult:
     cell: Cell
     ok: bool
     detail: str
-    produced: Tuple[Tuple, ...] = ()
+    produced: tuple[tuple, ...] = ()
 
 
 def check_cell(cell: Cell) -> CellResult:
@@ -268,8 +267,8 @@ def check_cell(cell: Cell) -> CellResult:
     return CellResult(cell, True, "ok", produced)
 
 
-def enumerate_cells(profiles: Optional[Iterable[Tuple[str, FrozenSet[str], Optional[Dict[str, str]]]]] = None,
-                    families: Optional[Iterable[str]] = None) -> List[Cell]:
+def enumerate_cells(profiles: Iterable[tuple[str, frozenset[str], dict[str, str] | None]] | None = None,
+                    families: Iterable[str] | None = None) -> list[Cell]:
     """Every cell, for the core vocabulary and for each supplied profile vocabulary.
 
     `profiles` is an iterable of `(label, domain_verbs, profile_layers)`. The core-only
@@ -278,7 +277,7 @@ def enumerate_cells(profiles: Optional[Iterable[Tuple[str, FrozenSet[str], Optio
     names = list(families) if families else list(CONFORMANCE_FAMILIES)
     vocabularies = [("core-only", frozenset(), None)]
     vocabularies.extend(profiles or [])
-    cells: List[Cell] = []
+    cells: list[Cell] = []
     for name in names:
         gen = CONFORMANCE_FAMILIES[name]
         for label, verbs, layers in vocabularies:
@@ -286,7 +285,7 @@ def enumerate_cells(profiles: Optional[Iterable[Tuple[str, FrozenSet[str], Optio
     return cells
 
 
-def run_conformance(**kwargs) -> Dict[str, object]:
+def run_conformance(**kwargs) -> dict[str, object]:
     results = [check_cell(c) for c in enumerate_cells(**kwargs)]
     failures = [r for r in results if not r.ok]
     return {
@@ -301,8 +300,8 @@ def run_conformance(**kwargs) -> Dict[str, object]:
     }
 
 
-def warrant(profiles: Optional[Iterable[Tuple[str, FrozenSet[str], Optional[Dict[str, str]]]]] = None,
-            families: Optional[Iterable[str]] = None) -> Dict[str, object]:
+def warrant(profiles: Iterable[tuple[str, frozenset[str], dict[str, str] | None]] | None = None,
+            families: Iterable[str] | None = None) -> dict[str, object]:
     """The CONFORMANCE WARRANT — a guarantee with an enumerated scope.
 
     ⭐ THE TWO WORDS THAT SHAPE THIS FUNCTION.

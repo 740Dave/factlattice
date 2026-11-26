@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import factlattice
 
@@ -57,13 +57,17 @@ KIND = "unminted_reference_list"
 # "unknown verb", and a case typo can never inflate the register-this-verb worklist.
 KIND_CASE_MISMATCH = "edge_verb_case_mismatch"
 
-UNMINTED_SEVERITY: Dict[str, str] = {KIND: "warning", KIND_CASE_MISMATCH: "warning"}
+UNMINTED_SEVERITY: dict[str, str] = {KIND: "warning", KIND_CASE_MISMATCH: "warning"}
 
 # Parser-injected / derived keys: never author-declared vocabulary, never a candidate.
 # `id_table` in particular is a DICT (mapping), which `is_pure_reference_list` already
 # refuses (it only reads str/list-of-str) — excluded here anyway so the reason is a
 # NAME, not "it happened not to match the shape test".
-_EXCLUDED_KEYS = frozenset({"aliases", "co_defined_with", "id_table"})
+# `revised-per` (spec 39) holds a bracketed confirmation id by design and mints NO edge: exempt, by name,
+# read from the one core-key module.
+from factlattice.core_keys import UNMINTED_EXEMPT_KEYS  # noqa: E402
+
+_EXCLUDED_KEYS = frozenset({"aliases", "co_defined_with", "id_table"}) | UNMINTED_EXEMPT_KEYS
 
 # An edge-shaped body line `- KEY: VALUE`, used ONLY to reach keys that never became a
 # parsed property because they broke the `^[a-z][a-z0-9_-]*$` key grammar — i.e. the
@@ -89,7 +93,7 @@ class UnmintedRef:
     node_id: str
     key: str
     value: str
-    alternatives: Tuple[str, ...]
+    alternatives: tuple[str, ...]
 
     def message(self) -> str:
         alt = (f" Nearest minting alternative(s): {', '.join(self.alternatives)}."
@@ -103,8 +107,8 @@ class UnmintedRef:
                 "applied retrospectively).")
 
 
-def find_unminted_reference_lists(corpus: "factlattice.ParsedCorpus",
-                                  profile: Any = None) -> List[UnmintedRef]:
+def find_unminted_reference_lists(corpus: factlattice.ParsedCorpus,
+                                  profile: Any = None) -> list[UnmintedRef]:
     """Every (node, key) whose value IS a pure reference list under a NON-minting key.
 
     `profile` defaults to `corpus.profile` — so a corpus whose profile registers a key
@@ -118,7 +122,7 @@ def find_unminted_reference_lists(corpus: "factlattice.ParsedCorpus",
     """
     prof = profile if profile is not None else getattr(corpus, "profile", None)
     minting = minting_keys_for(prof)
-    out: List[UnmintedRef] = []
+    out: list[UnmintedRef] = []
     for node in corpus.nodes:
         for key, value in (node.properties or {}).items():
             if key in minting or key in _EXCLUDED_KEYS:
@@ -143,8 +147,8 @@ def find_unminted_reference_lists(corpus: "factlattice.ParsedCorpus",
     return out
 
 
-def edge_verb_channels(corpus: "factlattice.ParsedCorpus",
-                       profile: Any = None) -> Dict[str, Any]:
+def edge_verb_channels(corpus: factlattice.ParsedCorpus,
+                       profile: Any = None) -> dict[str, Any]:
     """The THREE de-duplicated edge-verb channels of the maintainer's 2026-08-17 rulings, off the
     ONE shared classifier so lint (V12) and preview (V12b) cannot disagree:
 
@@ -168,7 +172,7 @@ def edge_verb_channels(corpus: "factlattice.ParsedCorpus",
     """
     prof = profile if profile is not None else getattr(corpus, "profile", None)
     undeclared: set = set()
-    case_map: Dict[str, str] = {}   # miscased key -> canonical declared verb
+    case_map: dict[str, str] = {}   # miscased key -> canonical declared verb
 
     # (1) PARSED properties — lowercase keys that reached `node.properties`.
     for node in corpus.nodes:
@@ -219,7 +223,7 @@ def edge_verb_channels(corpus: "factlattice.ParsedCorpus",
     }
 
 
-def edge_verb_warn_line(channels: Dict[str, Any]) -> Optional[str]:
+def edge_verb_warn_line(channels: dict[str, Any]) -> str | None:
     """The WARN string the maintainer specified for the case channel: `Case-mismatch {a, b, ...}`
     — the de-duplicated miscased verbs, so the author knows what to fix. `None` when the
     channel is empty (nothing to warn about)."""
@@ -229,11 +233,11 @@ def edge_verb_warn_line(channels: Dict[str, Any]) -> Optional[str]:
     return "Case-mismatch {" + ", ".join(verbs) + "}"
 
 
-def unminted_stats(findings: List[UnmintedRef]) -> Dict[str, Any]:
+def unminted_stats(findings: list[UnmintedRef]) -> dict[str, Any]:
     """Emitted on EVERY run, clean or not — same doctrine as `key_loss_stats`: a
     findings list alone cannot distinguish "this corpus has none of this shape" from
     "the rule was switched off"."""
-    by_key: Dict[str, int] = {}
+    by_key: dict[str, int] = {}
     for f in findings:
         by_key[f.key] = by_key.get(f.key, 0) + 1
     return {"unminted_reference_lists": len(findings),
@@ -241,7 +245,7 @@ def unminted_stats(findings: List[UnmintedRef]) -> Dict[str, Any]:
             "by_key": dict(sorted(by_key.items(), key=lambda kv: (-kv[1], kv[0])))}
 
 
-def summary_line(stats: Dict[str, Any]) -> str:
+def summary_line(stats: dict[str, Any]) -> str:
     return (f"-- unminted reference lists: {stats['unminted_reference_lists']} "
             f"propert{'y' if stats['unminted_reference_lists'] == 1 else 'ies'} across "
             f"{stats['distinct_keys']} key(s) carry only well-formed references and "

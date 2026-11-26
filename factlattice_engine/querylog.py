@@ -80,13 +80,12 @@ import hashlib
 import json
 import logging
 import os
+import re as _re
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import re as _re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +154,7 @@ def miss_log_path() -> Path:
     return state_dir() / MISS_LOG_BASENAME
 
 
-def log_path() -> Optional[Path]:
+def log_path() -> Path | None:
     """The resolved log path, or None when logging is switched off.
 
     `FACTLATTICE_QUERY_LOG` may be an explicit path, or `0`/`off`/`false`/`no` to
@@ -177,7 +176,7 @@ def literals_enabled() -> bool:
 # ---------------------------------------------------------------------------
 # record construction
 # ---------------------------------------------------------------------------
-def digest_text(value: object) -> Dict[str, Any]:
+def digest_text(value: object) -> dict[str, Any]:
     """A free-text query as `{sha, len}` — or verbatim when literals are enabled.
 
     12 hex characters: collision-free at any plausible log volume, and short enough that
@@ -190,7 +189,7 @@ def digest_text(value: object) -> Dict[str, Any]:
             "text_len": len(text)}
 
 
-def _digest_value(value: object) -> Dict[str, Any]:
+def _digest_value(value: object) -> dict[str, Any]:
     """A term / condition VALUE as `{sha, len}` (or `{value, len}` under literals): the same rule
     `text` follows. [FIND-QUERY-SURFACE §9a] Keys, operators and modes are structure and are
     logged literally by the callers; only the values go through here."""
@@ -213,10 +212,10 @@ def _struct(value: object, ok) -> object:
     return _digest_value(value)
 
 
-def _qs_filters(a: dict) -> Dict[str, Any]:
+def _qs_filters(a: dict) -> dict[str, Any]:
     """[FIND-QUERY-SURFACE] the new query-surface arguments as log structure. Never raises on a
     malformed argument (a refused query is logged too)."""
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     import re
     global _KEY_RE
     if _KEY_RE is None:
@@ -256,7 +255,7 @@ def _qs_filters(a: dict) -> Dict[str, Any]:
             if not isinstance(c, dict):
                 rows.append({"malformed": True})
                 continue
-            row: Dict[str, Any] = {"key": _struct(c.get("key"), key_ok)}
+            row: dict[str, Any] = {"key": _struct(c.get("key"), key_ok)}
             for op in ("has", "lacks", "equals", "one_of", "not_equals", "not_one_of"):
                 if op in c:
                     row["op"] = op
@@ -276,7 +275,7 @@ def _basename(value: object) -> object:
     return os.path.basename(str(value).rstrip("/"))
 
 
-def result_ids(result: dict) -> List[str]:
+def result_ids(result: dict) -> list[str]:
     """The node ids this response ACTUALLY DELIVERED, across every response shape.
 
     ⛔ EMITTED, NOT MATCHED. A truncated result's tail was never seen by the caller, so it
@@ -284,7 +283,7 @@ def result_ids(result: dict) -> List[str]:
     exactly the population it exists to find. `total_matched` is recorded separately for
     the callers who want the other number.
     """
-    out: List[str] = []
+    out: list[str] = []
     if not isinstance(result, dict):
         return out
     # `hits` is `lts_find_in_prose`'s emitted collection — a prose hit IS attention on that
@@ -303,13 +302,13 @@ def result_ids(result: dict) -> List[str]:
     # Write surfaces name their target explicitly; an edit is attention too.
     if result.get("node_id"):
         out.append(str(result["node_id"]))
-    seen: Dict[str, None] = {}
+    seen: dict[str, None] = {}
     for nid in out:
         seen.setdefault(nid, None)
     return list(seen)
 
 
-def suggestions(result: dict) -> Optional[Dict[str, Any]]:
+def suggestions(result: dict) -> dict[str, Any] | None:
     """[QUERYLOG-SEMANTIC-COVERAGE] the semantic suggestion block a response SHOWED, if any.
 
     ⛔ Kept apart from `result_ids`: a suggestion shown is not a node read, and counting it
@@ -326,7 +325,7 @@ def suggestions(result: dict) -> Optional[Dict[str, Any]]:
     raw = raw if isinstance(raw, (list, tuple)) else []   # a malformed block must not drop the record
     cands = [{"id": c.get("id"), "rank": c.get("rank"), "label": c.get("label")}
              for c in raw if isinstance(c, dict)]
-    out: Dict[str, Any] = {"status": blk.get("status"), "preface": "preface" in blk,
+    out: dict[str, Any] = {"status": blk.get("status"), "preface": "preface" in blk,
                            "candidates": cands[:MAX_RESULT_IDS],
                            "capped": len(cands) > MAX_RESULT_IDS}
     if blk.get("label_policy"):
@@ -347,7 +346,7 @@ def build_record(tool: str, arguments: dict, result: dict, elapsed_ms: float,
     a = arguments or {}
     r = result if isinstance(result, dict) else {}
 
-    filters: Dict[str, Any] = {k: a[k] for k in _STRUCTURAL_ARGS if a.get(k) is not None}
+    filters: dict[str, Any] = {k: a[k] for k in _STRUCTURAL_ARGS if a.get(k) is not None}
     for k in _ID_ARGS:
         if a.get(k) is not None:
             filters[k] = a[k]
@@ -369,8 +368,8 @@ def build_record(tool: str, arguments: dict, result: dict, elapsed_ms: float,
     ids = result_ids(r)
     capped = len(ids) > MAX_RESULT_IDS
 
-    rec: Dict[str, Any] = {
-        "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+    rec: dict[str, Any] = {
+        "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
         "session": session,
         "tool": tool,
         "ok": bool(r.get("success", True)),
@@ -420,6 +419,9 @@ def build_record(tool: str, arguments: dict, result: dict, elapsed_ms: float,
             "keys_consulted": ext.get("keys_consulted"),
             "index_fresh": (ext.get("index") or {}).get("fresh"),
         }
+        scope = ext.get("search_scope")
+        if isinstance(scope, dict):
+            rec["extent"]["search_scope"] = {k: scope.get(k) for k in ("source", "left_out_count")}
     return rec
 
 

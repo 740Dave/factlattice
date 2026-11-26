@@ -5,7 +5,7 @@ the parser as it stood at c9267fe, BEFORE the fix that makes them pass. A check 
 only ever been observed passing is not a check (the epistemics rule rule-negative-control).
 
 ⛔ EVERY TEST ASSERTS THE EDGE IS IN THE PARSED GRAPH — never merely that the property
-parsed. That distinction is the whole defect class: `relates-to` PARSED fine in 140 places
+parsed. That distinction is the whole defect class: `relates-to` PARSED fine in 222 places
 and minted nothing, while `lts_lint` called the corpus CLEAN.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from factlattice.parser import (
     REL_PROPERTY_EDGES,
     parse_text,
 )
-from factlattice.profile import Profile, ProfileCollisionError, load_profile
+from factlattice.profile import ProfileCollisionError, load_profile
 
 
 def _edges(text: str, **kw):

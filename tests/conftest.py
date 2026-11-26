@@ -10,7 +10,6 @@ overlay as well). This file adds two things for `tests/`:
 """
 from __future__ import annotations
 
-import os
 import tempfile
 
 import pytest

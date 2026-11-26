@@ -21,7 +21,7 @@ NODES
       (`## 1. Purpose [LTS-PURPOSE]`) of the heading; both are handled.
   * A heading with NO bracketed id (`## Relationships`, `## 1. Identity Classes`)
       is a section divider, not a node. It still bounds node content + nesting.
-  * type_prefix = ID text before the first hyphen (SPEC §1.1: TERM-TOKEN -> TERM).
+  * type_prefix = ID text before the first hyphen (SPEC §1.1: TERM-ADC -> TERM).
 
 PROPERTIES (within a node body, SPEC §2.2)
   * P1 simple    `- key: value`
@@ -112,8 +112,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
 
+from .core_keys import EFFECTIVE_KEY  # noqa: F401  (the minted key: ONE definition, core_keys.ENGINE_MINTED_KEYS)
 from .hashing import content_hash
 
 # ---------------------------------------------------------------------------
@@ -125,7 +125,7 @@ from .hashing import content_hash
 # `[A] CANONICAL [B]` mints a CANONICAL edge (semantic layer) on base and on head alike. Only
 # the KEY path dedups an identical repeated target; duplicated triples are NOT deduped, like
 # every other verb. The lint (lint/canonical.py) works over edges, so it covers both routes.
-CORE_EDGE_LAYER: Dict[str, str] = {
+CORE_EDGE_LAYER: dict[str, str] = {
     # semantic
     "IS_A": "semantic", "PART_OF": "semantic", "HAS_PROPERTY": "semantic",
     "SPECIALIZES": "semantic", "IMPLEMENTS": "semantic", "RELATED_TO": "semantic",
@@ -148,7 +148,7 @@ CANONICAL_LAYERS = ("semantic", "temporal", "causal", "entity")
 
 # Relationship-bearing property -> (edge_type, layer, reversed_direction)
 # reversed=True means the edge runs referenced_id -> node (SPEC §1.3 Direction col).
-REL_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
+REL_PROPERTY_EDGES: dict[str, tuple[str, str, bool]] = {
     "see-also": ("RELATED_TO", "semantic", False),
     "relates-to": ("RELATED_TO", "semantic", False),
     "related-to": ("RELATED_TO", "semantic", False),
@@ -182,7 +182,21 @@ REL_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
     # selector, free text) and every other spelling stays prose. Lint: lint/review_edges.py.
     "attaches-to-hook": ("ATTACHES_TO_HOOK", "semantic", False),
     "applies-rule": ("APPLIES_RULE", "semantic", False),
+    # Spec 39 (normative content and source statements). Forward edges, semantic layer, same corpus.
+    #   restates:         a normative node -> each source statement it restates (RESTATES)
+    #   confirmation-of:         a confirmation -> the ONE source statement it confirms (CONFIRMS)
+    #   checked-against:  a confirmation -> each normative node the quote was checked against (CHECKED_AGAINST)
+    # One registration each, here. The three types are NOT in CORE_EDGE_LAYER; RESERVED_EDGE_TYPES below
+    # derives the names a profile may not declare bare, so no second hand-kept table exists.
+    "restates": ("RESTATES", "semantic", False),
+    "confirmation-of": ("CONFIRMS", "semantic", False),
+    "checked-against": ("CHECKED_AGAINST", "semantic", False),
 }
+
+#: Edge types a KEY mints that are not core types: the profile guard refuses a profile that declares one
+#: of these BARE (a namespaced `ns.RESTATES` is a distinct type and still loads). Derived, never restated
+#: (SDLC §7.6): REL_PROPERTY_EDGES minus CORE_EDGE_LAYER.
+RESERVED_EDGE_TYPES = frozenset(v[0] for v in REL_PROPERTY_EDGES.values()) - frozenset(CORE_EDGE_LAYER)
 
 # ---------------------------------------------------------------------------
 # WHY THESE SEVEN WERE ADDED (2026-08-15) — and why the table is not the whole fix
@@ -191,7 +205,7 @@ REL_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
 # every ref-bearing property key as a PURE REFERENCE LIST (bracketed ids + separators,
 # optional trailing gloss) or as PROSE THAT CITES:
 #
-#   relates-to     most common      the natural spelling of `see-also`. 11 files. The
+#   relates-to     214 pure / 96%   the natural spelling of `see-also`. 19 files. The
 #                                   defect that opened this work: every one invisible to
 #                                   `lts_traverse` while `lts_lint` reported CLEAN.
 #   related-to       1 pure         third spelling of the same relation; registered so the
@@ -205,8 +219,8 @@ REL_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
 #   follows          2 pure /100%   ⛔ REVERSED. "A follows B" == B BEFORE A.
 #
 # ⛔ THE DISCRIMINATOR, because it is what keeps this table honest. "The value contains a
-# bracketed id" is NOT the test for membership here. `rationale` (96 occurrences),
-# `definition` (94) and `requirement` (58) all carry bracketed ids and are 0% pure —
+# bracketed id" is NOT the test for membership here. `rationale` (181 occurrences),
+# `definition` (180) and `requirement` (127) all carry bracketed ids and are 0% pure —
 # they cite node ids INSIDE SENTENCES. Registering them would turn every inline citation
 # into a graph edge and destroy what a traversal means. The test is whether the VALUE IS
 # A REFERENCE LIST. `tests/test_property_edge_minting.py` pins both directions.
@@ -245,7 +259,7 @@ REL_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool]] = {
 #     those files — i.e. existing corpora would stop parsing identically. `next-step` has
 #     zero occurrences across every surveyed corpus (2026-07-23), so this table is strictly
 #     additive.
-FLOW_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool, Optional[str]]] = {
+FLOW_PROPERTY_EDGES: dict[str, tuple[str, str, bool, str | None]] = {
     "next-step":    ("BEFORE", "temporal", False, None),
     "if-true":      ("BEFORE", "temporal", False, "yes"),
     "if-false":     ("BEFORE", "temporal", False, "no"),
@@ -291,7 +305,7 @@ FLOW_PROPERTY_EDGES: Dict[str, Tuple[str, str, bool, Optional[str]]] = {
 # REMOVED — see the comment above `TRIPLE_ONLY_VERBS` and `rel_property_edge_map`'s own
 # docstring. The unify described above (a verb registered on either PROFILE surface gets
 # both) is UNCHANGED and is the real, measured recovery this pass keeps.
-REL_PROPERTY_ALIASES: Dict[str, Tuple[str, bool]] = {
+REL_PROPERTY_ALIASES: dict[str, tuple[str, bool]] = {
     # Authored property spellings that are NOT the mechanical kebab of their verb. These
     # are LEXICAL facts about how corpora write, so they are enumerated rather than
     # derived; the mechanical spelling (`related-to`) keeps working alongside them.
@@ -352,7 +366,7 @@ _UNVETTED_COMMON_WORD_VERB_REASON = (
     "is. Re-openable: measure this verb's real-corpus property-key purity and add it to "
     "REL_PROPERTY_EDGES explicitly — that addition IS the vetting act."
 )
-TRIPLE_ONLY_VERBS: Dict[str, str] = {
+TRIPLE_ONLY_VERBS: dict[str, str] = {
     "CONTAINS": (
         "E5 already mints CONTAINS from heading nesting, so the document tree IS the "
         "CONTAINS relation. A property-authored `contains:` would add a second, "
@@ -401,8 +415,8 @@ def verb_property_key(verb: str) -> str:
     return verb.strip().lower().replace("_", "-")
 
 
-def effective_domain_verbs(domain_verbs: Optional[frozenset],
-                           property_edges: Optional[Dict[str, Tuple[str, str, bool]]]
+def effective_domain_verbs(domain_verbs: frozenset | None,
+                           property_edges: dict[str, tuple[str, str, bool]] | None
                            ) -> frozenset:
     """[FL-VERB-PARITY] UNIFY: fold a profile's property-surface registrations
     (`property_edges`, from `edge_types[].property_key`) into the verb set used for
@@ -427,8 +441,8 @@ def effective_domain_verbs(domain_verbs: Optional[frozenset],
 
 def rel_property_edge_map(
     domain_verbs: frozenset = None,
-    profile_layers: Optional[Dict[str, str]] = None,
-) -> Dict[str, Tuple[str, str, bool]]:
+    profile_layers: dict[str, str] | None = None,
+) -> dict[str, tuple[str, str, bool]]:
     """The COMPLETE property-key -> (edge_type, layer, reversed) map for one parse,
     DERIVED from the verb vocabulary in force rather than transcribed alongside it.
 
@@ -481,7 +495,7 @@ def rel_property_edge_map(
     """
     if domain_verbs is None:
         domain_verbs = DEFAULT_DOMAIN_VERBS
-    out: Dict[str, Tuple[str, str, bool]] = {}
+    out: dict[str, tuple[str, str, bool]] = {}
     for verb in sorted(domain_verbs):
         if verb in TRIPLE_ONLY_VERBS:
             continue
@@ -612,7 +626,7 @@ _FORMAT_VERSION_MESSAGES = {
 }
 
 
-def parse_format_version(frontmatter: Dict[str, str]):
+def parse_format_version(frontmatter: dict[str, str]):
     """Read the `lts:` marker -> `(version_or_None, mode, finding_kind_or_None)`.
 
     Quoting is stripped: `lts: "1.1"`, `lts: '1.1'` and `lts: 1.1` are the same
@@ -686,8 +700,8 @@ _LEADING_WS_RE = re.compile(r"^([ \t]*)")
 # `- key: …` values as a head plus indented continuation lines; before this branch
 # existed the value was truncated to its first physical line and the tail classified
 # as ignorable prose, so the loss was invisible to line accounting as well
-# (`corpora/acme-specs/41-…`: 61 of 61 wrapped properties truncated, coverage
-# reported 100.0% / 0 unaccounted while dropping most of their text).
+# (`corpora/acme-specs/57-…`: 93 of 93 wrapped properties truncated, coverage
+# reported 100.0% / 0 unaccounted while dropping ~57k characters).
 #
 # A continuation is defined by EXCLUSION, and the exclusions are the FURNITURE shapes
 # that start their own structure. Anything indented deeper than its head that is none
@@ -744,15 +758,15 @@ class Node:
     id: str
     type_prefix: str
     title: str
-    domain: Optional[str]
+    domain: str | None
     source_file: str
-    line_range: Tuple[int, int]
+    line_range: tuple[int, int]
     content_hash: str
     token_count: int
-    status: Optional[str]
-    properties: Dict[str, object]
-    parent_section: Optional[str] = None
-    document_tag: Optional[str] = None
+    status: str | None
+    properties: dict[str, object]
+    parent_section: str | None = None
+    document_tag: str | None = None
     # Provenance of the node's extraction: 'header' (h1-h4) or 'list_item'
     # (`- [ID] **bold**` node-def, [LTS-PARSER] NODE-EXTRACTION-COVERAGE).
     definition_form: str = "header"
@@ -785,13 +799,13 @@ class Edge:
     source_file: str
     source_line: int
     # Preserve+flag machinery ([LTS-PARSER]); never dropped.
-    flags: List[str] = field(default_factory=list)
+    flags: list[str] = field(default_factory=list)
     dangling: bool = False
-    target_domain: Optional[str] = None  # cross-corpus qualifier if the ref had one
+    target_domain: str | None = None  # cross-corpus qualifier if the ref had one
     # [LEC-RENDER] optional edge label ('yes'/'no'/a branch name). Set only by the
     # FLOW_PROPERTY_EDGES vocabulary; OMITTED from to_dict when None so every
     # pre-existing corpus serializes to a BYTE-IDENTICAL graph_index.json.
-    label: Optional[str] = None
+    label: str | None = None
 
     def to_dict(self) -> dict:
         d = {
@@ -841,11 +855,11 @@ class ParseFinding:
 
     kind: str
     message: str
-    source_file: Optional[str] = None
-    source_line: Optional[int] = None   # 1-based, the `- key:` head
-    node_id: Optional[str] = None
-    key: Optional[str] = None
-    detail: Dict[str, object] = field(default_factory=dict)
+    source_file: str | None = None
+    source_line: int | None = None   # 1-based, the `- key:` head
+    node_id: str | None = None
+    key: str | None = None
+    detail: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -878,22 +892,22 @@ class LineCoverage:
     """
 
     source_file: str
-    lines: List[str]
+    lines: list[str]
     body_start: int                 # first line index after frontmatter
-    consumed: Dict[int, str] = field(default_factory=dict)
-    fenced: Set[int] = field(default_factory=set)      # inside ``` / ~~~ (incl. delimiters)
-    section: Dict[int, str] = field(default_factory=dict)  # idx -> SECTION_* (only if in one)
+    consumed: dict[int, str] = field(default_factory=dict)
+    fenced: set[int] = field(default_factory=set)      # inside ``` / ~~~ (incl. delimiters)
+    section: dict[int, str] = field(default_factory=dict)  # idx -> SECTION_* (only if in one)
     # idx -> the node id whose body `_parse_properties` was actually run over. A line
     # ABSENT here was never offered to the property grammar at all — which is a
     # materially different (and more alarming) failure than "offered and rejected",
     # and the classifier needs to be able to say which.
-    node_body: Dict[int, str] = field(default_factory=dict)
+    node_body: dict[int, str] = field(default_factory=dict)
     # (TBL) Lines of a table the ID-TABLE discriminator ACCEPTS but which sits under a
     # heading carrying no `[ID]`, so there is no node to attach the rows to. The parser
     # states the fact; `coverage.classify_line` turns it into the finding. Recorded
     # here rather than re-derived in the linter for the same reason `consumed` is —
     # a second copy of the discriminator would drift from this one.
-    id_table_unattached: Set[int] = field(default_factory=set)
+    id_table_unattached: set[int] = field(default_factory=set)
 
     def record(self, idx: int, branch: str) -> None:
         """First writer wins, so the record is deterministic under the parser's
@@ -901,7 +915,7 @@ class LineCoverage:
         if 0 <= idx < len(self.lines) and idx not in self.consumed:
             self.consumed[idx] = branch
 
-    def unconsumed_indices(self) -> List[int]:
+    def unconsumed_indices(self) -> list[int]:
         return [i for i in range(len(self.lines)) if i not in self.consumed]
 
     def to_dict(self) -> dict:
@@ -918,21 +932,21 @@ class LineCoverage:
 @dataclass
 class ParsedFile:
     source_file: str
-    domain: Optional[str]
-    document_tag: Optional[str]
-    nodes: List[Node]
-    edges: List[Edge]
-    frontmatter: Dict[str, str]
+    domain: str | None
+    document_tag: str | None
+    nodes: list[Node]
+    edges: list[Edge]
+    frontmatter: dict[str, str]
     # Line-accounting side-output ([FL-LINE-ACCOUNTING]). Additive and optional so
     # every existing consumer of ParsedFile is untouched.
-    coverage: Optional[LineCoverage] = None
+    coverage: LineCoverage | None = None
     # Structural ambiguities the parser refused to guess at (P5 discrimination).
     # Additive, empty for every corpus that has none — which today is all of them.
-    findings: List[ParseFinding] = field(default_factory=list)
+    findings: list[ParseFinding] = field(default_factory=list)
     # [A1 / C10] The document's declared format version, verbatim, and the MODE the
     # parse ran in. `format_version is None` == the unstamped installed base == legacy.
     # Additive: every pre-C10 consumer of ParsedFile is untouched.
-    format_version: Optional[str] = None
+    format_version: str | None = None
     mode: str = MODE_LEGACY
     # [A1/A2/A3] VOCABULARY diagnostics — version marker, undeclared keys, unregistered
     # verbs.
@@ -946,7 +960,7 @@ class ParsedFile:
     # signal that channel carries, and the tests that assert `findings == []` are what
     # caught the attempt. A1's own words are "MUST warn `legacy_document` once per file
     # AT LINT": the parser supplies the fact, the linter decides the severity.
-    vocabulary_findings: List[ParseFinding] = field(default_factory=list)
+    vocabulary_findings: list[ParseFinding] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -1046,9 +1060,9 @@ def classify_bracket_token(content: str) -> str:
 FINDING_MALFORMED_REF = "malformed_ref"
 
 
-def _malformed_ref_finding(*, raw: str, position: str, source_file: Optional[str],
-                           source_line: int, node_id: Optional[str] = None,
-                           key: Optional[str] = None) -> "ParseFinding":
+def _malformed_ref_finding(*, raw: str, position: str, source_file: str | None,
+                           source_line: int, node_id: str | None = None,
+                           key: str | None = None) -> ParseFinding:
     return ParseFinding(
         kind=FINDING_MALFORMED_REF,
         message=(f"`[{raw}]` at {position} is bracket-SHAPED like an id but is not a "
@@ -1061,9 +1075,9 @@ def _malformed_ref_finding(*, raw: str, position: str, source_file: Optional[str
 
 
 def _scan_value_for_malformed_refs(value: object, *, position: str,
-                                   source_file: Optional[str], source_line: int,
-                                   node_id: Optional[str], key: Optional[str],
-                                   findings: List["ParseFinding"]) -> None:
+                                   source_file: str | None, source_line: int,
+                                   node_id: str | None, key: str | None,
+                                   findings: list[ParseFinding]) -> None:
     """[C1] Scan a property VALUE (str or list[str]) for MALFORMED-REF bracket tokens
     and append one finding per hit. Additive: does not touch `value` or the node."""
     items = value if isinstance(value, list) else [value]
@@ -1077,7 +1091,7 @@ def _scan_value_for_malformed_refs(value: object, *, position: str,
                     source_line=source_line, node_id=node_id, key=key))
 
 
-def _resolve_ref(bracket_content: str) -> Optional[Tuple[Optional[str], str]]:
+def _resolve_ref(bracket_content: str) -> tuple[str | None, str] | None:
     """Resolve a bracketed reference to (domain_or_None, node_id) per SPEC §9.2.
 
     Forms: `[NODE-ID]`, `[DOCTYPE:NODE-ID]`, `[domain:DOCTYPE:NODE-ID]`.
@@ -1095,9 +1109,9 @@ def _resolve_ref(bracket_content: str) -> Optional[Tuple[Optional[str], str]]:
     return domain, node_id
 
 
-def _extract_refs(value: str) -> List[Tuple[Optional[str], str]]:
+def _extract_refs(value: str) -> list[tuple[str | None, str]]:
     """All well-formed [ ... ] references in a property value, in order."""
-    refs: List[Tuple[Optional[str], str]] = []
+    refs: list[tuple[str | None, str]] = []
     for m in _BRACKET_RE.finditer(value):
         r = _resolve_ref(m.group(1))
         if r is not None:
@@ -1105,13 +1119,13 @@ def _extract_refs(value: str) -> List[Tuple[Optional[str], str]]:
     return refs
 
 
-def _heading_id(text: str) -> Optional[Tuple[str, Optional[str], str]]:
+def _heading_id(text: str) -> tuple[str, str | None, str] | None:
     """From a heading's text, extract (node_id, doctype_or_None, title).
 
     Handles ID-first `[GW-PROBLEM] Title`, ID-last `1. Purpose [LTS-PURPOSE]`,
     and doctype `[SYSTEM:SYSTEM-IDENTITY]` forms. Returns None if no id-like bracket.
     """
-    best: Optional[Tuple[str, Optional[str], str, Tuple[int, int]]] = None
+    best: tuple[str, str | None, str, tuple[int, int]] | None = None
     for m in _BRACKET_RE.finditer(text):
         content = m.group(1).strip()
         segments = [s.strip() for s in content.split(":")]
@@ -1131,7 +1145,7 @@ def _heading_id(text: str) -> Optional[Tuple[str, Optional[str], str]]:
     return best[0], best[1], best[2]
 
 
-def heading_id_candidates(text: str) -> List[Tuple[str, Optional[str], int, int]]:
+def heading_id_candidates(text: str) -> list[tuple[str, str | None, int, int]]:
     """EVERY id-shaped bracket in a heading, in order: `(node_id, doctype, start, end)`.
 
     `_heading_id` breaks at the FIRST id-like bracket, which is the grammar and is not
@@ -1140,7 +1154,7 @@ def heading_id_candidates(text: str) -> List[Tuple[str, Optional[str], int, int]
     the grammar, the linter owns the policy, and a second bracket grammar in the linter
     is how the two start disagreeing about what an id is.
     """
-    out: List[Tuple[str, Optional[str], int, int]] = []
+    out: list[tuple[str, str | None, int, int]] = []
     for m in _BRACKET_RE.finditer(text):
         content = m.group(1).strip()
         segments = [s.strip() for s in content.split(":")]
@@ -1156,7 +1170,7 @@ def heading_id_candidates(text: str) -> List[Tuple[str, Optional[str], int, int]
     return out
 
 
-def detect_id_hijack(text: str) -> Optional[Dict[str, object]]:
+def detect_id_hijack(text: str) -> dict[str, object] | None:
     """Is this heading's node id a CITATION that hijacked the author's intended id?
 
     ⛔ A SILENT-LOSS CLASS NONE OF THE PROPOSAL DOCUMENTS NAMES, reproduced in isolation
@@ -1177,9 +1191,9 @@ def detect_id_hijack(text: str) -> Optional[Dict[str, object]]:
 
     THE PREDICATE, AND EVERY CLAUSE IN IT WAS BOUGHT WITH A MEASURED FALSE POSITIVE.
     A first cut — "more than one id-shaped bracket and the last one is terminal" — fired
-    several times across a set of live `.lts` files, and most were the legitimate ID-FIRST form:
+    5 times across 178 live `.lts` files and THREE were the legitimate ID-FIRST form:
 
-        [ACME-WIDGET-CONFIRM] See It Run (the confirmation half of [ACME-GADGET-REPORT])
+        [ACME-FLAUTH-CONFIRM] See It Run (the confirmation half of [ACME-HW-INTROSPECT])
 
     which declares its id at the START and cites at the end, exactly as intended. So:
 
@@ -1226,7 +1240,7 @@ def detect_id_hijack(text: str) -> Optional[Dict[str, object]]:
     }
 
 
-def _layer_for_type(edge_type: str, profile_layers: Optional[Dict[str, str]] = None) -> str:
+def _layer_for_type(edge_type: str, profile_layers: dict[str, str] | None = None) -> str:
     """Layer for an edge type, PROFILE-FIRST (D5 per-domain layer table).
 
     Resolution order:
@@ -1276,7 +1290,7 @@ def _find_edge_type(text: str, domain_verbs: frozenset = DEFAULT_DOMAIN_VERBS):
         tok = m.group(0)
         if "." in tok:
             # namespaced edge type: the segment after the dot is UPPERCASE
-            # (example.GATES). A DOMAIN qualifier (gov.example, ops.example) is lowercase
+            # (example.GATES). A DOMAIN qualifier (gov.example, bio.example) is lowercase
             # after the dot and must NOT be mistaken for an edge type.
             suffix = tok.split(".")[-1]
             if _UPPER_ID_RE.match(suffix):
@@ -1304,8 +1318,8 @@ _NOT_A_VERB = frozenset({"NOT", "AND", "THE", "BUT", "ONLY", "NEVER", "ALWAYS",
 
 
 def _flag_unrecognized_verb_line(remainder: str, source_file: str, source_line: int,
-                                 node_id: Optional[str], strict: bool,
-                                 findings: List["ParseFinding"]) -> None:
+                                 node_id: str | None, strict: bool,
+                                 findings: list[ParseFinding]) -> None:
     """[C13 / A3] Name a `## Relationships` line whose verb resolved to nothing.
 
     ⛔ IT REPORTS ONLY WHEN THERE IS A VERB-SHAPED TOKEN TO REPORT. A Relationships
@@ -1333,7 +1347,7 @@ def _flag_unrecognized_verb_line(remainder: str, source_file: str, source_line: 
         return   # one finding per line: the first verb-shaped token IS the attempt
 
 
-def _type_flags(edge_type: str, registered_ns: frozenset) -> List[str]:
+def _type_flags(edge_type: str, registered_ns: frozenset) -> list[str]:
     """FactLattice §2.4 namespace handling -> flags. Only namespaced types whose
     namespace is unregistered are flagged; bare types are core/private (unflagged)."""
     if "." in edge_type:
@@ -1371,12 +1385,12 @@ def _coerce_config(config, registered_ns, profile_layers, domain_verbs,
         domain_verbs=domain_verbs, property_edges=property_edges)
 
 
-def parse_file(path: str, registered_ns: Optional[frozenset] = None,
-               rel_source_file: Optional[str] = None,
-               profile_layers: Optional[Dict[str, str]] = None,
-               domain_verbs: Optional[frozenset] = None,
-               property_edges: Optional[Dict[str, Tuple[str, str, bool]]] = None,
-               config: Optional["object"] = None,
+def parse_file(path: str, registered_ns: frozenset | None = None,
+               rel_source_file: str | None = None,
+               profile_layers: dict[str, str] | None = None,
+               domain_verbs: frozenset | None = None,
+               property_edges: dict[str, tuple[str, str, bool]] | None = None,
+               config: object | None = None,
                ) -> ParsedFile:
     """Parse one .lts file into its nodes + typed edges. Pure and deterministic.
 
@@ -1391,19 +1405,29 @@ def parse_file(path: str, registered_ns: Optional[frozenset] = None,
     added to this signature and to no call site fails nothing, because a missing
     keyword argument is indistinguishable from a default.
     """
-    from .hashing import safe_read_text      # never blocks on a FIFO/socket/device ([ISSUE-NONREGULAR-MEMBER])
+    from .hashing import safe_read_text  # never blocks on a FIFO/socket/device ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-...])
     text = safe_read_text(path, rel_source_file)
     return parse_text(text, rel_source_file or path,
                       config=_coerce_config(config, registered_ns, profile_layers,
                                             domain_verbs, property_edges))
 
 
+def split_source_lines(text: str) -> list[str]:
+    """THE ONE PLACE the parser decides where a line ends. `parse_text` reads its lines through this function and
+    nothing else, and the typed writers (`factlattice.authoring.linebreaks`) take the set of characters they refuse
+    in their text inputs FROM it, never from a hand list: a character that splits a line here is a character a
+    one-line `- key: value` cannot carry. Today this is `str.splitlines`, which breaks on LF, CR, VT (U+000B),
+    FF (U+000C), FS/GS/RS (U+001C-U+001E), NEL (U+0085), LINE SEPARATOR (U+2028) and PARAGRAPH SEPARATOR (U+2029).
+    If this ever changes, the writers' refusal follows it (tests/test_writer_line_break_refusal.py pins that)."""
+    return text.splitlines()
+
+
 def parse_text(text: str, source_file: str,
-               registered_ns: Optional[frozenset] = None,
-               profile_layers: Optional[Dict[str, str]] = None,
-               domain_verbs: Optional[frozenset] = None,
-               property_edges: Optional[Dict[str, Tuple[str, str, bool]]] = None,
-               config: Optional["object"] = None,
+               registered_ns: frozenset | None = None,
+               profile_layers: dict[str, str] | None = None,
+               domain_verbs: frozenset | None = None,
+               property_edges: dict[str, tuple[str, str, bool]] | None = None,
+               config: object | None = None,
                ) -> ParsedFile:
     """Parse raw .lts text (testable without a file). Deterministic.
 
@@ -1432,14 +1456,14 @@ def parse_text(text: str, source_file: str,
     # triple — the double-registration gap this pass closes. See
     # `effective_domain_verbs`.
     domain_verbs = effective_domain_verbs(domain_verbs, property_edges)
-    lines = text.splitlines()
+    lines = split_source_lines(text)
     n = len(lines)
 
     # --- F1: frontmatter (leading --- ... --- block) -----------------------
-    frontmatter: Dict[str, str] = {}
+    frontmatter: dict[str, str] = {}
     body_start = 0
-    fm_delims: List[int] = []
-    fm_fields: List[int] = []
+    fm_delims: list[int] = []
+    fm_fields: list[int] = []
     if lines and lines[0].strip() == "---":
         fm_delims.append(0)
         for i in range(1, n):
@@ -1472,10 +1496,10 @@ def parse_text(text: str, source_file: str,
 
     # [C1] declared here (rather than beside `nodes` below) so the heading loop can
     # append to it too -- see the `heading id-candidates` scan just below.
-    findings: List[ParseFinding] = []
+    findings: list[ParseFinding] = []
     # [A1/A2/A3] the vocabulary channel — see `ParsedFile.vocabulary_findings` for why
     # this is NOT `findings`.
-    vocab: List[ParseFinding] = []
+    vocab: list[ParseFinding] = []
 
     # [A1 / C10] the marker's own diagnostics. Emitted for EVERY document, including
     # legacy ones — `legacy_document` is how an operator counts the un-migrated tail,
@@ -1504,7 +1528,7 @@ def parse_text(text: str, source_file: str,
 
     # --- collect headings --------------------------------------------------
     # Each heading: (line_idx, level, node_id_or_None, doctype_or_None, title)
-    headings: List[Tuple[int, int, Optional[str], Optional[str], str]] = []
+    headings: list[tuple[int, int, str | None, str | None, str]] = []
     in_fence = False
     for i in range(body_start, n):
         line = lines[i]
@@ -1540,15 +1564,15 @@ def parse_text(text: str, source_file: str,
             coverage.record(i, BRANCH_HEADING_NODE)
 
     # Document tag from the first h1 that carries a doctype.
-    document_tag: Optional[str] = None
+    document_tag: str | None = None
     for (_i, level, _nid, doctype, _title) in headings:
         if level == 1 and doctype:
             document_tag = doctype
             break
 
     # --- build nodes (headings that carry an id) ---------------------------
-    nodes: List[Node] = []
-    node_index_by_heading: Dict[int, int] = {}  # heading position -> nodes[] index
+    nodes: list[Node] = []
+    node_index_by_heading: dict[int, int] = {}  # heading position -> nodes[] index
     # Content of a node spans from its heading line to the line before the next
     # heading of ANY level (node or divider).
     heading_line_idxs = [h[0] for h in headings]
@@ -1615,7 +1639,7 @@ def parse_text(text: str, source_file: str,
     # Extracted in addition to header nodes so that refs to list-defined ids
     # (INV-/PULSE-/WATCH-/…) RESOLVE instead of dangling. definition_form marks
     # them auditably distinct from header nodes.
-    li_contains: List[Tuple[str, str, int]] = []  # (parent_id, child_id, line_1idx)
+    li_contains: list[tuple[str, str, int]] = []  # (parent_id, child_id, line_1idx)
     in_fence = False
     for i in range(body_start, n):
         line = lines[i]
@@ -1669,7 +1693,7 @@ def parse_text(text: str, source_file: str,
                 li_contains.append((parent_section, canonical, i + 1))
             continue
         for lead_id in lead_ids:
-            props: Dict[str, object] = {}
+            props: dict[str, object] = {}
             if len(lead_ids) > 1:
                 # Ambiguous multi-id node-def (e.g. `- [INV-W-4] [INV-W-8] **…**`):
                 # co-defined siblings sharing one statement. FLAGGED, not guessed —
@@ -1693,7 +1717,11 @@ def parse_text(text: str, source_file: str,
             if parent_section:
                 li_contains.append((parent_section, lead_id, i + 1))
 
-    edges: List[Edge] = []
+    # [SPEC 39] the minted `normative_effective` of every node, and the findings about the keys
+    # that decide it. Runs after every node (header and list-item) exists and before the edge pass.
+    _mint_normative_state(nodes, frontmatter, lines, fm_fields, strict, source_file, vocab, document_tag)
+
+    edges: list[Edge] = []
 
     # --- E4: relationship-bearing property edges ---------------------------
     # [FL-VERB-PARITY] the key map is DERIVED per parse from the verb vocabulary in
@@ -1796,6 +1824,218 @@ def parse_text(text: str, source_file: str,
 
 
 # ---------------------------------------------------------------------------
+# [SPEC 39] NORMATIVE CONTENT, SOURCE STATEMENTS, CONFIRMATIONS
+# ---------------------------------------------------------------------------
+# A node is normative unless it, or a node on its parent-section chain, carries `normative: false`,
+# or it carries `source-text` (a source statement) or `confirmation-of` (a confirmation). The state is
+# minted per node as the property `normative_effective` ("true"/"false"); it is computed from the
+# node's own keys and its parent-section chain and from nothing else (no frontmatter, no mode), so
+# strict and legacy documents mint the same value (§1.5.1: the marker changes severity only, except the named exceptions a spec states (spec 39: the quote tripwire). There
+# is no override: `normative: true` below a non-normative node changes nothing and is a finding.
+
+NORMATIVE_KEY = "normative"
+SOURCE_STATEMENT_REQUIRED = ("source-locator", "source-kind", "source-role")
+SOURCE_KINDS = ("typed", "selected")
+CONFIRMATION_REQUIRED = ("confirmation-verdict", "confirmation-by", "confirmation-date",
+                         "confirmation-locator", "checked-against")
+CONFIRMATION_VERDICTS = ("confirmed", "corrected")
+
+_CONF_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(\.\d+)?Z)?$")
+
+
+def confirmation_date_key(value: object) -> tuple[str, str] | None:
+    """A sortable key for a `confirmation-date`, or None when the value is not a legal date.
+
+    Legal: YYYY-MM-DD (read as 00:00:00 UTC of that day) or a full ISO 8601 UTC timestamp with the
+    zone always Z (no offset), seconds required, fractional seconds allowed. Values compare by this
+    key, so a date-only value and the same day's midnight timestamp are equal."""
+    if not isinstance(value, str):
+        return None
+    m = _CONF_DATE_RE.match(value.strip())
+    if not m:
+        return None
+    import datetime
+    y, mo, d, hh, mm, ss, frac = m.groups()
+    try:
+        datetime.date(int(y), int(mo), int(d))
+    except ValueError:
+        return None
+    if hh is not None and not (int(hh) < 24 and int(mm) < 60 and int(ss) < 60):
+        return None
+    return (f"{y}-{mo}-{d}T{hh or '00'}:{mm or '00'}:{ss or '00'}", (frac or ".")[1:].ljust(9, "0"))
+
+
+#: `yes` and `no` are aliases of `true` and `false` for the `normative` key (spec 39 DD-NS-YES-NO-ALIAS): every spec authored before this key existed spells it that way.
+#: All four values (`true`, `false`, `yes`, `no`) are accepted in any case; any other text is not a value. THE one place the alias is read.
+NORMATIVE_ALIASES = {"yes": "true", "no": "false"}
+#: ONE case rule for all four values: `true`, `false`, `yes` and `no` are accepted in any case (`True`, `FALSE`, `Yes`, `NO`).
+_NORMATIVE_VALUES = {"true": "true", "false": "false", **NORMATIVE_ALIASES}
+
+
+def normative_spelling(v: object) -> tuple[str | None, bool]:
+    """(the canonical `true` or `false` a `normative` value means, or None when it is neither; whether it is spelled as an alias).
+    The ONLY function that reads NORMATIVE_ALIASES and _NORMATIVE_VALUES."""
+    s = _scalar(v)
+    if s is None:
+        return None, False
+    return _NORMATIVE_VALUES.get(s.lower()), s.lower() in NORMATIVE_ALIASES
+
+
+def normative_value(v: object) -> str | None:
+    """The canonical `true` or `false` a `normative` value means, or None when it is neither (free text, a list, a mapping)."""
+    return normative_spelling(v)[0]
+
+
+def _scalar(v: object) -> str | None:
+    return v.strip() if isinstance(v, str) else None
+
+
+QUOTE_MIN_WORDS = 8
+_QUOTED_RUN = re.compile(r'"([^"\n]*)"')
+
+
+def _is_spec_document(frontmatter: dict[str, str], document_tag: str | None) -> bool:
+    """A SPEC-doctype document (§1.7): the h1 tag form `# Title [SPEC:ID]` when the document has one (it decides), else the frontmatter `doctype:`
+    line, which is how the create writer and specs 36 to 39 declare it."""
+    if document_tag:
+        return document_tag == "SPEC"
+    return (frontmatter.get("doctype") or "").strip().strip("\"'") == "SPEC"
+
+
+def _mint_normative_state(nodes, frontmatter, lines, fm_fields, strict: bool,
+                          source_file: str, vocab: list[ParseFinding], document_tag: str | None = None) -> None:
+    mode = MODE_STRICT if strict else MODE_LEGACY
+    sev = "error" if strict else "warning"
+
+    def emit(kind, message, node, key=None, severity=None):
+        vocab.append(ParseFinding(
+            kind=kind, message=message, source_file=source_file,
+            source_line=(node.line_range[0] if node is not None else None),
+            node_id=(node.id if node is not None else None), key=key,
+            detail={"mode": mode, "severity": severity or sev, "key": key}))
+
+    if NORMATIVE_KEY in frontmatter:
+        line = next((i + 1 for i in fm_fields
+                     if re.match(r"^" + NORMATIVE_KEY + r"[ \t]*:", lines[i])), 1)
+        vocab.append(ParseFinding(
+            kind="normative_in_frontmatter",
+            message=("`normative` in frontmatter has no effect: the state is section-scoped and "
+                     "is never inherited file-wide (SPEC §1.5 excludes it). Put it on the node "
+                     "of the section it governs."),
+            source_file=source_file, source_line=line, key=NORMATIVE_KEY,
+            detail={"mode": mode, "severity": sev, "key": NORMATIVE_KEY}))
+
+    # f6 runs ONLY in a strict-mode document: the one exception to "mode changes severity only" (spec 39, DD-NS-STRICT-ENFORCES); a legacy document gets the tripwire when it upgrades
+    spec_doc = strict and _is_spec_document(frontmatter, document_tag)
+    alias_nodes: list[Node] = []
+    by_id: dict[str, Node] = {}
+    for nd in nodes:
+        if nd.definition_form == "header":
+            by_id.setdefault(nd.id, nd)
+
+    def own_nonnormative(nd) -> bool:
+        p = nd.properties or {}
+        return (normative_value(p.get(NORMATIVE_KEY)) == "false"
+                or "source-text" in p or "confirmation-of" in p)
+
+    def inherited_nonnormative(nd) -> bool:
+        seen = {nd.id}
+        pid = nd.parent_section
+        while pid and pid not in seen:
+            seen.add(pid)
+            anc = by_id.get(pid)
+            if anc is None:
+                return False
+            if own_nonnormative(anc):
+                return True
+            pid = anc.parent_section
+        return False
+
+    for nd in nodes:
+        p = nd.properties if nd.properties is not None else {}
+        inherited = inherited_nonnormative(nd)
+        is_statement, is_conf = "source-text" in p, "confirmation-of" in p
+        if EFFECTIVE_KEY in p:
+            emit("reserved_key_authored",
+                 f"`{EFFECTIVE_KEY}` is reserved and engine-minted; the authored line is ignored and "
+                 f"the minted value is kept.", nd, EFFECTIVE_KEY)
+        if NORMATIVE_KEY in p:
+            v, is_alias = normative_spelling(p[NORMATIVE_KEY])
+            if is_alias:
+                alias_nodes.append(nd)                     # an alias spelling: no per-node finding; ONE info line per file after the loop
+            if v is None:
+                emit("normative_bad_value",
+                     f"`normative` takes false or true; got {p[NORMATIVE_KEY]!r}. It marks nothing.",
+                     nd, NORMATIVE_KEY)
+            elif v == "true" and (inherited or is_statement or is_conf):
+                emit("normative_override",
+                     "`normative: true` has no effect here: the node is non-normative by its section, "
+                     "or because it is a source statement or a confirmation, and there is no override.",
+                     nd, NORMATIVE_KEY)
+        if is_statement and is_conf:
+            emit("node_is_both_kinds",
+                 "a node carrying both `source-text` and `confirmation-of` is both a source statement and a "
+                 "confirmation; a node is one kind.", nd)
+        if is_statement:
+            for k in SOURCE_STATEMENT_REQUIRED:
+                if k not in p:
+                    emit("source_statement_missing_key",
+                         f"source statement lacks required key `{k}`.", nd, k)
+            kind = p.get("source-kind")
+            if kind is not None and _scalar(kind) not in SOURCE_KINDS:
+                emit("source_kind_bad_value",
+                     f"`source-kind` is typed or selected; got {kind!r}.", nd, "source-kind")
+            elif _scalar(kind) == "selected" and "source-option-author" not in p:
+                emit("source_option_author_missing",
+                     "a selected source statement should name the role of whoever wrote the option "
+                     "(`source-option-author`).", nd, "source-option-author", severity="warning")
+        if is_conf:
+            for k in CONFIRMATION_REQUIRED:
+                if k not in p:
+                    emit("confirmation_missing_key",
+                         f"confirmation lacks required key `{k}`.", nd, k)
+            verdict = p.get("confirmation-verdict")
+            if verdict is not None and _scalar(verdict) not in CONFIRMATION_VERDICTS:
+                emit("confirmation_bad_value",
+                     f"`confirmation-verdict` is confirmed or corrected; got {verdict!r}.",
+                     nd, "confirmation-verdict")
+            date = p.get("confirmation-date")
+            if date is not None and confirmation_date_key(date) is None:
+                emit("confirmation_bad_value",
+                     f"`confirmation-date` is YYYY-MM-DD or a full ISO 8601 UTC timestamp ending in Z; "
+                     f"got {date!r}.", nd, "confirmation-date")
+            n_ids = len(_property_refs(p["confirmation-of"]))
+            if n_ids != 1:
+                emit("confirmation_bad_value",
+                     f"`confirmation-of` names exactly one source statement; it names {n_ids}: "
+                     f"{p['confirmation-of']!r}.", nd, "confirmation-of")
+        nd.properties = p
+        p[EFFECTIVE_KEY] = "false" if (inherited or own_nonnormative(nd)) else "true"
+        # f6, the quote tripwire: a SPEC document, a node in normative scope, a property value (not an x- key, not the minted state) holding a
+        # double-quoted run of 8 or more words. LEXICAL, and says so: it cannot see speech without quotation marks, flags quoted specimens as readily as
+        # speech, and does not see curly quotes. Always a warning. It lives here (not in lint) because it needs the document's doctype, which is a
+        # property of the file and not of any node.
+        if spec_doc and p[EFFECTIVE_KEY] == "true":
+            for key, val in p.items():
+                if key.startswith("x-") or key == EFFECTIVE_KEY:
+                    continue
+                hit = 0
+                for item in (val if isinstance(val, list) else [val]):
+                    if isinstance(item, str) and '"' in item:
+                        hit = max([hit] + [len(r.split()) for r in _QUOTED_RUN.findall(item)])
+                if hit >= QUOTE_MIN_WORDS:
+                    emit("normative_quote_run",
+                         f"`{key}` on [{nd.id}] holds a double-quoted run of {hit} words in normative scope; a stakeholder's words belong in a source "
+                         f"statement (lexical tripwire: it cannot tell speech from a quoted specimen).", nd, key, severity="warning")
+    # the alias: AT MOST ONE info line per file, never one per node, in both modes (the severity does not depend on the mode)
+    if alias_nodes:
+        n = len(alias_nodes)
+        emit("normative_alias_spelling",
+             f"{n} node(s) spell `normative` as yes or no, which mean true and false (accepted in any case); the canonical spelling is false or true. "
+             f"Nothing changes: the state is read the same.", alias_nodes[0], NORMATIVE_KEY, severity="info")
+
+
+# ---------------------------------------------------------------------------
 # [A2 / C11] KEY VOCABULARY — DECLARED-OR-MARKED
 # ---------------------------------------------------------------------------
 # THE REGIME, in one line: a property key in a strict document must be CORE,
@@ -1826,9 +2066,9 @@ _KEY_VOCAB_KIND = "undeclared_key"
 
 
 def _check_key_vocabulary(nodes, cfg, strict: bool, source_file: str,
-                          findings: List[ParseFinding]) -> None:
+                          findings: list[ParseFinding]) -> None:
     """Emit `undeclared_key` findings per A2. Never mutates a node or a property."""
-    from .core_keys import core_keys, is_private_key, suggest_keys, suggestion_excluded_keys
+    from .core_keys import core_keys, is_private_key, suggestion_excluded_keys
 
     declared = frozenset(core_keys()) | frozenset(cfg.declared_property_keys or ())
     declared |= frozenset(cfg.property_edges or {})
@@ -1913,7 +2153,7 @@ class _UndeclaredKeyFinding(ParseFinding):
         return ParseFinding.__repr__(self).replace(type(self).__qualname__, "ParseFinding", 1)
 
 
-def _property_refs(value: object) -> List[Tuple[Optional[str], str]]:
+def _property_refs(value: object) -> list[tuple[str | None, str]]:
     """Extract [domain?, id] refs from a property value (str or list).
 
     A P5 MAPPING value yields NOTHING, deliberately. §8.2's `context_for_task` carries
@@ -1921,7 +2161,7 @@ def _property_refs(value: object) -> List[Tuple[Optional[str], str]]:
     refs out of a mapping would mint edges that no corpus authored, from a sub-key that
     merely SHARES a name with a relationship-bearing property. The five-corpus before/
     after diff (identical edge counts and edge-type sets) is the receipt for this."""
-    out: List[Tuple[Optional[str], str]] = []
+    out: list[tuple[str | None, str]] = []
     if isinstance(value, str):
         out.extend(_extract_refs(value))
     elif isinstance(value, list):
@@ -1938,7 +2178,7 @@ _BRANCH_LABEL_RE = re.compile(r"^([^\[\]:]{1,60}?)[ \t]*:[ \t]*(?=.*\[)")
 
 
 def _labelled_property_refs(value: object,
-                            label_spec: Optional[str]) -> List[Tuple[Optional[str], str, Optional[str]]]:
+                            label_spec: str | None) -> list[tuple[str | None, str, str | None]]:
     """[LEC-RENDER] refs + their edge LABEL from a flow/branch property value.
 
     `label_spec` is FLOW_PROPERTY_EDGES' 4th element:
@@ -1948,14 +2188,14 @@ def _labelled_property_refs(value: object,
               prefix yields an UNLABELLED edge rather than a guessed one;
       str  -> that fixed label on every ref (`if-true` -> "yes").
     """
-    items: List[str] = []
+    items: list[str] = []
     if isinstance(value, str):
         items = [value]
     elif isinstance(value, list):
         items = [i for i in value if isinstance(i, str)]
-    out: List[Tuple[Optional[str], str, Optional[str]]] = []
+    out: list[tuple[str | None, str, str | None]] = []
     for item in items:
-        label: Optional[str] = label_spec
+        label: str | None = label_spec
         if label_spec == "*":
             m = _BRANCH_LABEL_RE.match(item.strip())
             label = m.group(1).strip() if m else None
@@ -1990,8 +2230,8 @@ def _starts_new_structure(line: str) -> bool:
     )
 
 
-def _fold_continuation(content_lines: List[str], head: int, head_indent: int,
-                       fenced: Optional[Set[int]] = None, offset: int = 0):
+def _fold_continuation(content_lines: list[str], head: int, head_indent: int,
+                       fenced: set[int] | None = None, offset: int = 0):
     """Read the wrapped tail of the value whose head is `content_lines[head]`. (WRAP)
 
     Returns `(tail_lines, end)` where `tail_lines` are the stripped continuation
@@ -2009,7 +2249,7 @@ def _fold_continuation(content_lines: List[str], head: int, head_indent: int,
     structural indent — nothing else. Internal spacing is the author's and is kept
     verbatim, which is why this joins `line.strip()` rather than re-flowing the text.
     """
-    tail: List[str] = []
+    tail: list[str] = []
     j = head + 1
     m = len(content_lines)
     while j < m:
@@ -2027,7 +2267,7 @@ def _fold_continuation(content_lines: List[str], head: int, head_indent: int,
     return tail, j
 
 
-def _read_indented_block(content_lines: List[str], head: int):
+def _read_indented_block(content_lines: list[str], head: int):
     """Read the indented block under the `- key:` head at `content_lines[head]`.
 
     Returns `(form, value, end, consumed, ambiguity)`:
@@ -2044,11 +2284,11 @@ def _read_indented_block(content_lines: List[str], head: int):
     before parses differently now. Verified by re-parsing five corpora and diffing.
     """
     m = len(content_lines)
-    items: List[str] = []
-    item_indent: Optional[int] = None
-    entries: List[List[str]] = []      # [key, value] pairs, in authored order
-    entry_indent: Optional[int] = None
-    consumed: List[Tuple[int, str]] = []
+    items: list[str] = []
+    item_indent: int | None = None
+    entries: list[list[str]] = []      # [key, value] pairs, in authored order
+    entry_indent: int | None = None
+    consumed: list[tuple[int, str]] = []
     j = head + 1
     while j < m:
         line = content_lines[j]
@@ -2107,7 +2347,7 @@ def _read_indented_block(content_lines: List[str], head: int):
 
         # (WRAP) The same fold for a LIST item. Before it existed, a wrapped `- when:`
         # item did not merely lose its tail — the unrecognised line CLOSED THE BLOCK,
-        # so every SIBLING item after it was dropped too (`41-…`'s `scenario:` kept
+        # so every SIBLING item after it was dropped too (`57-…`'s `scenario:` kept
         # `when` and lost `then` entirely). A list item's tail is exactly a scalar's
         # tail: deeper than the item's own bullet column, and not the start of new
         # structure. The bullet case cannot reach here — `_NESTED_ITEM_RE` above takes
@@ -2126,7 +2366,7 @@ def _read_indented_block(content_lines: List[str], head: int):
     if items:
         return "list", items, j, consumed, None
     if entries:
-        mapping: Dict[str, object] = {}
+        mapping: dict[str, object] = {}
         for k, v in entries:
             # Same repeated-key rule the rest of the grammar uses (SPEC §2.2 / the
             # `_maybe_multivalue` accumulation) rather than a second, silent one.
@@ -2135,12 +2375,12 @@ def _read_indented_block(content_lines: List[str], head: int):
     return "empty", None, j, consumed, None
 
 
-def _parse_properties(content_lines: List[str],
-                      coverage: Optional[LineCoverage] = None,
+def _parse_properties(content_lines: list[str],
+                      coverage: LineCoverage | None = None,
                       offset: int = 0,
-                      findings: Optional[List[ParseFinding]] = None,
-                      source_file: Optional[str] = None,
-                      node_id: Optional[str] = None) -> Dict[str, object]:
+                      findings: list[ParseFinding] | None = None,
+                      source_file: str | None = None,
+                      node_id: str | None = None) -> dict[str, object]:
     """Parse P1/P2/P3/P4/P5 properties from a node body.
 
     Returns key -> str | list | dict (P5 mapping; SPEC §8.1/§8.2/§7.1).
@@ -2153,7 +2393,7 @@ def _parse_properties(content_lines: List[str],
 
     `findings` collects the blocks the P5 discrimination refused to resolve.
     """
-    props: Dict[str, object] = {}
+    props: dict[str, object] = {}
     i = 0
     m = len(content_lines)
     while i < m:
@@ -2239,8 +2479,8 @@ _AMBIGUITY_MESSAGE = {
 # But the corpora also author their ACCEPTANCE CONTRACTS as tables: `| ID | Requirement
 # | verify.machine | verify.human |` with rows `SUB-C1 … SUB-C16` is the whole testable
 # surface of a spec, and it was reaching the graph as exactly nothing
-# (`corpora/acme-specs/41-…`'s `[ACME-SUB-ACCEPT]` captured 7% of its authored
-# bytes, all of it from the three `- key:` lines around a 14-row table).
+# (`corpora/acme-specs/57-…`'s `[ACME-SUB-ACCEPT]` captured 5% of its authored
+# bytes, all of it from the three `- key:` lines around an 18-row table).
 #
 # THE DISCRIMINATOR IS STRUCTURAL AND CONSERVATIVE, and it is stated in one place:
 #
@@ -2281,7 +2521,7 @@ _TBL_ID_SHARE = 0.8
 ID_TABLE_PROPERTY = "id_table"
 
 
-def _tbl_cells(line: str) -> List[str]:
+def _tbl_cells(line: str) -> list[str]:
     s = line.strip()
     if s.startswith("|"):
         s = s[1:]
@@ -2297,7 +2537,7 @@ def _tbl_plain(cell: str) -> str:
     return cell.strip().strip("*`[]() ").strip()
 
 
-def _is_id_table(header: List[str], body: List[List[str]]) -> bool:
+def _is_id_table(header: list[str], body: list[list[str]]) -> bool:
     if len(header) < 2 or not body:
         return False
     firsts = [_tbl_plain(r[0]) for r in body if r and _tbl_plain(r[0])]
@@ -2310,7 +2550,7 @@ def _is_id_table(header: List[str], body: List[List[str]]) -> bool:
     return hits / len(firsts) >= _TBL_ID_SHARE
 
 
-def _iter_id_tables(content_lines: List[str], fenced: Optional[Set[int]] = None,
+def _iter_id_tables(content_lines: list[str], fenced: set[int] | None = None,
                     offset: int = 0):
     """Yield `(block, header, body_idx, body)` for every ID TABLE in `content_lines`.
 
@@ -2340,16 +2580,16 @@ def _iter_id_tables(content_lines: List[str], fenced: Optional[Set[int]] = None,
             yield block, header, body_idx, body
 
 
-def _parse_id_tables(content_lines: List[str],
-                     coverage: Optional[LineCoverage] = None,
-                     offset: int = 0) -> Dict[str, object]:
+def _parse_id_tables(content_lines: list[str],
+                     coverage: LineCoverage | None = None,
+                     offset: int = 0) -> dict[str, object]:
     """(TBL) Promote every ID TABLE in this node body to `{row_id: "col: cell; …"}`.
 
     Returns the merged mapping (empty when the body holds no ID table). Consumption is
     recorded per line, exactly as the property branches do, so a promoted row stops
     counting as ignorable `table_row` furniture the moment it becomes data.
     """
-    rows: Dict[str, object] = {}
+    rows: dict[str, object] = {}
     fenced = coverage.fenced if coverage is not None else None
     for block, header, body_idx, body in _iter_id_tables(content_lines, fenced, offset):
         for k, cells in zip(body_idx, body):
@@ -2365,7 +2605,7 @@ def _parse_id_tables(content_lines: List[str],
     return rows
 
 
-def _enclosing_node_for_line(idx: int, headings) -> Optional[str]:
+def _enclosing_node_for_line(idx: int, headings) -> str | None:
     """(TBL) The node whose scope CONTAINS line `idx`, ascending untagged headings.
 
     A node body ends at the next heading of ANY level, so a table under a plain
@@ -2384,7 +2624,7 @@ def _enclosing_node_for_line(idx: int, headings) -> Optional[str]:
     first heading that is BOTH strictly more significant (a lower level) and
     `[ID]`-bearing. Returns None only when no ancestor carries an id at all.
     """
-    cur_level: Optional[int] = None
+    cur_level: int | None = None
     for (h_line, h_level, h_id, _dt, _t) in reversed(headings):
         if h_line >= idx:
             continue
@@ -2400,8 +2640,8 @@ def _enclosing_node_for_line(idx: int, headings) -> Optional[str]:
     return None
 
 
-def _attach_orphan_id_tables(lines: List[str], coverage: LineCoverage,
-                             headings, nodes_by_id: Dict[str, "Node"]) -> None:
+def _attach_orphan_id_tables(lines: list[str], coverage: LineCoverage,
+                             headings, nodes_by_id: dict[str, Node]) -> None:
     """(TBL) Land every ID table that no node body covered onto its ancestor node.
 
     Runs after node construction, over the WHOLE file, so `coverage.node_body` is
@@ -2435,7 +2675,7 @@ def _attach_orphan_id_tables(lines: List[str], coverage: LineCoverage,
         coverage.record(block[1], BRANCH_ID_TABLE_RULE)
 
 
-def _maybe_multivalue(key: str, val: str, props: Dict[str, object]) -> object:
+def _maybe_multivalue(key: str, val: str, props: dict[str, object]) -> object:
     """Store a property value. The raw string is kept verbatim (P3 multi-value refs
     are re-scanned by edge extraction, so no information is lost by not splitting).
     A repeated key accumulates into a list (e.g. and-when/and-then conjuncts)."""
@@ -2448,15 +2688,15 @@ def _maybe_multivalue(key: str, val: str, props: Dict[str, object]) -> object:
     return [existing, val]
 
 
-def _parse_section_edges(lines: List[str], body_start: int,
-                         headings: List[Tuple[int, int, Optional[str], Optional[str], str]],
+def _parse_section_edges(lines: list[str], body_start: int,
+                         headings: list[tuple[int, int, str | None, str | None, str]],
                          source_file: str, registered_ns: frozenset,
-                         profile_layers: Optional[Dict[str, str]] = None,
+                         profile_layers: dict[str, str] | None = None,
                          domain_verbs: frozenset = DEFAULT_DOMAIN_VERBS,
-                         coverage: Optional[LineCoverage] = None,
-                         findings: Optional[List["ParseFinding"]] = None,
+                         coverage: LineCoverage | None = None,
+                         findings: list[ParseFinding] | None = None,
                          strict: bool = False,
-                         vocab: Optional[List["ParseFinding"]] = None) -> List[Edge]:
+                         vocab: list[ParseFinding] | None = None) -> list[Edge]:
     """Parse `## Relationships` (E2) and `## Causal Graph` (E1/E3) sections.
 
     Section membership is by heading title (case-insensitive contains), tracked
@@ -2465,7 +2705,7 @@ def _parse_section_edges(lines: List[str], body_start: int,
     Causal-graph edges are read even inside ``` fences (they live there in the
     corpus), which is why we scan raw lines with an explicit section state.
     """
-    edges: List[Edge] = []
+    edges: list[Edge] = []
     n = len(lines)
 
     # Map heading line-idx -> (level, title) for section detection.

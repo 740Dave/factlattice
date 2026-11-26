@@ -8,8 +8,6 @@ neither matters for an absolute-only registry. Resolution itself is NOT changed 
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 import pytest
 

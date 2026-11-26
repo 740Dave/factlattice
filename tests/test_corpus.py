@@ -6,10 +6,17 @@ import json
 
 import factlattice
 from factlattice import (
-    Diagnostic, ParsedCorpus, build_index, load_profile, parse,
+    Diagnostic,
+    ParsedCorpus,
+    build_index,
+    load_profile,
+    parse,
 )
 from factlattice.corpus import (
-    DIAG_COLLISIONS, DIAG_DANGLING, DIAG_UNREGISTERED_NS, DIAG_UNRESOLVED_TARGET,
+    DIAG_COLLISIONS,
+    DIAG_DANGLING,
+    DIAG_UNREGISTERED_NS,
+    DIAG_UNRESOLVED_TARGET,
 )
 from tests import snippets
 

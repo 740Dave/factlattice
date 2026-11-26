@@ -1,4 +1,4 @@
-"""[ISSUE-ANCHOR-TRUNCATION] — the topic->anchor `[:5]` cap at
+"""[DEFECT-LTS-CAPABILITIES-ANCHOR-TRUNCATION] — the topic->anchor `[:5]` cap at
 `LtsEngine.capabilities` silently dropped every 6th+ topic match with no signal: the
 response's OWN `truncated`/`cursor` machinery only ever sees the 5 anchors that
 survived the slice, so a caller asking for a topic with 8 matches got exactly the same

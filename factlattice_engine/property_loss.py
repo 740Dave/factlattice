@@ -102,9 +102,9 @@ from __future__ import annotations
 import re
 import subprocess
 from collections import Counter
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable, Optional
 
 from factlattice.coverage import account_file
 from factlattice.parser import _HEADING_RE, _heading_id, parse_text
@@ -150,14 +150,14 @@ class Finding:
     text: str
     tier: str
     key_region: str
-    normalised_key: Optional[str]    # tier A: what WOULD be written. tier B: a GUESS,
+    normalised_key: str | None    # tier A: what WOULD be written. tier B: a GUESS,
                                      # used only for corroboration, never written.
     reason: str
-    node_id: Optional[str]
-    ratified_kind: Optional[str]      # what [FL-LINE-ACCOUNTING] called it, or None
+    node_id: str | None
+    ratified_kind: str | None      # what [FL-LINE-ACCOUNTING] called it, or None
     detected_by_ratified: bool
     key_parsed_elsewhere: bool = False  # the corroboration signal — see THE TIERS
-    month: Optional[str] = None       # "YYYY-MM" of the commit that last touched the line
+    month: str | None = None       # "YYYY-MM" of the commit that last touched the line
 
 
 def _coerce(raw: str) -> tuple[str, list[str]]:
@@ -206,7 +206,7 @@ PROPERTY_LOSS_REASONS = tuple(name for name, _pred in _B_SIGNATURES) + (
 
 
 def _classify(body: str, *, in_node_body: bool
-              ) -> Optional[tuple[str, str, Optional[str], str]]:
+              ) -> tuple[str, str, str | None, str] | None:
     """(tier, key_region, normalised_key_or_None, reason) or None if not property-shaped."""
     m = _SPLIT.match(body.rstrip())
     if m is None:
@@ -349,7 +349,7 @@ def _blame_months(path: Path, line_numbers: Iterable[int]) -> dict[int, str]:
     except Exception:  # noqa: BLE001 — an unavailable blame is a missing bucket, not a crash
         return {}
     out: dict[int, str] = {}
-    cur_line: Optional[int] = None
+    cur_line: int | None = None
     import datetime
     for ln in raw.stdout.splitlines():
         parts = ln.split()

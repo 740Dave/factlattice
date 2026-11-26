@@ -35,7 +35,7 @@ def w(tmp_path):
 def test_F4_semantic_find_isolates_service_faults(w, monkeypatch):
     _t, e, *_ = w
     monkeypatch.setattr(e.semantic, "suggest", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    r = e.semantic_find(corpus="c", text="tile map")
+    r = e.semantic_find(corpus="c", text="zero map")
     assert r["success"] is True and r["status"] == "unavailable" and r["reason"] == "semantic-service-fault" and "boom" in r["live_detail"]
     assert r["candidates"] == [] and r["is_assertion"] is False
 
@@ -65,9 +65,9 @@ def test_F6_failed_background_build_is_reported(w, monkeypatch):
                             build_mode="background", retry_after_s=3600)
     e.semantic = svc
     monkeypatch.setattr(I.SemanticIndex, "refresh", lambda self, part: (_ for _ in ()).throw(OSError("disk full")))
-    assert e.semantic_find(corpus="c", text="tile map")["status"] == "index_building"
+    assert e.semantic_find(corpus="c", text="zero map")["status"] == "index_building"
     assert svc.wait_idle(30)
-    r = e.semantic_find(corpus="c", text="tile map")
+    r = e.semantic_find(corpus="c", text="zero map")
     assert r["status"] == "index_failed" and r["reason"] == "index-build-failed" and "disk full" in r["live_detail"]
 
 
@@ -78,17 +78,17 @@ def test_F6_a_second_corpus_queued_during_a_build_is_not_stranded(w):
     svc = S.SemanticService(state_root=str(tmp / "s7"), model_root=str(tmp / "models"), pin=pin,
                             build_mode="background")
     e2.semantic = svc
-    e2.semantic_find(corpus="c", text="tile map")
-    e2.semantic_find(corpus="d", text="tile map")
+    e2.semantic_find(corpus="c", text="zero map")
+    e2.semantic_find(corpus="d", text="zero map")
     assert svc.wait_idle(60)
-    assert e2.semantic_find(corpus="c", text="tile map")["status"] == "ok"
-    assert e2.semantic_find(corpus="d", text="tile map")["status"] == "ok"
+    assert e2.semantic_find(corpus="c", text="zero map")["status"] == "ok"
+    assert e2.semantic_find(corpus="d", text="zero map")["status"] == "ok"
 
 
 # --- S1-S4 F7: ratified rule 2: score + model + index version on the block/candidates ---------
 def test_F7_candidates_carry_scores_and_block_carries_index_version(w):
     _t, e, *_ = w
-    r = e.semantic_find(corpus="c", text="tile map version")
+    r = e.semantic_find(corpus="c", text="zero map version")
     assert r["index_version"] == I.index_version(r["model"], e.semantic._get_embedder())
     for c in r["candidates"]:
         assert set(c["scores"]) == {"fused", "embedding", "bm25"}
@@ -106,7 +106,7 @@ def test_F10_on_miss_respects_all_exact_filters(w):
 # --- S5 F2: the pre-registered composite itself is exercised ----------------------------------
 def test_S5_F2_composite_relevance_plus_on_miss(w):
     _t, e, *_ = w
-    hit = e.find(corpus="c", text="tile map", rank="relevance", semantic="on_miss")
+    hit = e.find(corpus="c", text="zero map", rank="relevance", semantic="on_miss")
     assert hit["count"] > 0 and "did_you_mean_semantic" not in hit and hit["rank_applied"]["by"] == "bm25"
     miss = e.find(corpus="c", text="which extractor made this thing", rank="relevance", semantic="on_miss")
     assert miss["count"] == 0 and miss["did_you_mean_semantic"]["status"] == "ok"
@@ -117,7 +117,7 @@ def test_S5_F5_lexrank_cache_is_capped(w, monkeypatch):
     _t, e, *_ = w
     import factlattice_engine.tools as T
     monkeypatch.setattr(T, "LEXRANK_CACHE_MAX", 1)
-    e.find(corpus="c", text="tile map", rank="relevance")
+    e.find(corpus="c", text="zero map", rank="relevance")
     assert len(e._lexrank_cache) <= 1
 
 
@@ -128,7 +128,7 @@ def test_S5_P3_whitespace_text_is_refused(w):
     assert r["success"] is False and "text" in r["error"]
 
 
-# --- S5 F1 (P1) / DS guard: the description must not recommend on_miss before its gate --------
+# --- S5 F1 (P1) / evaluator guard: the description must not recommend on_miss before its gate --------
 def test_S5_F1_description_does_not_advertise_ungated_on_miss():
     t = [x for x in server.TOOLS if x["name"] == "lts_find"][0]
     lead = t["description"][:400]
@@ -144,7 +144,7 @@ def test_S5_F1_description_does_not_advertise_ungated_on_miss():
 # --- UX (real-corpus smoke 2026-10-02): evidence must not repeat the id + title ---------------
 def test_evidence_does_not_repeat_the_id_and_title(w):
     _t, e, *_ = w
-    r = e.semantic_find(corpus="c", text="tile map version")
+    r = e.semantic_find(corpus="c", text="zero map version")
     for c in r["candidates"]:
         assert not c["evidence"].lstrip("…").startswith(c["id"].replace("-", " ")), c["evidence"]
         assert not c["evidence"].lstrip("…").startswith(c["title"] or "\0"), c["evidence"]
@@ -169,7 +169,7 @@ def test_FD2_a_bad_model_name_is_a_status_not_an_error(w, monkeypatch):
     _t, e, *_ = w
     e.semantic = None
     monkeypatch.setenv("LTS_SEMANTIC_MODEL", "no-such-model")
-    r = e.semantic_find(corpus="c", text="tile map")
+    r = e.semantic_find(corpus="c", text="zero map")
     assert r["success"] is True and r["status"] == "unavailable"
 
 
@@ -178,7 +178,7 @@ def test_FD3_failed_refresh_of_a_stale_index_is_reported_and_cooled_down(w, monk
     svc = S.SemanticService(state_root=str(tmp / "sx"), model_root=str(tmp / "models"), pin=pin,
                             build_mode="sync", sync_topup_limit=0, retry_after_s=3600)
     e.semantic = svc
-    assert e.semantic_find(corpus="c", text="tile map")["status"] == "ok"      # index built
+    assert e.semantic_find(corpus="c", text="zero map")["status"] == "ok"      # index built
     p = tmp / "corpus" / "00-c.lts"
     p.write_text(p.read_text().replace("hello world prose", "hello world prose, edited"), encoding="utf-8")
     e2 = LtsEngine(config.build_store(reg)); e2.semantic = svc
@@ -199,13 +199,13 @@ def test_FD3_failed_refresh_of_a_stale_index_is_reported_and_cooled_down(w, monk
 
 def test_FD4_evidence_never_shows_the_property_key_line(tmp_path):
     root = tmp_path / "c"; root.mkdir()
-    (root / "00.lts").write_text("# D [DOC]\n\n## Only props [P-1]\n\n- status: active\n- what: tile map\n",
+    (root / "00.lts").write_text("# D [DOC]\n\n## Only props [P-1]\n\n- status: active\n- what: zero map\n",
                                  encoding="utf-8")
     from factlattice_engine.semantic.cards import node_cards
     from factlattice_engine.semantic.suggest import _evidence
-    nd = {"id": "P-1", "title": "Only props", "properties": {"status": "active", "what": "tile map"}}
+    nd = {"id": "P-1", "title": "Only props", "properties": {"status": "active", "what": "zero map"}}
     ev = _evidence(node_cards("P-1", nd, []), ["zero"])
-    assert "tile map" in ev and "status" not in ev and "what" not in ev.replace("tile map", "")
+    assert "zero map" in ev and "status" not in ev and "what" not in ev.replace("zero map", "")
 
 
 def test_FD5_on_miss_filter_actually_excludes_a_nonempty_candidate_set(w):
@@ -225,12 +225,12 @@ def test_FD7_a_thread_start_failure_does_not_wedge_the_worker(w, monkeypatch):
     e.semantic = svc
     real = threading.Thread.start
     monkeypatch.setattr(threading.Thread, "start", lambda self: (_ for _ in ()).throw(RuntimeError("no threads")))
-    r = e.semantic_find(corpus="c", text="tile map")
+    r = e.semantic_find(corpus="c", text="zero map")
     assert r["success"] is True
     monkeypatch.setattr(threading.Thread, "start", real)
-    e.semantic_find(corpus="c", text="tile map")
+    e.semantic_find(corpus="c", text="zero map")
     assert svc.wait_idle(30)
-    assert e.semantic_find(corpus="c", text="tile map")["status"] == "ok"
+    assert e.semantic_find(corpus="c", text="zero map")["status"] == "ok"
 
 
 def test_FD11_retry_message_never_says_zero_seconds(w, monkeypatch):
@@ -239,9 +239,9 @@ def test_FD11_retry_message_never_says_zero_seconds(w, monkeypatch):
                             build_mode="background", retry_after_s=0.0001)
     e.semantic = svc
     monkeypatch.setattr(I.SemanticIndex, "refresh", lambda self, part: (_ for _ in ()).throw(OSError("x")))
-    e.semantic_find(corpus="c", text="tile map"); svc.wait_idle(30)
+    e.semantic_find(corpus="c", text="zero map"); svc.wait_idle(30)
     svc.retry_after_s = 3600
-    r = e.semantic_find(corpus="c", text="tile map")
+    r = e.semantic_find(corpus="c", text="zero map")
     assert "retry in 0 s" not in r.get("live_detail", "")
 
 
@@ -252,14 +252,15 @@ def test_FG1_service_caches_are_bounded(w):
                             build_mode="sync", cache_max=1)
     reg2 = {**reg, "d": {"roots": [{"path": str(tmp / "corpus"), "area": "specs"}], "domain_suffix": "proj.d"}}
     e2 = LtsEngine(config.build_store(reg2)); e2.semantic = svc
-    e2.semantic_find(corpus="c", text="tile map"); e2.semantic_find(corpus="d", text="tile map")
+    e2.semantic_find(corpus="c", text="zero map"); e2.semantic_find(corpus="d", text="zero map")
     assert len(svc._corpus) <= 1 and len(svc._indexes) <= 1
 
 
 def test_every_package_in_the_tree_is_in_pyproject():
     """Composition review: a wheel built from the tree lacked factlattice_engine.render and
     factlattice.authoring (pre-existing on main)."""
-    import os, re
+    import os
+    import re
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     declared = set(re.findall(r'"([a-z_.]+)"', open(os.path.join(repo, "pyproject.toml")).read().split("packages = [")[1].split("]")[0]))
     found = set()

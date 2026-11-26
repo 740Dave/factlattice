@@ -52,16 +52,18 @@ validator, with a recorded reason, via `lint(profile_severity={...})`.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 import factlattice
 from factlattice.constants import REQUIRED_FRONTMATTER as _REQUIRED_FRONTMATTER
 from factlattice.profile import Profile
 
 from ..lifecycle import (
-    LIFECYCLE_PROPERTY, LIFECYCLE_PROPERTY_ALT,
-    is_bare_lifecycle_token, lifecycle_token,
+    LIFECYCLE_PROPERTY,
+    LIFECYCLE_PROPERTY_ALT,
+    is_bare_lifecycle_token,
+    lifecycle_token,
 )
 
 ORIGIN = "profile"
@@ -80,7 +82,7 @@ KIND_STATUS_NOT_LIFECYCLE_TOKEN = "status_not_lifecycle_token"  # V11
 
 # Every kind lands at `warning`. See the module docstring — this is policy, and the
 # ratchet is `lint(profile_severity={...})`, per validator, with a recorded reason.
-PROFILE_SEVERITY: Dict[str, str] = {
+PROFILE_SEVERITY: dict[str, str] = {
     KIND_UNREGISTERED_PREFIX: "warning",
     KIND_UNREGISTERED_DOCUMENT_TAG: "warning",
     KIND_MISSING_REQUIRED_PROPERTY: "warning",
@@ -96,7 +98,7 @@ PROFILE_SEVERITY: Dict[str, str] = {
 # V-number -> (kind, spec clause). The report ordering, and the triage worklist's
 # column headings. Kept as data so a caller can enumerate the surface without
 # knowing the function names.
-VALIDATORS: Tuple[Tuple[str, str, str], ...] = (
+VALIDATORS: tuple[tuple[str, str, str], ...] = (
     ("V1", KIND_UNREGISTERED_PREFIX, "SPEC §10.1 prefixes / [PROFILE-CONTRACT]"),
     ("V2", KIND_UNREGISTERED_DOCUMENT_TAG, "SPEC §1.7 + profile document_tags"),
     ("V3", KIND_MISSING_REQUIRED_PROPERTY, "profile <family>.required"),
@@ -114,12 +116,12 @@ VALIDATORS: Tuple[Tuple[str, str, str], ...] = (
      "engine agreement check — factlattice_engine/lifecycle.py"),
 )
 
-VALIDATOR_OF_KIND: Dict[str, str] = {kind: v for (v, kind, _src) in VALIDATORS}
+VALIDATOR_OF_KIND: dict[str, str] = {kind: v for (v, kind, _src) in VALIDATORS}
 
 # --- vocabulary the SPEC owns (not a profile's to declare) -------------------
 # SPEC §1.7 core document type tags, verbatim. A profile registers the DOMAIN half
 # (`Profile.document_tags`); this is the cross-domain half V2 unions it with.
-CORE_DOCUMENT_TAGS: FrozenSet[str] = frozenset({
+CORE_DOCUMENT_TAGS: frozenset[str] = frozenset({
     "META", "SYSTEM", "SPEC", "GUIDE", "FLOW", "IMPL", "GLOSSARY", "CHARTER",
     "PROJECT", "TEST", "DELTA",
 })
@@ -129,11 +131,11 @@ CORE_DOCUMENT_TAGS: FrozenSet[str] = frozenset({
 # ⛔ IMPORTED, NOT RESTATED — see `factlattice.constants.REQUIRED_FRONTMATTER`. This rule
 # and `authoring.schema.Frontmatter` held disjoint ideas of "required frontmatter", which
 # made the sanctioned writer structurally incapable of satisfying the sanctioned linter.
-REQUIRED_FRONTMATTER: Tuple[str, ...] = tuple(_REQUIRED_FRONTMATTER)
+REQUIRED_FRONTMATTER: tuple[str, ...] = tuple(_REQUIRED_FRONTMATTER)
 
 # SPEC §7.1 — `blast_radius` is an enum; `value` is a float 0.0-1.0 ("not an enum",
 # §7.1 is explicit about that, because quality tools need to sort with granularity).
-CONFIDENCE_BLAST_RADIUS: FrozenSet[str] = frozenset({"low", "medium", "high"})
+CONFIDENCE_BLAST_RADIUS: frozenset[str] = frozenset({"low", "medium", "high"})
 CONFIDENCE_VALUE_MIN = 0.0
 CONFIDENCE_VALUE_MAX = 1.0
 
@@ -163,10 +165,10 @@ class ProfileFinding:
     kind: str
     validator: str
     message: str
-    source_file: Optional[str] = None
-    source_line: Optional[int] = None
-    node_id: Optional[str] = None
-    detail: Dict[str, object] = field(default_factory=dict)
+    source_file: str | None = None
+    source_line: int | None = None
+    node_id: str | None = None
+    detail: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -179,7 +181,7 @@ class ProfileFinding:
 # ---------------------------------------------------------------------------
 # helpers over what the PARSER produced (never over what it might have produced)
 # ---------------------------------------------------------------------------
-def profile_is_loaded(corpus: "factlattice.ParsedCorpus") -> bool:
+def profile_is_loaded(corpus: factlattice.ParsedCorpus) -> bool:
     """True when the corpus actually loaded a profile.
 
     `DEFAULT_PROFILE` carries an empty `raw`, so emptiness is the signal. This is the
@@ -190,7 +192,7 @@ def profile_is_loaded(corpus: "factlattice.ParsedCorpus") -> bool:
     return bool(getattr(corpus, "profile", None) and corpus.profile.raw)
 
 
-def _values(value: object) -> List[str]:
+def _values(value: object) -> list[str]:
     """A parsed property value -> the list of scalar strings it holds.
 
     The parser stores a property as `str` (P1/P2/P3 inline; a repeated key becomes a
@@ -200,7 +202,7 @@ def _values(value: object) -> List[str]:
     if value is None:
         return []
     if isinstance(value, (list, tuple)):
-        out: List[str] = []
+        out: list[str] = []
         for item in value:
             if isinstance(item, str):
                 text = item.strip()
@@ -216,7 +218,7 @@ def _values(value: object) -> List[str]:
     return [text] if text else []
 
 
-def _subfield(value: object, name: str) -> Optional[str]:
+def _subfield(value: object, name: str) -> str | None:
     """Read a `name: …` SUB-FIELD out of a property value, or None.
 
     ⛔ READ THIS BEFORE REUSING IT. This is not a grammar. The parser has no notion of
@@ -264,7 +266,7 @@ def _has_subfield(value: object, name: str) -> bool:
     return _subfield(value, name) is not None
 
 
-def _frontmatter_by_file(corpus: "factlattice.ParsedCorpus") -> Dict[str, Dict[str, str]]:
+def _frontmatter_by_file(corpus: factlattice.ParsedCorpus) -> dict[str, dict[str, str]]:
     """`source_file -> frontmatter dict`, obtained BY CALLING THE PARSER.
 
     Frontmatter is a per-FILE fact and `ParsedCorpus` carries only the node/edge graph
@@ -277,7 +279,7 @@ def _frontmatter_by_file(corpus: "factlattice.ParsedCorpus") -> Dict[str, Dict[s
     `source_file` labels a temp directory that is deleted before the caller sees the
     result, so re-reading by label would be wrong, not merely wasteful.
     """
-    out: Dict[str, Dict[str, str]] = {}
+    out: dict[str, dict[str, str]] = {}
     prof = corpus.profile
     for cov in getattr(corpus, "coverage", ()) or ():
         try:
@@ -297,7 +299,7 @@ def _bare(prefix: str) -> str:
     return (prefix or "").strip().rstrip("-").upper()
 
 
-def _enum_for_property(profile: Profile, key: str) -> Optional[FrozenSet[str]]:
+def _enum_for_property(profile: Profile, key: str) -> frozenset[str] | None:
     """The declared enum for a property key, or None if the domain declares none.
 
     A profile authors an enum key in `snake_case` (`artifact_readiness`) while the
@@ -316,7 +318,7 @@ def _enum_for_property(profile: Profile, key: str) -> Optional[FrozenSet[str]]:
 # ---------------------------------------------------------------------------
 # V6's DELIVERABLE — the query that was declared and never implemented
 # ---------------------------------------------------------------------------
-def lifecycle_report(corpus: "factlattice.ParsedCorpus") -> Dict[str, object]:
+def lifecycle_report(corpus: factlattice.ParsedCorpus) -> dict[str, object]:
     """The decision-lifecycle view `decision_lifecycle` declared and nothing served.
 
     `[PROFILE-CONTRACT]`'s inventory called this out: the Acme profile declares
@@ -342,9 +344,9 @@ def lifecycle_report(corpus: "factlattice.ParsedCorpus") -> Dict[str, object]:
     profile = corpus.profile
     pipeline, off_pipeline = profile.lifecycle_stages
     declared = list(pipeline) + list(off_pipeline)
-    by_stage: Dict[str, List[str]] = {s: [] for s in declared}
-    unknown: Dict[str, List[str]] = {}
-    unstaged: List[str] = []
+    by_stage: dict[str, list[str]] = {s: [] for s in declared}
+    unknown: dict[str, list[str]] = {}
+    unstaged: list[str] = []
 
     for node in corpus.nodes:
         raw_value = None
@@ -364,7 +366,7 @@ def lifecycle_report(corpus: "factlattice.ParsedCorpus") -> Dict[str, object]:
                 unknown.setdefault(value, []).append(node.id)
 
     terminal = pipeline[-1] if pipeline else None
-    made_not_implemented: List[str] = []
+    made_not_implemented: list[str] = []
     for stage in pipeline[:-1]:
         made_not_implemented.extend(by_stage.get(stage, []))
 
@@ -387,12 +389,12 @@ def lifecycle_report(corpus: "factlattice.ParsedCorpus") -> Dict[str, object]:
 # ---------------------------------------------------------------------------
 # V1 - V11
 # ---------------------------------------------------------------------------
-def _v1_prefixes(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v1_prefixes(corpus, profile: Profile) -> list[ProfileFinding]:
     """V1 — a node's `type_prefix` is a prefix the profile registers (SPEC §10.1)."""
     registered = {_bare(p) for p in profile.prefix_set}
     if not registered:
         return []          # the domain registers no prefixes: nothing to be wrong about
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         if _bare(node.type_prefix) in registered:
             continue
@@ -409,7 +411,7 @@ def _v1_prefixes(corpus, profile: Profile) -> List[ProfileFinding]:
     return out
 
 
-def _v2_document_tags(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v2_document_tags(corpus, profile: Profile) -> list[ProfileFinding]:
     """V2 — a document's tag is a CORE tag (§1.7) or one the profile registers.
 
     Per FILE, not per node: `document_tag` is a file-level fact the parser replicates
@@ -417,14 +419,14 @@ def _v2_document_tags(corpus, profile: Profile) -> List[ProfileFinding]:
     mistake by the file's node count.
     """
     allowed = CORE_DOCUMENT_TAGS | profile.document_tags
-    seen: Dict[str, Tuple[str, int]] = {}
+    seen: dict[str, tuple[str, int]] = {}
     for node in corpus.nodes:
         if not node.document_tag:
             continue
         key = f"{node.source_file}\x00{node.document_tag}"
         if key not in seen or node.line_range[0] < seen[key][1]:
             seen[key] = (node.id, node.line_range[0])
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for key in sorted(seen):
         source_file, tag = key.split("\x00", 1)
         if tag in allowed:
@@ -444,11 +446,11 @@ def _v2_document_tags(corpus, profile: Profile) -> List[ProfileFinding]:
 
 
 def _missing_properties(corpus, profile: Profile, kind: str, validator: str,
-                        accessor) -> List[ProfileFinding]:
+                        accessor) -> list[ProfileFinding]:
     """Shared body of V3/V4 — they differ only in which accessor they consult and, by
     policy, in nothing else at introduction (both `warning`; V4 is the one expected to
     be demoted or narrowed first when the day-one count is triaged)."""
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         wanted = accessor(node.type_prefix)
         if not wanted:
@@ -469,27 +471,27 @@ def _missing_properties(corpus, profile: Profile, kind: str, validator: str,
     return out
 
 
-def _v3_required(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v3_required(corpus, profile: Profile) -> list[ProfileFinding]:
     """V3 — every property the node family declares `required` is present."""
     return _missing_properties(corpus, profile, KIND_MISSING_REQUIRED_PROPERTY, "V3",
                                profile.required_properties)
 
 
-def _v4_recommended(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v4_recommended(corpus, profile: Profile) -> list[ProfileFinding]:
     """V4 — every property the node family declares `recommended` is present."""
     return _missing_properties(corpus, profile, KIND_MISSING_RECOMMENDED_PROPERTY, "V4",
                                profile.recommended_properties)
 
 
 def _v5_enums(corpus, profile: Profile,
-              frontmatter: Dict[str, Dict[str, str]]) -> List[ProfileFinding]:
+              frontmatter: dict[str, dict[str, str]]) -> list[ProfileFinding]:
     """V5 — a property whose key names a profile-declared enum holds a declared value.
 
     Checked on node properties AND on frontmatter, because the two enums the ecosystem
     actually declares (`confidentiality`, `artifact_readiness`) are authored in
     frontmatter (SPEC §1.5) far more often than on a node.
     """
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         for key in sorted(node.properties):
             allowed = _enum_for_property(profile, key)
@@ -527,7 +529,7 @@ def _v5_enums(corpus, profile: Profile,
     return out
 
 
-def _v6_lifecycle(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v6_lifecycle(corpus, profile: Profile) -> list[ProfileFinding]:
     """V6 — `lifecycle-position` holds a stage the profile declares.
 
     The CHECK is here; the QUERY it unlocks is `lifecycle_report()`, which is the
@@ -537,11 +539,11 @@ def _v6_lifecycle(corpus, profile: Profile) -> List[ProfileFinding]:
     if not stages:
         return []          # the domain declares no lifecycle: nothing to validate
     report = lifecycle_report(corpus)
-    unknown: Dict[str, List[str]] = report["unknown"]  # type: ignore[assignment]
+    unknown: dict[str, list[str]] = report["unknown"]  # type: ignore[assignment]
     if not unknown:
         return []
     node_by_id = {n.id: n for n in corpus.nodes}
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for value in sorted(unknown):
         for node_id in unknown[value]:
             node = node_by_id.get(node_id)
@@ -558,7 +560,7 @@ def _v6_lifecycle(corpus, profile: Profile) -> List[ProfileFinding]:
     return out
 
 
-def _v7_confidence(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v7_confidence(corpus, profile: Profile) -> list[ProfileFinding]:
     """V7 — a `confidence` block conforms to SPEC §7.1.
 
     §7.1: `value` is a float 0.0-1.0 ("not an enum… this enables quality tools to sort
@@ -575,7 +577,7 @@ def _v7_confidence(corpus, profile: Profile) -> List[ProfileFinding]:
     an enum for `blast_radius`; it does not mark the latter mandatory, and inventing a
     requirement the spec does not state is how a linter earns its own disablement.
     """
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         if "confidence" not in node.properties:
             continue
@@ -631,7 +633,7 @@ def _v7_confidence(corpus, profile: Profile) -> List[ProfileFinding]:
     return out
 
 
-def _v8_invalidating_assumption(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v8_invalidating_assumption(corpus, profile: Profile) -> list[ProfileFinding]:
     """V8 — `change` present => `context_for_change` carries `invalidating_assumption`.
 
     ⛔ THIS VALIDATOR IS PARTIALLY DARK TODAY, AND THAT IS THE POINT OF SAYING SO.
@@ -653,7 +655,7 @@ def _v8_invalidating_assumption(corpus, profile: Profile) -> List[ProfileFinding
     `test_v8_yaml_mapping_form_is_dark` asserts the limitation rather than papering
     over it: it authors the §8.1 shape and asserts V8 reports form=absent.
     """
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         if CHANGE_PROPERTY not in node.properties:
             continue
@@ -686,13 +688,13 @@ def _v8_invalidating_assumption(corpus, profile: Profile) -> List[ProfileFinding
 
 
 def _v9_frontmatter(corpus, profile: Profile,
-                    frontmatter: Dict[str, Dict[str, str]]) -> List[ProfileFinding]:
+                    frontmatter: dict[str, dict[str, str]]) -> list[ProfileFinding]:
     """V9 — SPEC §1.5's required frontmatter is present.
 
     One finding PER MISSING KEY, not one per file: the triage unit is "this document
     needs an `audience`", and a single collapsed finding would hide two of three.
     """
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for source_file in sorted(frontmatter):
         fm = frontmatter[source_file]
         for key in REQUIRED_FRONTMATTER:
@@ -709,7 +711,7 @@ def _v9_frontmatter(corpus, profile: Profile,
     return out
 
 
-def _v11_status_token(corpus, profile: Profile) -> List[ProfileFinding]:
+def _v11_status_token(corpus, profile: Profile) -> list[ProfileFinding]:
     """V11 — a node's `status` is a BARE lifecycle token, queryable by `lts_find`.
 
     ⛔ THIS IS AN AGREEMENT CHECK, and it is the load-bearing half of the status fix.
@@ -744,7 +746,7 @@ def _v11_status_token(corpus, profile: Profile) -> List[ProfileFinding]:
     Silent for a node with no `status`: absence is V3/V4's question (is it required?),
     not this rule's (is what is there queryable?).
     """
-    out: List[ProfileFinding] = []
+    out: list[ProfileFinding] = []
     for node in corpus.nodes:
         raw = getattr(node, "status", None)
         if not raw or is_bare_lifecycle_token(raw):
@@ -775,8 +777,8 @@ def _v11_status_token(corpus, profile: Profile) -> List[ProfileFinding]:
 # ---------------------------------------------------------------------------
 # the pass
 # ---------------------------------------------------------------------------
-def find_profile_violations(corpus: "factlattice.ParsedCorpus",
-                            kinds: Optional[Sequence[str]] = None) -> List[ProfileFinding]:
+def find_profile_violations(corpus: factlattice.ParsedCorpus,
+                            kinds: Sequence[str] | None = None) -> list[ProfileFinding]:
     """Run V1-V9 and V11 over an already-parsed corpus. Deterministic; ordered by validator.
 
     Returns `[]` — never raises — when the corpus loaded no profile. See the module
@@ -787,7 +789,7 @@ def find_profile_violations(corpus: "factlattice.ParsedCorpus",
     profile = corpus.profile
     frontmatter = _frontmatter_by_file(corpus)
 
-    findings: List[ProfileFinding] = []
+    findings: list[ProfileFinding] = []
     findings += _v1_prefixes(corpus, profile)
     findings += _v2_document_tags(corpus, profile)
     findings += _v3_required(corpus, profile)
@@ -805,7 +807,7 @@ def find_profile_violations(corpus: "factlattice.ParsedCorpus",
     return findings
 
 
-def profile_findings_by_validator(findings: Sequence[ProfileFinding]) -> Dict[str, int]:
+def profile_findings_by_validator(findings: Sequence[ProfileFinding]) -> dict[str, int]:
     """`{'V1': 1, 'V3': 12, …}` — the triage worklist, in validator order."""
     counts = {v: 0 for (v, _k, _s) in VALIDATORS}
     for f in findings:

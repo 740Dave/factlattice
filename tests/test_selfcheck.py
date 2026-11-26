@@ -42,7 +42,6 @@ from factlattice_engine.selfcheck import (
     run_selfcheck,
 )
 
-
 # ---------------------------------------------------------------------------
 # (a) green on this checkout
 # ---------------------------------------------------------------------------
@@ -131,7 +130,8 @@ def test_case_failure_names_the_case_and_both_values(monkeypatch):
     # 35 -> 36 with Era 0's ONE malformed-ref case (SL-33, CASE-MALFORMED-REF).
     # 36 -> 38 with SL-38 (CASE-CANONICAL, CASE-CANONICAL-BARE).
     # 38 -> 42 with SL-39 (CASE-REV-HOOK, CASE-REV-PROC, CASE-REV-RULE, CASE-REV-BARE).
-    assert f["produced"] == 42
+    # 42 -> 47 with SL-41 (CASE-NS-SECTION, CASE-NS-CHILD, CASE-NS-STATEMENT, CASE-NS-GOAL, CASE-NS-CONFIRM).
+    assert f["produced"] == 47
 
 
 def test_a_dropped_line_from_the_oracle_is_itself_a_failure(monkeypatch):

@@ -7,7 +7,7 @@ WHY THIS EXISTS
 
     The larger class it does NOT touch is WRONG CONTENT — a beautifully-formed node
     carrying a claim the graph already contradicts. Same session, same author: a stale
-    figure left inside a node after the finding was revised (91% and 98.40% coexisting
+    figure left inside a node after the finding was revised (94% and 99.07% coexisting
     in ONE node, describing the same quantity), an over-claim retracted the same day,
     and a corroborating anchor nearly presented as independent.
 
@@ -50,17 +50,82 @@ _CODE_SPAN = re.compile(r"`[^`]*`")
 #         remainder were mostly legitimate refs to specs OUTSIDE this corpus, plus `A-Z` scraped
 #         from a REGEX CHARACTER CLASS and `DEC-X` from a worked example. Matching a token
 #         without asking what role it plays — inside the tool built to catch that.
-#   A  — fired because the author DOCUMENTED A CORRECTION INLINE ("98.40%, not 91.0%"), which is
+#   A  — fired because the author DOCUMENTED A CORRECTION INLINE ("99.07%, not 94.0%"), which is
 #         the correct authoring behaviour. The check penalised honesty.
 #   D  — fired on a prose key that repeats a ref already minted by a proper `supersedes:` on the
 #         same node. True, but not consequential.
 
-# Ids that legitimately live outside this corpus: role-definition invariants, CRP problems,
-# spec amendments, silent-loss classes, bulk-import invariants, design principles.
-_EXTERNAL_PREFIXES = (
-    "INV-", "IH-", "DP", "CRP-", "SL-", "A-", "OP-", "LCB-", "MUT-",
-    "SPEC:", "FLFP-", "REGISTRY:", "DS:", "PROC-", "FL-00",
+# Ids that legitimately live outside the checked corpus (role invariants, procedures, spec
+# amendments, design principles ...) are a property of a DEPLOYMENT, not of the engine. The shipped
+# default is therefore EMPTY, and each deployment declares its own families in its registry entry
+# under `external_id_prefixes` (maintainers' ruling of 2026-10-28). The only rule that stays in code
+# is generic: a reference of four characters or fewer is never a real node id here (the id grammar
+# starts at three; such tokens are scraped from a regex character class or a worked example).
+DEFAULT_EXTERNAL_PREFIXES: tuple[str, ...] = ()
+
+# The registry's entry/root schema lives in ONE place, `factlattice.registry` (the module that owns registry lookup). The checker
+# IMPORTS it; an identity test pins that this name is that object. A key ending `_note` is a free-text comment that no code reads.
+from factlattice.registry import (  # noqa: E402,F401
+    EXTERNAL_PREFIXES_KEY,
+    NAMED_ROOT_CODES,
+    NOTE_KEY_SUFFIX,
+    REGISTRY_ENTRY_KEYS,
+    entry_key_problems,
+    is_note_key,
+    nearest_key,
+    problem_hint,
 )
+
+
+def parse_external_prefixes(value: object, where: str = "external prefixes") -> tuple[str, ...]:
+    """Validate a declared prefix list; return a de-duplicated tuple in declaration order.
+
+    A bare string is REFUSED, not iterated: "ACME-" iterated is five one-character prefixes that
+    together match almost every id, which would silently hide every dangling reference."""
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{where}: must be a list of non-empty strings, not {type(value).__name__}")
+    out: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip() or item != item.strip():
+            raise ValueError(f"{where}: every prefix must be a non-empty string without surrounding space")
+        if item not in out:
+            out.append(item)
+    return tuple(out)
+
+
+def external_prefixes_from_registry(corpora, corpus_ids=None) -> tuple[str, ...]:
+    """The union of `external_id_prefixes` over the named registry entries (all entries when
+    `corpus_ids` is None). Raises KeyError for an unknown corpus id and ValueError for a malformed
+    value or for ANY entry key outside `REGISTRY_ENTRY_KEYS` (a `*_note` key is a comment and always
+    allowed), naming the nearest valid key when there is one: a misspelt key would otherwise leave
+    the prefixes empty and quietly change which references are reported as dangling."""
+    ids = list(corpora) if corpus_ids is None else list(corpus_ids)
+    out: list[str] = []
+    for cid in ids:
+        if cid not in corpora:
+            raise KeyError(f"corpus {cid!r} is not in the registry")
+        entry = corpora[cid]
+        if not isinstance(entry, dict):
+            raise ValueError(f"registry entry {cid!r} is not an object")
+        for prob in entry_key_problems(entry):         # THE registry's validation: entry AND root keys, one definition
+            kind = prob["scope"]
+            if prob["code"] in NAMED_ROOT_CODES:
+                raise ValueError(f"registry entry {cid!r}: {prob['code']}: {prob['key']!r}")
+            raise ValueError(f"registry entry {cid!r}: {kind} key {prob['key']!r} is not a registry {kind} key"
+                             f"{problem_hint(prob, kind)}")
+        if EXTERNAL_PREFIXES_KEY in entry:
+            for p in parse_external_prefixes(entry[EXTERNAL_PREFIXES_KEY],
+                                             f"registry entry {cid!r}, {EXTERNAL_PREFIXES_KEY}"):
+                if p not in out:
+                    out.append(p)
+    return tuple(out)
+
+
+def external_prefixes_from_live_registry(corpus_ids=None) -> tuple[str, ...]:
+    """Same, from the registry the engine itself resolves (`registry.resolve_registry`). A broken
+    configured registry raises `registry.RegistryError`; there is no fallback to an empty list."""
+    from factlattice import registry
+    return external_prefixes_from_registry(registry.resolve_registry().corpora, corpus_ids)
 
 
 def _strip_code(text: str) -> str:
@@ -70,8 +135,8 @@ def _strip_code(text: str) -> str:
     return _CODE_SPAN.sub(" ", text)
 
 
-def _is_external(ref: str) -> bool:
-    return ref.startswith(_EXTERNAL_PREFIXES) or len(ref) <= 4
+def _is_external(ref: str, external_prefixes: tuple[str, ...]) -> bool:
+    return ref.startswith(tuple(external_prefixes)) or len(ref) <= 4
 
 # A figure: percentage, decimal, or grouped integer. Bare years/dates excluded — they
 # are provenance, not claims, and they generated pure noise in the first cut.
@@ -168,24 +233,24 @@ def check_a_stale_summary(nodes: list[ParsedNode]) -> list[Finding]:
     ⛔ The first implementation of this check was WRONG and its own acceptance test
     exposed it. It grouped figures PER PROPERTY, so it never compared the summary field
     against the detail field — which is where the contradiction lived — and it flagged
-    `1,481`, `1,497` and `98.40%` co-occurring in one sentence as divergent when they
+    `1,701`, `1,717` and `99.07%` co-occurring in one sentence as divergent when they
     are one statement. It fired on the positive control for the wrong reason and fired
     on the negative control too. A check with that false-positive rate is noise, and
     noise gets ignored precisely when it matters.
 
     The precise signal is a SUBSET relation between properties, not divergence within
     one. When a finding is revised, the detail field is rewritten to carry BOTH values
-    ("98.40%, not 91.0%") while the summary field is left carrying ONLY THE OLD ONE.
+    ("99.07%, not 94.0%") while the summary field is left carrying ONLY THE OLD ONE.
     So: property P is suspect when its percentages are a strict subset of another
     property's, and that other property carries at least one value P does not.
 
     Restricted to percentages deliberately. Counts and versions co-occur legitimately
-    (`1,481 of 1,497`, `v1.4`); a percentage stated two ways about one node's subject
+    (`1,701 of 1,717`, `v2.7`); a percentage stated two ways about one node's subject
     is the shape that actually went wrong.
     """
     out: list[Finding] = []
     for n in nodes:
-        # ⛔ A property that SUPERSEDES its own earlier figure ("98.40%, not 91.0%",
+        # ⛔ A property that SUPERSEDES its own earlier figure ("99.07%, not 94.0%",
         # "revised from", "do not quote") is the author doing the right thing. Excluding it
         # is not leniency — including it PENALISED HONESTY and produced a false positive on
         # the one node whose correction had already been made.
@@ -244,15 +309,18 @@ def check_b_offpipeline_citations(
     return out
 
 
-def check_c_dangling(nodes: list[ParsedNode], corpus: dict[str, ParsedNode]) -> list[Finding]:
+def check_c_dangling(nodes: list[ParsedNode], corpus: dict[str, ParsedNode],
+                     external_prefixes: tuple[str, ...]) -> list[Finding]:
     """C — reference to a node id that does not exist. Only run with the FULL corpus in
-    scope; a narrow scope invents phantom dangles."""
+    scope; a narrow scope invents phantom dangles. `external_prefixes` is REQUIRED (no default):
+    the families of ids that live outside this corpus are the deployment's to declare."""
+    external_prefixes = parse_external_prefixes(external_prefixes)
     known = set(corpus) | {n.node_id for n in nodes}
     out: list[Finding] = []
     for n in nodes:
         body = _strip_code(" ".join(n.props.values()))
         missing = sorted({r for r in _REF.findall(body)
-                          if r not in known and not _is_external(r)})
+                          if r not in known and not _is_external(r, external_prefixes)})
         if missing:
             out.append(Finding("C/dangling-reference", "review", n.node_id,
                                f"{len(missing)} reference(s) resolve to nothing", missing))
@@ -348,9 +416,15 @@ def check(
     draft_text: str,
     corpus_root: str | Path | list[str | Path],
     minting_keys: frozenset[str] = frozenset(),
+    *,
+    external_prefixes: tuple[str, ...] | list[str],
 ) -> dict:
     """Run A-F. Returns findings plus the DENOMINATORS each check examined — a result
-    without them is indistinguishable from a check that inspected nothing."""
+    without them is indistinguishable from a check that inspected nothing.
+
+    `external_prefixes` is required and keyword-only: pass `external_prefixes_from_registry(...)`
+    / `external_prefixes_from_live_registry(...)`, or `()` to declare there are none."""
+    external_prefixes = parse_external_prefixes(external_prefixes)
     nodes = parse_lts(draft_text)
     # ⛔ ACCEPT MULTIPLE ROOTS. A narrow scope INVENTS phantom dangles — measured
     # 2026-08-12: indexing only `corpora/` reported 85 dangling where the full set has
@@ -365,7 +439,7 @@ def check(
     findings = [
         *check_a_stale_summary(nodes),
         *check_b_offpipeline_citations(nodes, corpus),
-        *check_c_dangling(nodes, corpus),
+        *check_c_dangling(nodes, corpus, external_prefixes),
         *check_d_nonminting_relational_keys(nodes, minting_keys),
         *check_e_lifecycle_regression(nodes, corpus),
         *check_f_corpus_figure_divergence(nodes, corpus),
@@ -380,11 +454,15 @@ def check(
             "corpus_files": len({n.source for n in corpus.values()}),
             "corpus_roots": [str(r) for r in roots],
             "minting_keys_supplied": len(minting_keys),
+            "external_prefixes_supplied": len(external_prefixes),
         },
         "bound": (
             "VERIFY: lexical checks only — no understanding of negation, scope or "
             "hedging. Passing all six does NOT mean the draft is correct. "
             + ("⛔ minting_keys was EMPTY, so check D was INERT."
                if not minting_keys else "")
+            + ("⛔ external_prefixes was EMPTY, so every reference to an id outside this corpus "
+               "longer than four characters is reported as dangling."
+               if not external_prefixes else "")
         ),
     }

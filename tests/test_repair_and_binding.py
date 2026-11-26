@@ -27,9 +27,12 @@ import os
 import pytest
 
 from factlattice.authoring.edit import (
-    EditRefused, backup_dir, repair_property, set_property,
+    EditRefused,
+    backup_dir,
+    repair_property,
+    set_property,
 )
-from factlattice.parser import detect_id_hijack, parse_text
+from factlattice.parser import parse_text
 from factlattice_engine import binding, membership
 from factlattice_engine.tools import dispatch
 
@@ -75,7 +78,7 @@ def test_the_broken_line_really_is_lost_before_the_repair(doc):
     """The negative control. Without it, a passing repair test proves nothing about
     whether there was anything to repair."""
     assert "flagged" not in _props(doc, "N-ONE")
-    assert set(_props(doc, "N-ONE")) == {"kind", "see-also"}
+    assert set(_props(doc, "N-ONE")) == {"kind", "see-also", "normative_effective"}   # + the engine-minted state (spec 39)
 
 
 def test_repair_rewrites_the_line_in_place_and_the_field_appears(doc):
@@ -434,6 +437,7 @@ def test_backup_dir_is_overridable_and_outside_any_corpus(monkeypatch, tmp_path)
 # ---------------------------------------------------------------------------
 def test_engine_core_minting_allowlist_matches_the_spec_1_3_table():
     import re
+
     from factlattice.parser import REL_PROPERTY_EDGES
     spec = open(os.path.join(os.path.dirname(__file__), "..", "SPEC.md")).read()
     block = spec.split("**Relationship-bearing properties**")[1].split(
@@ -475,6 +479,7 @@ def test_classify_edge_key_honours_a_profile_registered_verb_ruling_1_union():
     """Ruling 1's UNION: a corpus-registered property_edge is DECLARED, so it mints and
     is in neither alert — and a MISCASE of it is a case_variant, not undeclared."""
     from types import SimpleNamespace
+
     from factlattice_engine.binding import classify_edge_key
     prof = SimpleNamespace(property_edges={"documents": ("DOCUMENTS", "semantic", False)})
     assert classify_edge_key("documents", prof) == ("declared", "documents")
@@ -485,8 +490,7 @@ def test_classify_edge_key_honours_a_profile_registered_verb_ruling_1_union():
 
 def test_edge_verb_channels_dedup_and_route(tmp_path):
     import factlattice
-    from factlattice_engine.lint.unminted import (
-        edge_verb_channels, edge_verb_warn_line, find_unminted_reference_lists)
+    from factlattice_engine.lint.unminted import edge_verb_channels, edge_verb_warn_line, find_unminted_reference_lists
     doc = ("---\nlts: 1.0\n---\n\n## [AA-ONE] One\n"
            "- see-also: [AA-TWO]\n"
            "- Depends-On: [AA-TWO]\n"

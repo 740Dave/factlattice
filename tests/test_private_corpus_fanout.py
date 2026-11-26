@@ -1,6 +1,6 @@
 """[INV-PRIVATE-FANOUT] — a corpus-omitted query never reads a PRIVATE corpus.
 
-THE DEFECT THIS PINS (acme-team ISSUE-FANOUT-LEAK, measured
+THE DEFECT THIS PINS (acme-team LTS-FIND-PERSONALITY-FANOUT-LEAK, measured
 2026-10-02 on main 14a02a8): `lts_find(text="memory")` with `corpus` omitted consulted all
 37 loaded corpora, including the 9 `*-personality` corpora, and 20 of its 582 hits were
 personality nodes from 8 different Intelligences' selves. The only guard was a convention
@@ -12,7 +12,7 @@ ends in `-personality` (unless the registry says `private: false` explicitly). E
 corpus-omitted fan-out skips private corpora and lists EVERY private corpus under
 `extent.corpora_skipped` as ONE anonymous entry `{reason: "private: name it explicitly",
 count: N}` counting the whole set, hit or no hit, so the skip never reveals which private
-corpus held a match (and never NAMES one: ISSUE-PRIVATE-NAMES-IN-ERRORS). Naming a
+corpus held a match (and never NAMES one: DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA). Naming a
 private corpus exactly is unchanged: that is how an Intelligence reads its own self.
 
 ⛔ Each test asserts BOTH directions: the private node is absent from the fan-out AND
@@ -25,7 +25,7 @@ import pytest
 
 from factlattice_engine import config
 from factlattice_engine.privacy import PRIVATE_REASON, private_reason
-from factlattice_engine.store import FreshnessResult, LtsStore, Partition
+from factlattice_engine.store import FreshnessResult
 from factlattice_engine.tools import LtsEngine
 
 SECRET = "zanzibarquokka"   # a token that exists in exactly one place: the private corpus
@@ -99,7 +99,7 @@ def _assert_private_skipped(res):
     ext = res["extent"]
     consulted = set(ext["corpora_consulted"])
     assert not (consulted & PRIVATE), consulted
-    # ISSUE-PRIVATE-NAMES-IN-ERRORS: the skip is declared as ONE anonymous count
+    # DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA: the skip is declared as ONE anonymous count
     # of EVERY private corpus (hit or no hit), never as names.
     skipped = [s for s in ext["corpora_skipped"] if s.get("reason") == PRIVATE_REASON]
     assert skipped == [{"reason": PRIVATE_REASON, "count": len(PRIVATE)}], ext["corpora_skipped"]
@@ -216,7 +216,7 @@ PRIVATE_TEXT_A = f"The {SECRET} memory"
 PRIVATE_TEXT_B = f"I remember the {SECRET}"
 def _assert_withheld_anonymous(res):
     """The hop is DECLARED, but the stub names no corpus id and no target node
-    (ISSUE-PRIVATE-NAMES-IN-ERRORS, review F1)."""
+    (DEC-LTS-NOT-FOUND-LISTS-PRIVATE-CORPORA, review F1)."""
     stubs = res.get("routed_withheld")
     assert stubs, list(res)
     expect = {"withheld": True, "reason": "edge into a private corpus; name it explicitly to follow"}
@@ -274,44 +274,68 @@ FANOUT_ALLOWLIST = {
     ("analytics/profile_registration.py", "audit_profile_registration", "corpus_ids"): (1, "registration METADATA per corpus (F2)"),
     ("callcli.py", "registry_statement", "partitions"): (1, "a COUNT of loaded corpora for the registry statement, never names (tests/test_cli_call.py asserts no private name in the envelope)"),
     ("kernel.py", "<class FreshnessKernel>.seat_store", "partitions"): (1, "freshness bookkeeping; serves nothing"),
-    ("membership.py", "registered_roots", "partitions"): (1, "root-path membership for write receipts (F2)"),
-    ("readprofile.py", "_live_corpus_nodes", "partitions"): (1, "operator CLI listing node ids (P3, accepted)"),
     ("router.py", "<class Router>._resolve_corpus", "filter_by_domain"): (1, "resolves ONE target corpus; privacy decided by the caller (_route)"),
-    ("server.py", "build_tools", "partitions"): (1, "emptiness check at boot"),
-    ("tools.py", "<class LtsEngine>._fanout_parts", "corpus_ids"): (1, "IS the privacy-aware fan-out"),
-    ("tools.py", "<class LtsEngine>._public_corpus_ids", "corpus_ids"): (1, "the PUBLIC-only id list every error/extent uses"),
-    ("tools.py", "<class LtsEngine>._private_corpus_ids", "partitions"): (1, "IS the privacy classifier"),
-    ("tools.py", "<class LtsEngine>._reverse_index_snapshot", "corpus_ids"): (1, "index over all; output filtered by _public_referrers"),
-    ("tools.py", "<class LtsEngine>.list_corpora", "partitions"): (2, "corpus METADATA listing (F2)"),
-    ("tools.py", "<class LtsEngine>.register_corpus", "corpus_ids"): (1, "duplicate-id check"),
-    ("tools.py", "<class LtsEngine>.unregister_corpus", "corpus_ids"): (1, "membership check; `available` is public-only"),
+    ("tools.py", "_registry_gate", "partitions"): (2, "emptiness check: has any corpus been served yet (a boot that may still turn out to have nothing loadable waits for its verdict); no name or path leaves it"),
+    ("readprofile.py", "_live_corpus_nodes", "snapshot_all"): (1, "operator CLI listing node ids (P3, accepted)"),
+    ("server.py", "_none_loaded_error", "snapshot_all"): (1, "emptiness check at boot"),
+    ("tools.py", "<class LtsEngine>._search_scope", "snapshot_all"): (2, "membership tests only: private ids are excluded from the read set and never returned or counted as unknown"),
+    ("tools.py", "<class LtsEngine>._fanout_parts", "snapshot_all"): (3, "IS the privacy-aware fan-out: each look is one snapshot, and the private ids are taken from the same look"),
+    ("tools.py", "<class LtsEngine>._reverse_index_snapshot", "snapshot_all"): (3, "index over all; output filtered by _public_referrers; probes every root together before the per-corpus gates"),
+    ("tools.py", "<class LtsEngine>.list_corpora", "snapshot_all"): (1, "the one snapshot of the listing: hands every partition to the freshness kernel's verified_scope, which probes ROOTS together, and to the body, whose entries are the explicit enumeration surface (a private corpus is counted, never named, in the failed and no-roots views); nothing is read from a node and no name or path leaves it"),
+    ("tools.py", "<class LtsEngine>.unregister_corpus", "snapshot_all"): (3, "membership check; `available` is public-only; the third is the failed table handed to `_retain_untrusted`, which names no corpus"),
+    ("tools.py", "<class LtsEngine>.register_corpus", "snapshot_all"): (2, "the first look that refuses a corpus already here (membership only, nothing named); the second is the failed table handed to `_retain_untrusted`, which names no corpus"),
+    ("store.py", "<class LtsStore>.add_partition_clearing", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: the seat's own check that the id is not served; the caller names the corpus)"),
+    ("tools.py", "<class LtsEngine>._declare_search_scope", "snapshot_all"): (1, "names the public ids for `left_out_count` only: the private ids are excluded by `_public_corpus_ids(look)`"),
+    ("tools.py", "<class LtsEngine>._extent", "snapshot_all"): (1, "the extent's one look: `corpora_available` is built by `_public_corpus_ids(look)` (public only), skipped failures by `_failed_skips(look[1:])` (a failed private corpus is counted, never named)"),
+    ("tools.py", "<class LtsEngine>._find_exact", "snapshot_all"): (1, "the skip entries of the corpus-omitted find: `_stale_skip_entries(stale, look)` names only the ids `_fanout_parts` returned (public)"),
+    ("tools.py", "<class LtsEngine>._gate", "snapshot_all"): (2, "the gate's one look per decision (and a new one after a wait): the not-found reply lists `_public_corpus_ids(look)` and counts `_private_corpus_ids(look)`, both from the same look"),
+    ("tools.py", "<class LtsEngine>._reverse_digest", "snapshot_all"): (1, "referrers are filtered by `_public_referrers(..., look)`; stale ids by `_name_safe_stale(stale, look)`"),
+    ("tools.py", "<class LtsEngine>.capabilities", "snapshot_all"): (1, "the hop look: `_route(edge, corpus, look)` withholds a private target (privacy decided before freshness)"),
+    ("tools.py", "<class LtsEngine>.find_in_prose", "snapshot_all"): (1, "the skip entries: `_stale_skip_entries(stale, look)` names only the ids `_fanout_parts` returned (public)"),
+    ("tools.py", "<class LtsEngine>.node", "snapshot_all"): (1, "the hop look: `_route(edge, corpus, look)` withholds a private target (privacy decided before freshness)"),
+    ("tools.py", "<class LtsEngine>._miss_append", "snapshot_all"): (1, "emptiness of the failed table only (fail closed on any failed corpus); nothing is named"),
+    ("tools.py", "<class LtsEngine>.reverse", "snapshot_all"): (1, "referrers are filtered by `_public_referrers(..., look)`; stale ids by `_name_safe_stale(stale, look)`; private stale ones are counted, never named"),
+    ("tools.py", "<class LtsEngine>.traverse", "snapshot_all"): (1, "the hop look: `_route(edge, corpus, look)` withholds a private target (privacy decided before freshness)"),
+    ("reviewer/__main__.py", "_main.resolve", "snapshot_all"): (1, "the hop look of a domain-qualified ref: `_route` withholds a private target (UNVERIFIABLE_PRIVATE), the same stub for any id"),
+    ("membership.py", "_look", "snapshot_all"): (1, "membership's ONE read of the store (`snapshot_all`), taken once per write and carried on the view (`view.look`): `_declared_map` and `registered_roots`, whose entries lived here before, now read that look and touch no list themselves. Root PATHS only; nothing is read from a node and no corpus content leaves it"),
+    ("store.py", "<class LtsStore>.clear_all", "_by_corpus_id"): (2, _STORE_PRIMITIVE + " (registry-error mode empties the store in one step and returns the served ids to the loader's own caller, which unseats them; no reply names them)"),
+    ("store.py", "<class LtsStore>.clear_all", "_by_domain"): (1, _STORE_PRIMITIVE + " (the same step)"),
+    ("store.py", "<class LtsStore>.forget_unlocated", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " (unregister of an entry the registry could not place: the check that it is not served, inside the locked step)"),
+    ("store.py", "<class LtsStore>.settle", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: the check, inside the step, that a corpus moved to failed / no roots is not already served)"),
     ("store.py", "<class LtsStore>.__init__", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.__init__", "_by_domain"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.add_partition", "_by_corpus_id"): (2, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.add_partition", "_by_domain"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.corpus_ids", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
-    ("store.py", "<class LtsStore>.filter_by_domain", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
+    ("store.py", "<class LtsStore>.filter_by_domain", "_by_corpus_id"): (2, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.filter_by_domain", "_by_domain"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.freshness", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.get_node", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.get_partition", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.partitions", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
+    ("store.py", "<class LtsStore>._reorder", "_by_corpus_id"): (3, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: keeps the served partitions in the registry's order)"),
+    ("store.py", "<class LtsStore>.lookup_all", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: one corpus's records read together; the caller names the corpus)"),
+    ("store.py", "<class LtsStore>.lookup", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: one corpus's partition, pending and failed records read together; the caller names the corpus)"),
+    ("store.py", "<class LtsStore>.snapshot_all", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: the four tables read together for lts_list_corpora, the explicit enumeration surface; the failed and no-roots views count a private corpus and never name it)"),
+    ("store.py", "<class LtsStore>.snapshot", "_by_corpus_id"): (1, _STORE_PRIMITIVE + " ([MECH-BR-BOOT]: served and pending read together for lts_list_corpora, which is the explicit enumeration surface; a pending PRIVATE corpus is counted there, never named)"),
     ("store.py", "<class LtsStore>.remove_partition", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.remove_partition", "_by_domain"): (2, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.select", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
     ("store.py", "<class LtsStore>.stats", "_by_corpus_id"): (1, _STORE_PRIMITIVE),
 }
-_FANOUT_NAMES = {"partitions", "corpus_ids", "filter_by_domain", "_by_corpus_id", "_by_domain"}
+_FANOUT_NAMES = {"partitions", "corpus_ids", "filter_by_domain", "_by_corpus_id", "_by_domain", "snapshot_all"}   # the one snapshot hands out the served list too
 
 
-def _fanout_inventory():
+def _fanout_inventory(sources=None):
+    """The touch sites of the corpus lists in `factlattice_engine/`; `sources` ({rel: source text}) is for planted controls."""
     import ast
     import collections
     import pathlib
     root = pathlib.Path(__file__).resolve().parent.parent / "factlattice_engine"
     sites = collections.Counter()
-    for f in sorted(root.rglob("*.py")):
-        rel = f.relative_to(root).as_posix()
+    items = (sorted(sources.items()) if sources is not None else
+             [(f.relative_to(root).as_posix(), f.read_text(encoding="utf-8")) for f in sorted(root.rglob("*.py"))])
+    for rel, text in items:
         stack = []
 
         class V(ast.NodeVisitor):
@@ -327,7 +351,13 @@ def _fanout_inventory():
                 if n.attr in _FANOUT_NAMES:
                     sites[(rel, ".".join(stack) or "<module>", n.attr)] += 1
                 self.generic_visit(n)
-        V().visit(ast.parse(f.read_text(encoding="utf-8")))
+
+            def visit_Call(self, n):          # `getattr(store, "snapshot_all")` reaches the same lists by name (round 8, F7)
+                if (isinstance(n.func, ast.Name) and n.func.id in ("getattr", "hasattr") and len(n.args) >= 2
+                        and isinstance(n.args[1], ast.Constant) and n.args[1].value in _FANOUT_NAMES):
+                    sites[(rel, ".".join(stack) or "<module>", n.args[1].value)] += 1
+                self.generic_visit(n)
+        V().visit(ast.parse(text))
     return sites
 
 
@@ -374,3 +404,9 @@ def test_stale_private_target_is_withheld_not_reported_stale(tmp_path):
     assert res["success"], res
     assert not any(r.get("corpus") == "someone-personality" for r in res.get("routed_stale", []))
     _assert_withheld_anonymous(res)
+
+
+def test_the_fanout_inventory_sees_a_list_reached_by_name():
+    """F7: `getattr(store, "snapshot_all")` / `hasattr(store, "partitions")` reach the corpus lists as an attribute does, and are counted. Planted."""
+    got = _fanout_inventory({"x.py": "def f(store):\n    a = getattr(store, 'snapshot_all')()\n    return hasattr(store, 'partitions'), store.corpus_ids()\n"})
+    assert got == {("x.py", "f", "snapshot_all"): 1, ("x.py", "f", "partitions"): 1, ("x.py", "f", "corpus_ids"): 1}, dict(got)

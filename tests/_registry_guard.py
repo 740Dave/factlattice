@@ -20,7 +20,6 @@ from __future__ import annotations
 import ast
 import os
 from pathlib import Path
-from typing import List, Tuple
 
 NAMES = ("FACTLATTICE_CORPUS_CONFIG", "FACTLATTICE_CORPUS_ROOT")
 # What opening the pointer file needs: the XDG variable, or the default directory, or its file name pair.
@@ -29,9 +28,9 @@ ALLOWED = ("factlattice/registry.py",)
 SCAN_DIRS = ("factlattice", "factlattice_engine", "tools")
 
 
-def _folded_strings(tree: ast.AST) -> List[str]:
+def _folded_strings(tree: ast.AST) -> list[str]:
     """Every string constant, with `"a" + "b"` chains folded."""
-    out: List[str] = []
+    out: list[str] = []
 
     def fold(n):
         if isinstance(n, ast.Constant) and isinstance(n.value, str):
@@ -49,10 +48,10 @@ def _folded_strings(tree: ast.AST) -> List[str]:
     return out
 
 
-def scan_tree(root: Path, scan_dirs=SCAN_DIRS, allowed=ALLOWED) -> List[Tuple[str, str]]:
+def scan_tree(root: Path, scan_dirs=SCAN_DIRS, allowed=ALLOWED) -> list[tuple[str, str]]:
     """`[(relative path, what was found)]` for every non-test `.py` under `scan_dirs` outside `allowed`."""
     root = Path(root)
-    found: List[Tuple[str, str]] = []
+    found: list[tuple[str, str]] = []
     for d in scan_dirs:
         for path in sorted((root / d).rglob("*.py")) if (root / d).is_dir() else []:
             rel = path.relative_to(root).as_posix()
@@ -224,10 +223,10 @@ def _enclosing(tree):
     return owner
 
 
-def scan_ast_tree(root: Path, allowed=ALLOWED) -> List[Tuple[str, int, str]]:
+def scan_ast_tree(root: Path, allowed=ALLOWED) -> list[tuple[str, int, str]]:
     """`[(relative path, line, what)]` for every `.py` under `root` outside tests/private/build and the resolver."""
     root = Path(root)
-    found: List[Tuple[str, int, str]] = []
+    found: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
         rel = path.relative_to(root).as_posix()
         parts = set(rel.split("/")[:-1])
@@ -278,4 +277,50 @@ def scan_ast_tree(root: Path, allowed=ALLOWED) -> List[Tuple[str, int, str]]:
                     found.append((rel, line, "environment read with a key that is not a plain string"))
             if isinstance(n, (ast.For, ast.comprehension)) and _is_environ(n.iter):
                 found.append((rel, line, "whole-environment scan"))
+    return sorted(set(found))
+
+
+# ================================================================================ the overlay variable (R1 step 2)
+# `factlattice/overlay.py` is the ONLY code that may know the deployment-overlay variable's name or read it (the same rule, the
+# same reasons). It is a SEPARATE scan from the registry's, on purpose: the registry resolver must not be allowed to read the
+# overlay variable, nor the overlay resolver the registry's, and one shared allow list would permit both.
+# WHAT IT FINDS, in every non-test `.py` outside the overlay resolver: the name as text; `ENV_OVERLAY` (the resolver's constant,
+# as an attribute, a name or an import); any expression that CONSTANT-FOLDS to the name (concatenation, join, f-string, `%`,
+# `format`, chr(), reversed). WHAT IT CANNOT SEE is stated in the block above (computed names, subprocesses, non-Python files).
+OVERLAY_NAME = "FACTLATTICE_OVERLAY"
+OVERLAY_FORBIDDEN_ATTRS = ("ENV_OVERLAY",)
+OVERLAY_ALLOWED = ("factlattice/overlay.py",)
+
+
+def scan_overlay_tree(root: Path, allowed=OVERLAY_ALLOWED) -> list[tuple[str, int, str]]:
+    """`[(relative path, line, what)]` for every `.py` under `root` (tests, private/, build dirs excluded) outside the overlay resolver
+    that names the overlay variable, references its constant, or builds its name."""
+    root = Path(root)
+    found: list[tuple[str, int, str]] = []
+    for path in sorted(root.rglob("*.py")):
+        rel = path.relative_to(root).as_posix()
+        parts = set(rel.split("/")[:-1])
+        if rel in allowed or parts & SKIP_DIRS or os.path.basename(rel) in SKIP_FILES \
+                or os.path.basename(rel).startswith("test_") or any(p.endswith(".egg-info") for p in parts):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if OVERLAY_NAME in text:
+            found.append((rel, 0, "names the overlay variable"))
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        env = _consts(tree)
+        for n in ast.walk(tree):
+            line = getattr(n, "lineno", 0)
+            if isinstance(n, ast.Attribute) and n.attr in OVERLAY_FORBIDDEN_ATTRS:
+                found.append((rel, line, f"reference to {n.attr}"))
+            elif isinstance(n, ast.Name) and n.id in OVERLAY_FORBIDDEN_ATTRS:
+                found.append((rel, line, f"reference to {n.id}"))
+            elif isinstance(n, ast.ImportFrom) and any(a.name in OVERLAY_FORBIDDEN_ATTRS for a in n.names):
+                found.append((rel, line, "import of a resolver constant"))
+            if isinstance(n, (ast.Constant, ast.BinOp, ast.JoinedStr, ast.Call, ast.Subscript)):
+                v = _ev(n, env)
+                if isinstance(v, str) and OVERLAY_NAME in v and OVERLAY_NAME not in text:
+                    found.append((rel, line, "evaluates to the overlay variable's name"))
     return sorted(set(found))

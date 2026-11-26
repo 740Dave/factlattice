@@ -66,27 +66,36 @@ WHAT IS SHARED WITH THE `/lts-author` SKILL
 from __future__ import annotations
 
 import errno
-import hashlib
-import json
+import functools
 import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
-
-from factlattice.authoring.edit import (
-    EditRefused,
-    add_node as _add_node,
-    remove_property as _remove_property,
-    rename_property as _rename_property,
-    repair_property as _repair_property,
-    set_property as _set_property,
-)
 
 from factlattice import ledger as _ledger
+from factlattice import rootview as _rv
+from factlattice.authoring.edit import (
+    EditRefused,
+)
+from factlattice.authoring.edit import (
+    add_node as _add_node,
+)
+from factlattice.authoring.edit import (
+    remove_property as _remove_property,
+)
+from factlattice.authoring.edit import (
+    rename_property as _rename_property,
+)
+from factlattice.authoring.edit import (
+    repair_property as _repair_property,
+)
+from factlattice.authoring.edit import (
+    set_property as _set_property,
+)
+from factlattice.registry import RegistryError as _RegistryError
+
 from . import binding as _binding
 from . import membership as _membership
-from factlattice.registry import RegistryError as _RegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -101,9 +110,9 @@ _TOOL_NAMES = ("lts_add_property", "lts_add_node", "lts_repair_property",
 _ENGINE_HEAD: list = []
 
 
-def _engine_head() -> Optional[str]:
-    """The engine build stamp, computed ONCE per process on the first write (it hashes every engine
-    .py file, ~10s of ms, so never per write). It is the build as read from disk at first write, not
+def _engine_head() -> str | None:
+    """The engine and core-package build stamp, computed ONCE per process on the first write (it hashes every engine
+    and core-package .py file, ~10s of ms, so never per write). It is the build as read from disk at first write, not
     at import; a code change after that is the sentinel's business ([MECH-BUILD-STAMP])."""
     if not _ENGINE_HEAD:
         try:
@@ -112,6 +121,121 @@ def _engine_head() -> Optional[str]:
         except Exception:  # noqa: BLE001
             _ENGINE_HEAD.append(None)
     return _ENGINE_HEAD[0]
+
+
+# --------------------------------------------------------------------------------
+# [MECH-BR-WRITES] x-inside-marked / x-healthy-file -- the refusal that sits AHEAD of every writer.
+# A write takes ONE reading of the registered roots at its start (`_membership.snapshot`: each root's last answered probe, no disk)
+# and everything in it goes through that reading. A file under a root that is not answering is refused here, before the writer's
+# serialising wrapper (`edit._serialised`: the realpath of the file, then the per-file lock, then `locate`), so a refused write
+# never waits on the lock, never takes it, and reads nothing under the root. The reply echoes no path: the file may be under a
+# private root, and the caller who sent it is owed what clears the refusal, not where the disk is.
+# --------------------------------------------------------------------------------
+def marked_refusal(view: _rv.RootView, path) -> dict | None:
+    """The `root-unresponsive` refusal if `path` lies under a marked root, else None. By the root's declared spelling and the real
+    path it last answered, as strings, FIRST; only then is the file resolved (as the writer would), and compared again. A path that
+    is not a usable string is the writer's own to refuse. This comes BEFORE anything is read, whatever the store look did: a root marked from
+    memory (declared or untrusted) refuses a file under it even when the look at the store failed. Only after it does `unconfirmed_refusal` decide
+    `membership-unconfirmed` (a root that is merely pending, or a failed look, is never `root-unresponsive`)."""
+    try:
+        path = os.fspath(path)                       # a pathlib.Path is a path
+    except TypeError:
+        return None
+    if not view.marked_count or not isinstance(path, str) or not path.strip() or "\x00" in path:
+        return None
+    from .rootstate import UNRESPONSIVE
+    only = UNRESPONSIVE if _membership._look_failed(view) else None      # a failed look: only a root that is NOT ANSWERING refuses; a pending one is `membership-unconfirmed`'s
+    under = view.marked_holding(path, only)
+    if not under:
+        try:
+            under = view.marked_holding(os.path.realpath(os.path.expanduser(path)), only)
+        except (OSError, ValueError):
+            return None
+    if not under:
+        return None
+    fix = _ledger.fix_for(_ledger.ROOT_UNRESPONSIVE)
+    exc = EditRefused(
+        "RootUnresponsive: a registered root that holds this file did not answer within the root deadline, so the write is refused "
+        "and nothing was read from the root or written. " + fix,
+        evidence={"refusal": _ledger.ROOT_UNRESPONSIVE, "fix": fix})
+    out = _fixed_code_refusal(exc, None)
+    out["error_class"] = "RootUnresponsive"
+    return out
+
+
+def verdict_pending_refusal(view: _rv.RootView, path) -> dict | None:
+    """A write under the root of a corpus that is STILL held pending for the registry's verdict after the one-deadline pending wait (`membership.await_pending`, which sets
+    `view.verdict_pending` from its fresh look): refused `corpus-verdict-pending`. Retryable, nothing written, no root marked. The true cause: this corpus's entry is one the release
+    refuses and the server is about to enter registry-error mode (`rootview.VERDICT_PENDING_WHEN` says when). It never says a root did not answer (the root did)."""
+    if not getattr(view, "verdict_pending", False):
+        return None
+    fix = _ledger.fix_for(_ledger.CORPUS_VERDICT_PENDING)
+    exc = EditRefused("CorpusVerdictPending: the registry entry of a corpus that holds this file is one the release refuses, and " + _rv.VERDICT_PENDING_WHEN + "; the write is refused until then and "
+                      "nothing was written. " + fix,
+                      evidence={"refusal": _ledger.CORPUS_VERDICT_PENDING, "fix": fix})
+    out = _fixed_code_refusal(exc, None)
+    out["error_class"] = "CorpusVerdictPending"
+    return out
+
+
+def unconfirmed_refusal(view: _rv.RootView, path, store) -> dict | None:
+    """[MECH-BR-WRITES] x-membership: evaluate this write's membership ONCE (the result is kept on the view, and the ledger record, the edge context and
+    the receipt all read it), and refuse `membership-unconfirmed` if ANY candidate root that could hold the file (by its kept real path or its declared
+    spelling, however the file was typed) did not confirm where the file lives within the root deadline, or if the evaluation failed for any reason but
+    the registry's: retryable, nothing written, the root not marked. A failure of the REGISTRY stage (a `RegistryError`, or a failure inside the roots
+    lookup, which `membership.check` marks) keeps its pinned, loud rule: the write lands under today's key, flagged (`corpora_error`). That failure is the ONE result of the write's membership
+    evaluation (kept on the view): nothing evaluates membership again in the same write, so a write that lands never carries `unconfirmed_count` above 0."""
+    try:
+        typed = os.fspath(path)
+    except TypeError:
+        return None          # not a path: the writer's own bad_argument refusal
+    if not isinstance(typed, str) or not typed.strip() or "\x00" in typed:
+        return None
+    try:
+        verdict = _membership.check(typed, store=store)
+    except Exception as exc:  # noqa: BLE001
+        if isinstance(exc, _RegistryError) or getattr(exc, "_registry_stage", False):
+            return None    # the REGISTRY stage keeps its pinned, loud rule: the write lands under today's key with `ledger roots check SKIPPED` and
+                           # `corpora_error` (test_node_change_ledger F6). Nothing else is exempt:
+        verdict = {"unconfirmed_holding": True}      # FAIL CLOSED: membership could not be evaluated, so the write cannot say where its file lives
+    if not verdict.get("unconfirmed_holding"):
+        return None
+    fix = _ledger.fix_for(_ledger.MEMBERSHIP_UNCONFIRMED)
+    exc = EditRefused("MembershipUnconfirmed: a root that could hold this file did not confirm where it lives within the root deadline, so the write is "
+                      "refused and nothing was written. " + fix,
+                      evidence={"refusal": _ledger.MEMBERSHIP_UNCONFIRMED, "fix": fix})
+    out = _fixed_code_refusal(exc, None)
+    out["error_class"] = "MembershipUnconfirmed"
+    return out
+
+
+def writes_scoped(fn):
+    """The public writers: take the call's reading of the roots unless a dispatcher already did, refuse a file under a marked root
+    BEFORE the writer starts, and install the reading for the whole call (membership, `locate` and the ledger append read it)."""
+    @functools.wraps(fn)
+    def wrapper(path, *args, **kwargs):
+        from factlattice.authoring import unread_time_guard as _utg
+        return _utg.stamp(_scoped(path, *args, **kwargs))      # the unread-time off switch shows on every receipt
+
+    def _scoped(path, *args, **kwargs):
+        if _rv.current() is not None:
+            return fn(path, *args, **kwargs)
+        view = _membership.snapshot(kwargs.get("store"))
+        try:
+            _typed = os.fspath(path)
+        except TypeError:
+            _typed = None
+        view.typed = _typed if isinstance(_typed, str) else None
+        view = _membership.await_pending(view, path, kwargs.get("store"))      # a file under a root not yet read waits for it (boot window)
+        refused = verdict_pending_refusal(view, path) or marked_refusal(view, path)
+        if refused is not None:
+            return refused
+        with _rv.use(view):
+            refused = unconfirmed_refusal(view, path, kwargs.get("store"))
+            if refused is not None:
+                return refused
+            return fn(path, *args, **kwargs)
+    return wrapper
 
 
 def _annotate(out: dict, path, store) -> dict:
@@ -124,7 +248,9 @@ def _annotate(out: dict, path, store) -> dict:
     """
     try:
         return _membership.annotate(out, path, store=store)
-    except _RegistryError as exc:
+    except Exception as exc:  # noqa: BLE001
+        if not (isinstance(exc, _RegistryError) or getattr(exc, "_registry_stage", False)):
+            raise            # only the REGISTRY stage (the first evaluation's outcome, kept for the whole write) is reported this way
         msg = (f"⚠ ROOT MEMBERSHIP UNVERIFIABLE -- {exc}. The write LANDED; the engine cannot say whether "
                "this file is inside a registered corpus root because the corpus registry does not resolve.")
         out["root_membership"] = {"path": str(path), "inside_corpus": None, "corpora": [], "roots_source": "none",
@@ -141,9 +267,11 @@ def _ledger_kw(path, store, proposer, approver, reason, via) -> dict:
     `_skipped` to put "ledger roots check SKIPPED: <error>" on the receipt ([F6])."""
     kw = dict(proposer=proposer, approver=approver, reason=reason, via=via, engine_head=_engine_head())
     try:
-        roots, _src = _membership.registered_roots(store)
-        kw["ledger_roots"] = [r for rs in roots.values() for r in rs]
-        kw["corpora"] = _membership.check(str(Path(path).expanduser().resolve()), store=store)["corpora"]
+        # the ledger takes BOTH from the write's one membership result: no second membership read in a write after its first evaluation (profile tables for an edge check are read separately), so the record
+        # can never disagree with the receipt (a failure at a later read used to leave the record corpora None beside a receipt that named the corpus)
+        verdict = _membership.check(str(Path(path).expanduser().resolve()), store=store)
+        kw["ledger_roots"] = [r for rs in verdict["roots_checked"].values() for r in rs]
+        kw["corpora"] = verdict["corpora"]
     except Exception as e:  # noqa: BLE001
         err = f"{type(e).__name__}: {e}"
         kw.update(ledger_roots=None, corpora=None, corpora_error=err, _skipped=err)
@@ -154,7 +282,7 @@ def _split_skipped(kw: dict):
     return {k: v for k, v in kw.items() if k != "_skipped"}, kw.get("_skipped")
 
 
-def _apply_ledger(out: dict, ledger: Optional[dict], skipped: Optional[str] = None) -> None:
+def _apply_ledger(out: dict, ledger: dict | None, skipped: str | None = None) -> None:
     """Put the ledger outcome on the FULL receipt (compact copies it). A failure is loud: the write
     landed, the audit record did not."""
     out["ledger"] = ledger
@@ -164,6 +292,20 @@ def _apply_ledger(out: dict, ledger: Optional[dict], skipped: Optional[str] = No
         msg = f"WRITTEN, BUT NOT LEDGERED {_ledger.describe(ledger)}"
         out["warnings"] = [msg] + list(out.get("warnings") or [])
         out["report"] = msg + "\n\n" + out["report"]
+
+def _apply_backup(out: dict, r) -> None:
+    """A write under an ephemeral root makes NO backup: `backup_path` is null and `backup` says why
+    ({"status": "skipped", "reason": "backup-skipped-ephemeral"}). ABSENT when a backup was made (the receipt is then unchanged)."""
+    if getattr(r, "backup", None):
+        out["backup"] = dict(r.backup)
+
+
+def _backup_line(r) -> str:
+    """The last line of a text receipt: the backup path, or the plain statement that none was made."""
+    if getattr(r, "backup", None) and r.backup_path is None:
+        return "no backup: the file is under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the ledger treats them), where writes are not backed up"
+    return f"backup {r.backup_path}"
+
 
 # --------------------------------------------------------------------------------
 # [AUTH-RECEIPT-COMPACT] — the compact receipt transform. A pure RESPONSE-SHAPE
@@ -176,7 +318,7 @@ _TRUNC_LEN = 300
 _CTX_MARK_RE = re.compile(r"^\s*(\d+)>\s(.*)$")
 
 
-def _normalize_receipt_mode(receipt: Optional[str]) -> str:
+def _normalize_receipt_mode(receipt: str | None) -> str:
     """Accommodate-then-default, never refuse: an unrecognised value is treated as
     `compact` (the safe, cheap default) rather than erroring a write that already
     landed. Only the literal `"full"` (case-insensitive) opts out."""
@@ -193,7 +335,7 @@ def _truncate(value):
     return value
 
 
-def _compact_root_membership(rm: Optional[dict]) -> dict:
+def _compact_root_membership(rm: dict | None) -> dict:
     """`{inside_corpus, corpora, warning}` — `warning` ALWAYS present (None when clean),
     matching the full-mode contract, so a caller never has to branch on whether the key
     exists before reading it. `roots_checked`/`roots_source` are what this drops."""
@@ -208,7 +350,7 @@ def _compact_root_membership(rm: Optional[dict]) -> dict:
     return out
 
 
-def _marked_line(context) -> tuple[Optional[int], Optional[str]]:
+def _marked_line(context) -> tuple[int | None, str | None]:
     """Pull the ONE marked line (and its 1-based number) out of an `_context` tuple —
     used where the underlying `EditResult`/`RepairResult` has no separate `line_text`
     field of its own (`add_node`)."""
@@ -236,6 +378,10 @@ def _compact_property_receipt(out: dict, *, is_repair: bool) -> dict:
         "ledger": out.get("ledger"),
         "receipt": "compact",
     }
+    if out.get("backup"):                             # ABSENT unless no backup was made (ephemeral root)
+        compact["backup"] = dict(out["backup"])
+    if out.get("membership_partial"):                 # ABSENT unless a registered root was not answering ([MECH-BR-WRITES])
+        compact["membership_partial"] = dict(out["membership_partial"])
     if is_repair:
         compact["line_before"] = out["line_before"]
         compact["line_after"] = out["line_after"]
@@ -266,6 +412,10 @@ def _compact_node_receipt(out: dict) -> dict:
         "ledger": out.get("ledger"),
         "receipt": "compact",
     }
+    if out.get("backup"):                             # ABSENT unless no backup was made (ephemeral root)
+        compact["backup"] = dict(out["backup"])
+    if out.get("membership_partial"):
+        compact["membership_partial"] = dict(out["membership_partial"])
     if out.get("created"):
         compact["created"] = True
         compact["created_parent"] = out.get("created_parent")
@@ -314,7 +464,7 @@ def _render_property_receipt(r) -> str:
     ] + [f"  {c}" for c in r.context]
     if r.warnings:
         lines += ["", "WARNINGS:"] + [f"  ⚠ {w}" for w in r.warnings]
-    lines += ["", f"backup {r.backup_path}"]
+    lines += ["", _backup_line(r)]
     return "\n".join(lines)
 
 
@@ -341,9 +491,9 @@ def _render_node_receipt(r) -> str:
     lines += ["", "IN SITU:"] + [f"  {c}" for c in r.context]
     if r.warnings:
         lines += ["", "WARNINGS:"] + [f"  ⚠ {w}" for w in r.warnings]
-    lines += ["", (f"CREATED the file" + (f" and its parent directory {r.created_parent}" if r.created_parent else "")
+    lines += ["", ("CREATED the file" + (f" and its parent directory {r.created_parent}" if r.created_parent else "")
                    + " (no backup: there was no prior file; undo of a create is not supported)")
-              if r.created else f"backup {r.backup_path}"]
+              if r.created else _backup_line(r)]
     return "\n".join(lines)
 
 
@@ -376,7 +526,7 @@ def _render_repair_receipt(r) -> str:
     ] + [f"  {c}" for c in r.context]
     if r.warnings:
         lines += ["", "WARNINGS:"] + [f"  ⚠ {w}" for w in r.warnings]
-    lines += ["", f"backup {r.backup_path}"]
+    lines += ["", _backup_line(r)]
     return "\n".join(lines)
 
 
@@ -402,11 +552,12 @@ def _refusal(exc: EditRefused, *, path, **ctx) -> dict:
     return out
 
 
+@writes_scoped
 def add_property(path: str, node_id: str, key: str, value: str, *,
                  allow_replace: bool = True, mode: str = "set", store: object = None,
-                 receipt: Optional[str] = "compact", proposer: Optional[str] = None,
-                 approver: Optional[str] = None, reason: Optional[str] = None,
-                 via: Optional[str] = None) -> dict:
+                 receipt: str | None = "compact", proposer: str | None = None,
+                 approver: str | None = None, reason: str | None = None,
+                 via: str | None = None) -> dict:
     """Add or replace ONE property on ONE node of ONE file. Arbitrary paths accepted.
 
     `mode="append"` adds one more line for a multi-valued key ([TYPED-WRITER-APPEND]).
@@ -448,6 +599,7 @@ def add_property(path: str, node_id: str, key: str, value: str, *,
     if bind["references_seen_but_not_minted"]:
         out["warnings"] = list(out["warnings"]) + [bind["binding_summary"]]
     _apply_ledger(out, r.ledger, skipped)
+    _apply_backup(out, r)
     out = _annotate(out, r.path, store)
     if rmode == "compact":
         return _compact_property_receipt(out, is_repair=False)
@@ -509,14 +661,15 @@ def _safe_exc_name(exc: BaseException) -> str:
     return n if n.isidentifier() and len(n) <= 80 else "Exception"
 
 
+@writes_scoped
 def add_node(path, node_id, title,
-             properties: Optional[dict] = None, *, section: Optional[str] = None,
-             level: Optional[int] = None, store: object = None,
-             receipt: Optional[str] = "compact", proposer: Optional[str] = None,
-             approver: Optional[str] = None, reason: Optional[str] = None,
-             via: Optional[str] = None, create: bool = False, create_parent: bool = False,
-             doc_title: Optional[str] = None, domain: Optional[str] = None,
-             doctype: Optional[str] = None) -> dict:
+             properties: dict | None = None, *, section: str | None = None,
+             level: int | None = None, store: object = None,
+             receipt: str | None = "compact", proposer: str | None = None,
+             approver: str | None = None, reason: str | None = None,
+             via: str | None = None, create: bool = False, create_parent: bool = False,
+             doc_title: str | None = None, domain: str | None = None,
+             doctype: str | None = None) -> dict:
     """The tool-layer `lts_add_node`. WITHOUT `create`/`create_parent` this is the unchanged writer.
 
     WITH either flag ([delta5]) the reply is exactly one of three TRUE things, decided at ONE observation
@@ -670,13 +823,13 @@ def _type_only(text) -> str:
 
 
 def _add_node_impl(path, node_id, title,
-             properties: Optional[dict] = None, *, section: Optional[str] = None,
-             level: Optional[int] = None, store: object = None,
-             receipt: Optional[str] = "compact", proposer: Optional[str] = None,
-             approver: Optional[str] = None, reason: Optional[str] = None,
-             via: Optional[str] = None, create: bool = False, create_parent: bool = False,
-             doc_title: Optional[str] = None, domain: Optional[str] = None,
-             doctype: Optional[str] = None, _state: Optional[dict] = None) -> dict:
+             properties: dict | None = None, *, section: str | None = None,
+             level: int | None = None, store: object = None,
+             receipt: str | None = "compact", proposer: str | None = None,
+             approver: str | None = None, reason: str | None = None,
+             via: str | None = None, create: bool = False, create_parent: bool = False,
+             doc_title: str | None = None, domain: str | None = None,
+             doctype: str | None = None, _state: dict | None = None) -> dict:
     """Append a NEW node at the end of `section`'s subtree (or the document tail).
 
     `create=True` ([A-E1]) makes the FILE too (exclusive create; frontmatter, then this node);
@@ -692,6 +845,12 @@ def _add_node_impl(path, node_id, title,
                                         evidence={"refusal": "create_argument_invalid"}),
                             path=None, node_id=None)
         path = os.fspath(path)
+    if properties is not None and not isinstance(properties, dict):
+        # `dict(["ab"])` is {"a": "b"}, and a falsy value would read as "no properties": neither is what was sent
+        return _refusal(EditRefused(
+            f"`properties` must be a mapping of key to string, not {type(properties).__name__}. Nothing written.",
+            evidence={"refusal": "bad_argument", "field": "properties", "type": type(properties).__name__}),
+            path=path, node_id=node_id)
     try:
         _lk, skipped = _split_skipped(_ledger_kw(path, store, proposer, approver, reason, via))
         r = _add_node(path, node_id, title, dict(properties or {}), section=section,
@@ -763,6 +922,7 @@ def _add_node_impl(path, node_id, title,
                 led = {"status": "unknown"}
             sk = _type_only(skipped) if skipped else skipped
         _apply_ledger(out, led, sk)
+        _apply_backup(out, r)
         out = _annotate(out, r.path, store)
         res = _compact_node_receipt(out) if mode == "compact" else out
         if create or create_parent:
@@ -782,11 +942,12 @@ def _add_node_impl(path, node_id, title,
         raise
 
 
+@writes_scoped
 def repair_property(path: str, node_id: str, line: int, key: str,
-                    value: Optional[str] = None, *, store: object = None,
-                    receipt: Optional[str] = "compact", proposer: Optional[str] = None,
-                    approver: Optional[str] = None, reason: Optional[str] = None,
-                    via: Optional[str] = None) -> dict:
+                    value: str | None = None, *, store: object = None,
+                    receipt: str | None = "compact", proposer: str | None = None,
+                    approver: str | None = None, reason: str | None = None,
+                    via: str | None = None) -> dict:
     """Rewrite ONE malformed line in place so it parses — 06 §7, the found→fixed loop.
 
     `receipt`: `"compact"` (default) or `"full"` — see [AUTH-RECEIPT-COMPACT] above."""
@@ -828,6 +989,7 @@ def repair_property(path: str, node_id: str, line: int, key: str,
     if bind["references_seen_but_not_minted"]:
         out["warnings"] = list(out["warnings"]) + [bind["binding_summary"]]
     _apply_ledger(out, r.ledger, skipped)
+    _apply_backup(out, r)
     out = _annotate(out, r.path, store)
     if mode == "compact":
         return _compact_property_receipt(out, is_repair=True)
@@ -863,7 +1025,8 @@ def _edge_context(path, store) -> tuple[list, object, str, bool, list]:
     def builtin(code):
         return [None], None, _EDGE_BUILTIN.format(code), True, []
     try:
-        corpora = _membership.check(str(Path(path).expanduser().resolve()), store=store)["corpora"]
+        verdict = _membership.check(str(Path(path).expanduser().resolve()), store=store)
+        corpora = verdict["corpora"]
         specs = _cfg.default_corpora()
     except Exception:  # noqa: BLE001 -- includes RegistryError; named, never swallowed silently
         # no registry: we cannot know whether the file belongs to a corpus WITH a profile, so this is INCOMPLETE
@@ -871,6 +1034,10 @@ def _edge_context(path, store) -> tuple[list, object, str, bool, list]:
         # resolves and lists no corpus for this file means no profile can apply, so the built-in check is complete.)
         return ([None], None, _EDGE_BUILTIN.format("registry_unavailable"), True,
                 [{"corpus": None, "code": "registry_unavailable"}])
+    if verdict.get("membership_partial"):
+        # a root is marked (or a candidate went unconfirmed, which refuses the write): which corpora hold this file is not fully known, so which profile applies is not known (B):
+        # the edge context is INCOMPLETE and a change that could be an edge key refuses, as for any other undeterminable profile
+        return ([None], None, _EDGE_BUILTIN.format("membership_partial"), True, [{"corpus": None, "code": "membership_partial"}])
     if not corpora:
         return builtin("outside_every_corpus")
     configs: list = []
@@ -922,8 +1089,8 @@ _PATH_BEARING_CODES = tuple(_PATH_BEARING_EXPLANATIONS)
 
 #: Every `edge_check` outcome code, and the subset that makes the edge context INCOMPLETE (a corpus containing the file whose
 #: profile cannot be determined, or no registry at all). Pinned against this module's literals, SPEC 4.6.6 and both tool
-#: descriptions by the rename/remove tests, the same way `edit.WRITER_REFUSAL_CODES` is.
-EDGE_INCOMPLETE_CODES = ("profile_file_missing", "profile_load_failed", "corpus_not_in_registry", "registry_unavailable")
+#: descriptions by tests/test_rename_remove_round4.py, the same way `edit.WRITER_REFUSAL_CODES` is.
+EDGE_INCOMPLETE_CODES = ("profile_file_missing", "profile_load_failed", "corpus_not_in_registry", "registry_unavailable", "membership_partial")
 EDGE_CHECK_CODES = EDGE_INCOMPLETE_CODES + ("outside_every_corpus", "corpus_registers_no_profile")
 
 
@@ -959,7 +1126,7 @@ def _writer_refusal(exc: BaseException, path, **ctx) -> dict:
                                            f"Nothing written.", evidence={"refusal": "os_error"}), path, **ctx)
 
 
-def _bad_path(path) -> Optional[dict]:
+def _bad_path(path) -> dict | None:
     if not isinstance(path, str) or not path.strip() or "\x00" in path or not _utf8_ok(path):
         return _fixed_code_refusal(EditRefused("`path` must be a non-empty string without NUL characters. Nothing written.",
                                                evidence={"refusal": "bad_argument"}), None)
@@ -994,7 +1161,7 @@ def _render_rename_receipt(r) -> str:
     lines += _render_gate_block(r) + ["", "IN SITU:"] + [f"  {c}" for c in r.context]
     if r.warnings:
         lines += ["", "WARNINGS:"] + [f"  ⚠ {w}" for w in r.warnings]
-    return "\n".join(lines + ["", f"backup {r.backup_path}"])
+    return "\n".join(lines + ["", _backup_line(r)])
 
 
 def _render_remove_receipt(r) -> str:
@@ -1004,7 +1171,7 @@ def _render_remove_receipt(r) -> str:
     lines += _render_gate_block(r) + ["", "IN SITU (the junction where the line(s) were):"] + [f"  {c}" for c in r.context]
     if r.warnings:
         lines += ["", "WARNINGS:"] + [f"  ⚠ {w}" for w in r.warnings]
-    return "\n".join(lines + ["", f"backup {r.backup_path}"])
+    return "\n".join(lines + ["", _backup_line(r)])
 
 
 def _compact_writer_receipt(out: dict, *, rename: bool) -> dict:
@@ -1019,6 +1186,10 @@ def _compact_writer_receipt(out: dict, *, rename: bool) -> dict:
         "root_membership": _compact_root_membership(out.get("root_membership")),
         "ledger": out.get("ledger"), "receipt": "compact",
     }
+    if out.get("backup"):                             # ABSENT unless no backup was made (ephemeral root)
+        compact["backup"] = dict(out["backup"])
+    if out.get("membership_partial"):
+        compact["membership_partial"] = dict(out["membership_partial"])
     if rename:
         compact.update(new_key=out["new_key"], new_key_as_authored=out["new_key_as_authored"],
                        coercions=list(out["coercions"]), line_before=out["line_before"],
@@ -1029,11 +1200,12 @@ def _compact_writer_receipt(out: dict, *, rename: bool) -> dict:
     return compact
 
 
-def rename_property(path: str, node_id: str, key: str, new_key: str, *, line: Optional[int] = None,
+@writes_scoped
+def rename_property(path: str, node_id: str, key: str, new_key: str, *, line: int | None = None,
                     allow_edge_change: bool = False, store: object = None,
-                    receipt: Optional[str] = "compact", proposer: Optional[str] = None,
-                    approver: Optional[str] = None, reason: Optional[str] = None,
-                    via: Optional[str] = None) -> dict:
+                    receipt: str | None = "compact", proposer: str | None = None,
+                    approver: str | None = None, reason: str | None = None,
+                    via: str | None = None) -> dict:
     """Rename the KEY of ONE property line on ONE node; the value is byte-for-byte untouched.
 
     `receipt`: `"compact"` (default) or `"full"` -- see [AUTH-RECEIPT-COMPACT] above. A refusal ignores it."""
@@ -1070,15 +1242,17 @@ def rename_property(path: str, node_id: str, key: str, new_key: str, *, line: Op
         "receipt": "full",
     }
     _apply_ledger(out, r.ledger, skipped)
+    _apply_backup(out, r)
     out = _annotate(out, r.path, store)
     return _compact_writer_receipt(out, rename=True) if mode == "compact" else out
 
 
-def remove_property(path: str, node_id: str, key: str, *, line: Optional[int] = None,
-                    expect_value: Optional[str] = None, allow_edge_change: bool = False,
-                    store: object = None, receipt: Optional[str] = "compact",
-                    proposer: Optional[str] = None, approver: Optional[str] = None,
-                    reason: Optional[str] = None, via: Optional[str] = None) -> dict:
+@writes_scoped
+def remove_property(path: str, node_id: str, key: str, *, line: int | None = None,
+                    expect_value: str | None = None, allow_edge_change: bool = False,
+                    store: object = None, receipt: str | None = "compact",
+                    proposer: str | None = None, approver: str | None = None,
+                    reason: str | None = None, via: str | None = None) -> dict:
     """Remove ONE property line (with exactly the wrapped tail the parser folds into its value) from ONE node.
 
     `receipt`: `"compact"` (default) or `"full"` -- see [AUTH-RECEIPT-COMPACT] above. A refusal ignores it."""
@@ -1113,6 +1287,7 @@ def remove_property(path: str, node_id: str, key: str, *, line: Optional[int] = 
         "receipt": "full",
     }
     _apply_ledger(out, r.ledger, skipped)
+    _apply_backup(out, r)
     out = _annotate(out, r.path, store)
     return _compact_writer_receipt(out, rename=False) if mode == "compact" else out
 

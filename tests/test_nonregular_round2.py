@@ -1,4 +1,4 @@
-"""Round 2 of ISSUE-NONREGULAR-MEMBER (Diamond d533ebc: F1-F4 and the P2s).
+"""Round 2 of DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS (Diamond d533ebc: F1-F4 and the P2s).
 
 F1  a failed PRIVATE corpus is never NAMED on an unnamed call (counted anonymously); named only when the caller named it.
 F2  a member that turns unreadable AFTER boot never serves FRESH (chmod, and chmod plus an edit); one bad corpus never stops
@@ -16,14 +16,11 @@ from __future__ import annotations
 import ast
 import json
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.test_nonregular_file_in_root import (BROKEN, CLEAN, GOOD, NOT_REGULAR, REPO, TIMEOUT, UNREADABLE, plant, sub_json,
-                                                sub_run)
+from tests.test_nonregular_file_in_root import BROKEN, CLEAN, GOOD, NOT_REGULAR, REPO, UNREADABLE, sub_json, sub_run
 
 DIR_UNREADABLE = "corpus-dir-unreadable"
 
@@ -340,7 +337,7 @@ import json
 from factlattice_engine import config
 from factlattice import registry
 store = config.build_store(registry.resolve_registry().corpora)
-print(json.dumps({"loaded": sorted(p.corpus_id for p in store.partitions()), "failed": store.failed_corpora}))
+print(json.dumps({"loaded": sorted(p.corpus_id for p in store.partitions()), "failed": store._failed_corpora}))
 """
 
 
@@ -401,7 +398,9 @@ _STATE = "engine-owned state file in the engine user's own state directory; plan
 _MODEL = "engine-owned model/index file under the engine user's own model directory; same trust boundary as editing the engine"
 _NAMES = "lists NAMES only and opens nothing; any member it finds is then read through list_lts_files / safe_read_text"
 FUNC_EXEMPT = {
+    ("factlattice_engine/store.py", "_root_fingerprint"): "lists .lts NAMES, lstat()s them and stat()s a symlinked member's target, to fingerprint a root-set change; opens nothing (a FIFO is stat-ed, never opened)",
     ("factlattice/authoring/edit.py", "_sweep_stale_temps"): "lists the writer's own temp directory for stale tmp NAMES; opens nothing",
+    ("factlattice/authoring/edit.py", "_prune_backups"): "lists the writer's own BACKUP directory (scratch, outside every corpus) for backup NAMES to delete; opens nothing",
     ("factlattice/authoring/edit.py", "_write"): "shutil.copy2 backs up the file the writer is about to replace; that same locked operation has already read it through safe_read_bytes, so a FIFO was refused before this point",
     ("factlattice/authoring/edit.py", "_atomic_replace"): "os.open of the file's parent DIRECTORY (O_RDONLY) to fsync it; a directory, not a member",
     ("factlattice/authoring/edit.py", "_copy_xattrs_darwin"): "libc copyfile(3) of extended attributes between the replaced file (already read through safe_read_bytes) and its temp copy",
@@ -417,10 +416,15 @@ FUNC_EXEMPT = {
     ("factlattice/profile.py", "discover_profile"): _NAMES,
     ("factlattice/profile.py", "_read_profile_file"): "opens a .yaml/.json profile (the .lts branch goes through parse_file); the operator-configured profile file, not corpus content",
     ("factlattice/enumeration_gap.py", "control_corpus_text"): "reads the SHIPPED selfcheck control file inside the engine's own package directory",
-    ("factlattice/ledger.py", "read_lines"): _STATE,
-    ("factlattice/registry.py", "read_registry_file"): "reads the registry JSON the operator configured (REGISTRY-SINGLE-READER); the operator's own file, read once at boot",
+    ("factlattice_engine/rootstate.py", "_posixpath_realpath_lines"): "reads the running interpreter's OWN posixpath.py at import, to compare it with the engine's copy of realpath; a standard-library source file, not a corpus file",
+    ("factlattice_engine/rootstate.py", "_copy_lines_without_hooks"): "reads the engine's OWN module file (rootstate.py) at import, for the same comparison; not a corpus file",
+    ("factlattice/ledger.py", "read_sources"): _STATE,
+    ("factlattice/ledger.py", "read_blob"): _STATE,
+    ("factlattice/ledger.py", "read_marker"): "reads the marker of a state location the registry declares, which the operator configured; bounded to 4 KiB, JSON or nothing",
+    ("factlattice/ledger.py", "append"): "reads the tail of a legacy ledger it chains onto, in the engine's own state folder",
+    ("factlattice/registry.py", "_read_raw"): "reads the registry JSON the operator configured (REGISTRY-SINGLE-READER); the operator's own file, read once at boot",
     ("factlattice/registry.py", "_read_pointer"): "reads the per-user pointer file in the user's own config directory",
-    ("factlattice_engine/build_stamp.py", "build_stamp"): "walks and reads the engine's OWN code tree to stamp the build",
+    ("factlattice_engine/build_stamp.py", "_source_records"): "walks and reads the engine's OWN code tree and the core package's code tree to stamp the build",
     ("factlattice_engine/build_stamp.py", "sweep_stale_carry"): "lists the engine's own carry directory NAMES",
     ("factlattice_engine/callcli.py", "_load_args"): "reads the --args-file JSON the invoking user gave on their own command line; not corpus content, and a block there stalls only that user's own process",
     ("factlattice_engine/freshness.py", "main"): "reads the graph_index.json argument of the freshness CLI (JSON, not a corpus member); the corpus itself is read through files_hash",
@@ -430,7 +434,6 @@ FUNC_EXEMPT = {
     ("factlattice_engine/selfcheck/__init__.py", "compute_control_digest"): "reads the SHIPPED control corpus inside the engine's own package directory",
     ("factlattice_engine/selfcheck/__init__.py", "run_selfcheck"): "reads the SHIPPED expected-results file inside the engine's own package directory",
     ("factlattice_engine/semantic/embedd.py", "_mcp_install_env"): "reads the operator's own MCP config JSON while installing the embedder service (an install-time CLI, not a query path)",
-    ("factlattice_engine/semantic/embedd.py", "_legacy_agents"): "lists and reads earlier-release embedder plists in the user's own LaunchAgents directory (install-time CLI, no corpus file). It opens O_NOFOLLOW|O_NONBLOCK and fstat-checks S_ISREG before reading, so a FIFO or symlink is reported, never read (tests/test_semantic_embedd_always_on.py::test_mig10 and test_mig8)",
     ("factlattice_engine/semantic/embedd.py", "launchagent"): "reads the LaunchAgent plist this installer wrote in the user's own LaunchAgents directory",
     ("factlattice_engine/semantic/embedd.py", "pidfiles"): "lists pid-file NAMES in the embedder run directory; opens nothing",
     ("factlattice_engine/semantic/embedd.py", "source_fingerprint"): "hashes the engine's OWN source files to fingerprint the embedder",
@@ -558,3 +561,29 @@ def test_the_sdlc_row_is_a_rule_for_future_readers_and_fanouts():
     for needle in ("safe_read_text", "walk_lts_paths", "failed_corpora", "private-corpus-failed", "TRIPWIRE", "every fan-out"):
         assert needle in row, needle
     assert "NOTHING skips a member-shaped file silently" not in row            # the overclaim the Diamond found
+
+
+def test_tripwire_still_fires_on_a_raw_corpus_read_planted_in_rootstate(tmp_path):
+    """The two import-time reads in rootstate are exempted BY FUNCTION NAME with a reason; a raw corpus read added to any OTHER function of the same file
+    still fires. (Inside the two exempt functions it would not: the price of per-function granularity, stated in the tripwire's docstring.)"""
+    import shutil
+    for d in SCAN_DIRS:
+        shutil.copytree(REPO / d, tmp_path / d, ignore=shutil.ignore_patterns("__pycache__"))
+    assert _unexempt(tmp_path) == [], "control: the copied tree is clean"
+    rs = tmp_path / "factlattice_engine" / "rootstate.py"
+    rs.write_text(rs.read_text(encoding="utf-8") + "\n\ndef _planted(root):\n    return open(root + '/x.lts')\n", encoding="utf-8")
+    found = _unexempt(tmp_path)
+    assert any("rootstate.py" in f and "open(read)" in f and "_planted" in f for f in found), found
+
+
+def test_func_exempt_matches_the_file_and_the_function_never_the_function_name_alone(tmp_path):
+    """P3-4. The exemption of rootstate's two import-time reads is by (file, function). A raw read in a function of the SAME NAME in any other file still
+    fires, so the exemption cannot widen to a function name alone."""
+    import shutil
+    for d in SCAN_DIRS:
+        shutil.copytree(REPO / d, tmp_path / d, ignore=shutil.ignore_patterns("__pycache__"))
+    assert _unexempt(tmp_path) == []
+    (tmp_path / "factlattice" / "elsewhere.py").write_text(
+        "def _posixpath_realpath_lines():\n    return open('x.lts').read()\n\ndef _copy_lines_without_hooks():\n    return open('y.lts').read()\n", encoding="utf-8")
+    found = _unexempt(tmp_path)
+    assert sum("elsewhere.py" in f and "open(read)" in f for f in found) == 2, found

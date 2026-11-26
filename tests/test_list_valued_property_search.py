@@ -1,7 +1,7 @@
 """A repeated key parses to a LIST (parser._maybe_multivalue) and every search path used to SKIP it.
 
-MEASURED 2026-10-03 (a corpus editor, acme-docs): node CONJECTURE-ACME-UPLOAD-FILE-PATH has
-two `- alias:` lines. `lts_find(text="CONJECTURE-UPLOAD-1")` returned 0 — the FIRST alias value
+MEASURED 2026-10-03 (a corpus editor, acme-docs): node CONJECTURE-KEYLESS-ENROLL-IMAGE-PATH has
+two `- alias:` lines. `lts_find(text="CONJECTURE-ENROLL-1")` returned 0 — the FIRST alias value
 too — while a single-line alias on a neighbour was found; `lts_find_in_prose` called the hit
 `body-only`. The parser kept every value (see test_parser_keeps_every_repeated_value); the QUERY
 layer dropped them: `_structure_hit_in` read `isinstance(v, str)` only, and the semantic head card

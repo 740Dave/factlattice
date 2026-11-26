@@ -2,9 +2,7 @@
 F2 a registered corpus root must not be ephemeral; F3/F6 doc wording."""
 from __future__ import annotations
 
-import json
 import os
-import stat
 from pathlib import Path
 
 import pytest

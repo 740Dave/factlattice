@@ -70,7 +70,8 @@ walk already holds.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 
 # --- the tier vocabulary -------------------------------------------------------
 TIER_DIGEST = "digest"
@@ -134,7 +135,7 @@ class TierError(Exception):
         self.payload = payload
 
 
-def resolve_tier(value: Any) -> Optional[str]:
+def resolve_tier(value: Any) -> str | None:
     """Normalize the `tier` argument. `None` means LEGACY — do not change behaviour.
 
     Absent/empty -> None, and every legacy caller lands here: the tools branch on
@@ -158,8 +159,8 @@ def resolve_tier(value: Any) -> Optional[str]:
 
 # --- the digest row ------------------------------------------------------------
 def digest_row(node: dict, *, edge_count: int = 0,
-               date_property: Optional[str] = None,
-               corpus: Optional[str] = None) -> dict:
+               date_property: str | None = None,
+               corpus: str | None = None) -> dict:
     """ONE digest row: exactly `DIGEST_FIELDS` (+ `corpus` when addressing needs it).
 
     Reads only index-stamped metadata. The single property-bag read is the timestamp,
@@ -189,17 +190,17 @@ def digest_row(node: dict, *, edge_count: int = 0,
 
 
 def digest_rows(nodes: Sequence[dict], *,
-                edge_count_fn: Optional[Callable[[dict], int]] = None,
-                date_property: Optional[str] = None,
-                corpus_fn: Optional[Callable[[dict], Optional[str]]] = None,
-                ) -> List[dict]:
+                edge_count_fn: Callable[[dict], int] | None = None,
+                date_property: str | None = None,
+                corpus_fn: Callable[[dict], str | None] | None = None,
+                ) -> list[dict]:
     """Digest a whole result set — ALL of it. There is no offset and no budget here.
 
     Completeness is the tier's whole claim, so this function has no mechanism by which
     it could return a subset: the ceiling check that guards it (`assert_digestable`)
     RAISES, it does not trim.
     """
-    out: List[dict] = []
+    out: list[dict] = []
     for n in nodes:
         ec = edge_count_fn(n) if edge_count_fn is not None else 0
         cid = corpus_fn(n) if corpus_fn is not None else None
@@ -261,7 +262,7 @@ def assert_full_fits(items: Sequence[Any], budget: int, *,
     return cost
 
 
-def incident_degree_fn(fwd_adj: Dict[str, Iterable], rev_adj: Dict[str, Iterable]
+def incident_degree_fn(fwd_adj: dict[str, Iterable], rev_adj: dict[str, Iterable]
                        ) -> Callable[[dict], int]:
     """`edge_count` = a node's DEDUPED incident degree in its corpus (fwd + rev).
 

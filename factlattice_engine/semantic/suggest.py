@@ -19,7 +19,6 @@ import os
 import sys
 import threading
 import time
-from typing import Dict, List, Optional, Tuple
 
 from ..caution import caution_for
 from . import cards as C
@@ -71,8 +70,8 @@ def high_label_enabled() -> bool:
     return v == "on"
 
 
-def top_label(bm25_top: Optional[str], emb: List[Tuple[str, float]], fused_top: Optional[str],
-              unknown: List[str], margin: float = HIGH_MARGIN) -> str:
+def top_label(bm25_top: str | None, emb: list[tuple[str, float]], fused_top: str | None,
+              unknown: list[str], margin: float = HIGH_MARGIN) -> str:
     if not emb or fused_top is None or bm25_top is None or unknown:
         return "medium"
     if not (bm25_top == emb[0][0] == fused_top):
@@ -81,7 +80,7 @@ def top_label(bm25_top: Optional[str], emb: List[Tuple[str, float]], fused_top: 
     return "high" if m >= margin else "medium"
 
 
-def _evidence(cards: List[Tuple[str, str]], matched: List[str], width: int = 220) -> str:
+def _evidence(cards: list[tuple[str, str]], matched: list[str], width: int = 220) -> str:
     """The card text with the most matched terms, clipped around the first match."""
     from .lexrank import tokens
     def body(kind, text):
@@ -129,7 +128,7 @@ def _live_reason(code: str, detail: str) -> dict:
     return {"reason": code, "live_detail": detail, "live_detail_note": LIVE_DETAIL_NOTE}
 
 
-def _unavailable_reason(ex: "SemanticUnavailable") -> dict:
+def _unavailable_reason(ex: SemanticUnavailable) -> dict:
     return _live_reason(_code(ex.status), str(ex.detail))
 
 
@@ -137,9 +136,9 @@ class SemanticService:
     """One per engine process. Holds the (lazily loaded) embedder, a per-corpus card/BM25 cache
     keyed on the partition's freshness key, and a single bounded background index worker."""
 
-    def __init__(self, state_root: Optional[str] = None, model_root: Optional[str] = None,
-                 pin: Optional[ModelPin] = None, build_mode: str = "background",
-                 sync_topup_limit: Optional[int] = None, retry_after_s: float = 300.0,
+    def __init__(self, state_root: str | None = None, model_root: str | None = None,
+                 pin: ModelPin | None = None, build_mode: str = "background",
+                 sync_topup_limit: int | None = None, retry_after_s: float = 300.0,
                  cache_max: int = 8):
         self.state_root = state_root or os.environ.get("LTS_ENGINE_STATE_DIR") or os.path.expanduser("~/.lts-engine")
         self.model_root = model_root
@@ -148,16 +147,16 @@ class SemanticService:
         # None = follow LTS_SEMANTIC_SYNC_TOPUP_LIMIT per call; an explicit value wins (tests, CLI)
         self.build_mode, self.sync_topup_limit = build_mode, sync_topup_limit
         self._embedder = None
-        self._unavailable: Optional[SemanticUnavailable] = None
+        self._unavailable: SemanticUnavailable | None = None
         from collections import OrderedDict
         self.cache_max = cache_max           # [composition F-G1] per-corpus caches are LRU-bounded
-        self._corpus: "OrderedDict[str, dict]" = OrderedDict()
+        self._corpus: OrderedDict[str, dict] = OrderedDict()
         self._lock = threading.Lock()
-        self._worker: Optional[threading.Thread] = None
-        self._queue: Dict[str, object] = {}
-        self._current: Optional[str] = None
-        self._failed: Dict[str, Tuple[float, str]] = {}   # corpus -> (when, reason)  [review F6]
-        self._indexes: "OrderedDict[str, SemanticIndex]" = OrderedDict()
+        self._worker: threading.Thread | None = None
+        self._queue: dict[str, object] = {}
+        self._current: str | None = None
+        self._failed: dict[str, tuple[float, str]] = {}   # corpus -> (when, reason)  [review F6]
+        self._indexes: OrderedDict[str, SemanticIndex] = OrderedDict()
         self.retry_after_s = retry_after_s
 
     # --- model -------------------------------------------------------------------------
@@ -188,10 +187,11 @@ class SemanticService:
 
     def _state(self, part) -> dict:
         key = part._freshness_key()
+        nodes = part.nodes          # ONE read: the cards are built from, and the state is served only for, this object
         st = self._corpus.get(part.corpus_id)
-        if st is None or st["key"] != key:
-            cards = partition_cards(part)
-            st = {"key": key, "cards": cards, "lex": LexRank(cards),
+        if st is None or st["key"] != key or st["nodes"] is not nodes:
+            cards = partition_cards(part, nodes)
+            st = {"key": key, "nodes": nodes, "cards": cards, "lex": LexRank(cards),
                   "fps": {n: C.card_fingerprint(c) for n, c in cards.items()}}
         self._corpus[part.corpus_id] = st
         self._corpus.move_to_end(part.corpus_id)
@@ -253,7 +253,7 @@ class SemanticService:
         with self._lock:
             return corpus_id in self._queue or self._current == corpus_id
 
-    def _ensure(self, part, st) -> Tuple[Optional[SemanticIndex], dict]:
+    def _ensure(self, part, st) -> tuple[SemanticIndex | None, dict]:
         """Returns (index or None, info). info: status, index_fresh, nodes_unembedded_stale,
         embedded_on_query."""
         idx = self._index(part.corpus_id)
@@ -287,7 +287,9 @@ class SemanticService:
                                                  f"could not start the index worker: {type(sx).__name__}: {sx}")}
             return None, {**info, "status": "index_building", "index_fresh": False,
                           **_live_reason(_code(ex.status), "building the semantic index for this corpus "
-                                                           "in the background; ask again shortly")}
+                                                           "in the background, so suggestions are not ready yet; ask again "
+                                                           "shortly for them. Exact matching does not use this index: the "
+                                                           "exact result in this reply is not waiting on it")}
         changed = sum(1 for n, fp in st["fps"].items() if fps_old.get(n) != fp) + \
             sum(1 for n in fps_old if n not in st["fps"])
         if changed == 0:
@@ -338,7 +340,7 @@ class SemanticService:
         hits = idx.search(qv, DEPTH * 4)
         emb = [(n, s) for n, s, _v in hits if ok(n)][:DEPTH]
         via = {n: v for n, _s, v in hits}
-        fused: Dict[str, float] = {}
+        fused: dict[str, float] = {}
         for ranked in (bm, emb):
             for r, (n, _s) in enumerate(ranked):
                 fused[n] = fused.get(n, 0.0) + 1.0 / (RRF_K + r + 1)

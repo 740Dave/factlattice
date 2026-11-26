@@ -11,7 +11,6 @@ where it cannot (then pinned as a marker sentence in the definition AND the proc
 """
 from __future__ import annotations
 
-from tests._shapes import j as _j
 import json
 import os
 import re
@@ -21,6 +20,7 @@ import pytest
 
 from factlattice_engine import reviewer
 from factlattice_engine.tools import dispatch
+from tests._shapes import j as _j
 from tests.test_reviewer_cli import cli as _cli  # noqa: E402
 from tests.test_reviewer_resolve_output import _site  # noqa: E402
 
@@ -53,7 +53,7 @@ def zs(tmp_path):
 
 
 def _route(zs, doc):
-    return reviewer.resolve_output("zc", str(doc), zs["spec"], None, zs["site"])
+    return reviewer.resolve_output("zc", str(doc), zs["spec"], None, zs["site"], all_corpora={})
 
 
 @pytest.mark.parametrize("sub", ["VaultSvc", "VAULTSVC", "vaultsvc", "VaultAuth", "vaultauth"])
@@ -86,14 +86,14 @@ def test_nfc_and_nfd_spellings_hit_the_override(zs):
                  corpora="zc")
     (zs["corpus"] / pre_nfd).mkdir()
     for doc in (zs["corpus"] / pre_nfd / "d.lts", zs["corpus"] / pre_nfc / "d.lts"):
-        assert reviewer.resolve_output("zc", str(doc), zs["spec"], None, site).rule_used == "override"
+        assert reviewer.resolve_output("zc", str(doc), zs["spec"], None, site, all_corpora={}).rule_used == "override"
     site2 = _site(overrides=[f"zc:{pre_nfd}/ -> {zs['tmp'] / 'out' / 'restricted'}"], default=str(zs["tmp"] / "out" / "general"),
                   corpora="zc")
-    assert reviewer.resolve_output("zc", str(zs["corpus"] / pre_nfc / "d.lts"), zs["spec"], None, site2).rule_used == "override"
+    assert reviewer.resolve_output("zc", str(zs["corpus"] / pre_nfc / "d.lts"), zs["spec"], None, site2, all_corpora={}).rule_used == "override"
 
 
 def test_the_corpus_id_is_still_compared_exactly(zs):
-    r = reviewer.resolve_output("ZC", str(zs["corpus"] / "vaultsvc" / "d.lts"), zs["spec"], None, zs["site"])
+    r = reviewer.resolve_output("ZC", str(zs["corpus"] / "vaultsvc" / "d.lts"), zs["spec"], None, zs["site"], all_corpora={})
     assert r.rule_used == "no-output-root"      # a different corpus id is a different corpus: no override, not on the default list
 
 
@@ -332,7 +332,8 @@ def test_frame_command_on_a_real_corpus(tmp_path):
 
 
 def _cli_reg(tmp_path, reg, *args):
-    import subprocess, sys
+    import subprocess
+    import sys
     st = tmp_path / "cli-state2"
     st.mkdir(exist_ok=True)
     env = {**os.environ, "PYTHONPATH": os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -543,7 +544,6 @@ def test_every_reviewer_command_is_read_only_and_has_its_documented_exit(tmp_pat
 
 
 def test_the_verdict_command_applies_the_node_ceiling_and_counts_what_is_written():
-    import subprocess, sys
     fs = [{"rule": "c:REVRULE-GEN-4", "severity": "info"} for _ in range(300)] + [{"rule": "c:REVRULE-GEN-3", "severity": "major"}]
     out = reviewer.decide_verdict(fs, [])
     assert out["verdict"] == "fail"

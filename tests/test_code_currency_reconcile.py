@@ -36,8 +36,6 @@ import time
 
 import pytest
 
-
-
 import factlattice as _fl
 import factlattice_engine as _fe
 
@@ -99,7 +97,7 @@ class _LiveServer:
 
     `rpc()` is DEADLINE-BOUNDED: stdout is drained by a reader thread into a queue, so a
     reply that never arrives FAILS (naming the request id and the wait) instead of blocking
-    `readline()` forever. Defect ISSUE-UNBOUNDED-READ: under CPU
+    `readline()` forever. Defect LTS-CODE-RECONCILE-TEST-UNBOUNDED-READ: under CPU
     contention the old unbounded read hung the suite for 13 min, and the test's own 25 s
     deadline loop never regained control. On failure the child is killed — no orphan.
     """
@@ -118,7 +116,7 @@ class _LiveServer:
             cwd=str(tmp_engine_root), env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
-        self._replies: "queue.Queue" = queue.Queue()
+        self._replies: queue.Queue = queue.Queue()
         self.stderr_lines: list = []
         threading.Thread(target=self._pump, daemon=True).start()
         threading.Thread(target=lambda: [self.stderr_lines.append(l) for l in
@@ -290,7 +288,7 @@ def engine_sandbox(tmp_path):
 # ------------------------------------- (e2) a request must not be consumed before the lock
 
 def test_request_is_not_consumed_from_the_pipe_while_a_reconcile_holds_the_lock(monkeypatch):
-    """DEFECT (2) of ISSUE-UNBOUNDED-READ, deterministic form.
+    """DEFECT (2) of LTS-CODE-RECONCILE-TEST-UNBOUNDED-READ, deterministic form.
 
     The reconcile re-exec runs while holding SERVING_LOCK. If `serve()` has already READ a
     request off the pipe when that exec lands, the request is destroyed with the process
@@ -300,6 +298,7 @@ def test_request_is_not_consumed_from_the_pipe_while_a_reconcile_holds_the_lock(
     """
     import io
     import select
+
     from factlattice_engine import server as srv_mod
     from factlattice_engine.build_stamp import SERVING_LOCK
 
@@ -829,15 +828,32 @@ def test_serve_sweeps_stale_carry_at_startup(carry_env, monkeypatch):
 def test_the_inherited_carry_is_taken_before_the_sentinel_thread_starts(monkeypatch):
     """Structural order assertion (P2-3): a reconcile firing between build_tools() (which starts
     the sentinel) and the first read would see an empty carry and discard the inherited one."""
-    from factlattice_engine import server as srv_mod, build_stamp as bs
+    from factlattice_engine import build_stamp as bs
+    from factlattice_engine import server as srv_mod
     order = []
     real_take, real_tools = bs.take_inherited_stdin_carry, srv_mod.build_tools
     monkeypatch.setattr(bs, "take_inherited_stdin_carry",
                         lambda: (order.append("take"), real_take())[1])
     monkeypatch.setattr(srv_mod, "build_tools",
-                        lambda: (order.append("tools"), real_tools())[1])
+                        lambda **kw: (order.append("tools"), real_tools(**kw))[1])      # serve() boots with async_boot=True (slice 4)
     r, w = os.pipe()
     monkeypatch.setattr(sys, "stdin", os.fdopen(r, "r", encoding="utf-8"))
     os.close(w)                                   # immediate EOF
     srv_mod.serve(stdout=__import__("io").StringIO())
     assert order[:2] == ["take", "tools"], order
+
+
+def test_a_live_server_reexecs_on_a_change_only_under_the_core_package(engine_sandbox):
+    """The sentinel's stamp covers `factlattice/` too: an edit that touches ONLY the core
+    package (nothing under `factlattice_engine/`) makes the running server re-exec."""
+    srv = _LiveServer(engine_sandbox)
+    try:
+        srv.rpc({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}, timeout=30)
+        pid_before = srv.proc.pid
+        with open(engine_sandbox / "factlattice" / "parser.py", "a") as fh:
+            fh.write("\n# a change only under the core package\n")
+        _wait_reexecs(srv, 1, timeout=30)
+        after = srv.rpc({"jsonrpc": "2.0", "id": 2, "method": "initialize", "params": {}}, timeout=30)
+        assert after["id"] == 2 and srv.proc.pid == pid_before
+    finally:
+        srv.close()

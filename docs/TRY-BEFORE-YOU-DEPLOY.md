@@ -3,8 +3,8 @@
 You have downloaded FactLattice and want to know it works on your machine **before** you wire its
 MCP server into anything. This page takes about ten minutes. You will run the engine's own
 self-check, lint one shipped example file, see what a failure looks like, and learn how to tell
-which registry and build you are talking to. No MCP connection and no configuration file; the
-one third-party package, pydantic, is installed with the engine (`pip install .`).
+which registry and build you are talking to. No MCP connection, no configuration file, no
+third-party packages.
 
 Everything below goes through one command, `python3 -m factlattice_engine call <tool>`. It runs
 the tool through the same dispatch the MCP server uses, so what you see here is what an agent
@@ -12,7 +12,7 @@ would see through the server, for the same inputs, registry and build.
 
 ## What you need
 
-- Python 3.9 or newer, the project's declared minimum (`python3 --version`; this page was run on 3.13).
+- Python 3.11 or newer, the project's declared minimum (`python3 --version`; this page was run on 3.13). The parser has no dependencies; the server and the typed writers need pydantic, and every command on this page runs the engine, so install it first (`python3 -m pip install pydantic`, or install this package, which brings it in).
 - This repository, checked out. Run every command from its top directory (the one holding
   `SPEC.md` and `factlattice_engine/`).
 - **No corpus registry configured**, which is the normal state of a fresh download: the variable

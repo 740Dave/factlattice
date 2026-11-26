@@ -46,7 +46,7 @@ def _write_corpus(root, extra=""):
     (root / "00-c.lts").write_text(
         "# Corpus [DOC-C]\n\n"
         "## Hello world node [N-1]\n\n- status: active\n- what: hello world\n\nhello world prose\n\n"
-        "## Tile map node [N-2]\n\n- what: tile map version field\n\ntile map prose\n\n"
+        "## Zero map node [N-2]\n\n- what: zero map version field\n\nzero map prose\n\n"
         "## Version field node [N-3]\n\n- what: version field\n" + extra, encoding="utf-8")
 
 
@@ -81,11 +81,11 @@ def test_an_edited_node_reembeds_exactly_its_own_cards(env):
     idx = I.SemanticIndex(str(tmp / "state"), "c", emb)
     idx.refresh(_part(tmp))
     p = tmp / "corpus" / "00-c.lts"
-    p.write_text(p.read_text().replace("tile map prose", "tile map prose, edited"), encoding="utf-8")
+    p.write_text(p.read_text().replace("zero map prose", "zero map prose, edited"), encoding="utf-8")
     before = emb.texts
     s = idx.refresh(_part(tmp))
     assert s["embedded_nodes"] == 1 and s["unchanged_nodes"] == 3, s
-    n2_cards = len(C.node_cards("N-2", _part(tmp).nodes["N-2"], ["tile map prose, edited"]))
+    n2_cards = len(C.node_cards("N-2", _part(tmp).nodes["N-2"], ["zero map prose, edited"]))
     assert emb.texts - before == n2_cards
 
 
@@ -106,7 +106,7 @@ def test_search_returns_one_row_per_node_best_first(env):
     tmp, emb = env
     idx = I.SemanticIndex(str(tmp / "state"), "c", emb)
     idx.refresh(_part(tmp))
-    hits = idx.search(emb.embed(["tile map version"], query=True)[0], 10)
+    hits = idx.search(emb.embed(["zero map version"], query=True)[0], 10)
     ids = [n for n, _s, _v in hits]
     assert len(ids) == len(set(ids)) and set(ids) <= {"DOC-C", "N-1", "N-2", "N-3"}
     assert [s for _n, s, _v in hits] == sorted([s for _n, s, _v in hits], reverse=True)

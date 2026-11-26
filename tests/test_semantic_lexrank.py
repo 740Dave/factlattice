@@ -40,10 +40,10 @@ def test_head_outranks_an_incidental_body_mention_and_ties_break_by_id():
 
 
 def test_matched_unmatched_terms_and_corpus_knowledge():
-    r = L.LexRank({"N": [("head", "tile map version field")], "M": [("head", "other")]})
-    m, u = r.term_coverage("tile map smart tv", "N")
-    assert m == ["map", "tile"] and u == ["smart", "tv"]
-    assert r.unknown_terms("tile map smart tv") == ["smart", "tv"]
+    r = L.LexRank({"N": [("head", "zero map version field")], "M": [("head", "other")]})
+    m, u = r.term_coverage("zero map smart tv", "N")
+    assert m == ["map", "zero"] and u == ["smart", "tv"]
+    assert r.unknown_terms("zero map smart tv") == ["smart", "tv"]
     assert r.search("nothing matches here at all", 5) == []
 
 

@@ -86,7 +86,7 @@ def props(f):
 def ghost_store(w, cid="ghost"):
     root = str(w / "shared")
     part = SimpleNamespace(corpus_id=cid, root_paths=[root])
-    return SimpleNamespace(partitions=lambda: [part])
+    return SimpleNamespace(partitions=lambda: [part], snapshot_all=lambda: ([part], {}, {}, {}))
 
 
 # ============================================================================ F-B: two corpora, both valid
@@ -192,3 +192,38 @@ def test_the_descriptions_state_the_fail_closed_rule_and_the_no_warning_exceptio
         if t["name"] in ("lts_rename_property", "lts_remove_property"):
             d = t["description"]
             assert "edge-context-incomplete" in d and "corpus_not_in_registry" in d and "except for `corpus_registers_no_profile`" in d
+
+
+# ============================================================================ round 8 (F1, F5): a look that raises refuses; one look per write
+def _counting_ghost(w, raise_from):
+    """The ghost store whose `snapshot_all` raises from its Nth call on (N = raise_from), and counts its calls."""
+    base = ghost_store(w)
+    calls = []
+
+    def snapshot_all():
+        calls.append(1)
+        if len(calls) >= raise_from:
+            raise RuntimeError("the store's look exploded")
+        return base.snapshot_all()
+    return SimpleNamespace(partitions=base.partitions, snapshot_all=snapshot_all), calls
+
+
+@pytest.mark.parametrize("tool", ["remove", "rename"])
+@pytest.mark.parametrize("raise_from", [1, 2, 3])
+def test_a_look_that_raises_refuses_membership_unconfirmed_and_a_write_takes_exactly_one_look(w, monkeypatch, tool, raise_from):
+    """F1 and F5 (MECH-BR-WRITES D and A). A seated corpus absent from the registry, and a store whose look raises from its 1st, 2nd or 3rd call on.
+    From the 1st: the edit is REFUSED `membership-unconfirmed` and nothing is written (before: it landed as "outside_every_corpus"). From the 2nd and
+    3rd: the write never makes that call, because it takes exactly ONE look (before: 3), so the outcome is the control's
+    (`edge-context-incomplete`). Red on 2ef8895 for the 1st (written) and the 2nd (written)."""
+    f = setup_registry(w, monkeypatch, {"other": None})
+    before = f.read_text(encoding="utf-8")
+    store, calls = _counting_ghost(w, raise_from)
+    extra = {"new_key": "xref2"} if tool == "rename" else {}
+    out = call(tool, f, store=store, key="xref", **extra)
+    assert f.read_text(encoding="utf-8") == before, "nothing may be written"
+    assert out["refused"] is True
+    if raise_from == 1:
+        assert out["reason"] == "membership-unconfirmed" or out["evidence"]["refusal"] == "membership-unconfirmed", out
+    else:
+        assert out["evidence"]["refusal"] == "edge-context-incomplete" and {"corpus": "ghost", "code": "corpus_not_in_registry"} in out["evidence"]["corpora"], out
+    assert len(calls) == 1, f"a write takes ONE look at the store, not {len(calls)}"

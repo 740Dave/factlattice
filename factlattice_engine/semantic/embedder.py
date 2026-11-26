@@ -1,6 +1,6 @@
 """[SEM-EMBEDDER] The offline, hash-pinned sentence embedder behind lts-engine's semantic assist.
 
-Contract (ISSUE-SEMANTIC-DESIGN honesty rules 4, 7, 8):
+Contract (LTS-SEMANTIC-QUERY-DESIGN-AND-BUILD-MODEL honesty rules 4, 7, 8):
   * Weights load ONLY from `<model_root>/<repo with "/" -> "__">/<revision>/`, and only if
     `onnx/model.onnx` AND `vocab.txt` match their sha256 pins. A mismatch is REFUSED
     (`pin_mismatch`): a drifted model is never mixed with an index built by another.
@@ -20,7 +20,6 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from .tokenizer import WordPieceTokenizer
 
@@ -54,7 +53,7 @@ class ModelPin:
 
 # The S0 bake-off candidates, pinned at staging (2026-10-02, ~/.lts-engine/models/manifest.tsv).
 _VOCAB = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
-PINS: Dict[str, ModelPin] = {p.name: p for p in (
+PINS: dict[str, ModelPin] = {p.name: p for p in (
     ModelPin("bge-small", "BAAI/bge-small-en-v1.5", "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
              "828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35", _VOCAB,
              "cls", BGE_QUERY, "", 384),
@@ -100,7 +99,7 @@ class Embedder:
         outs = [o.name for o in session.get_outputs()]
         self._out = "token_embeddings" if "token_embeddings" in outs else outs[0]
 
-    def plan(self, texts: List[str], query: bool, batch: int = 32):
+    def plan(self, texts: list[str], query: bool, batch: int = 32):
         """The exact batches embed() runs, as [(row indices, input_ids, attention_mask)]:
         texts sorted by token length (ties by position), cut into `batch`-sized groups, each
         padded to its own longest member. [MECH-SEMANTIC-EMBEDD] The shared service runs this
@@ -136,14 +135,14 @@ class Embedder:
         vec = vec / np.maximum(np.linalg.norm(vec, axis=1, keepdims=True), 1e-12)
         return vec.astype(np.float32)
 
-    def embed(self, texts: List[str], query: bool, batch: int = 32):
+    def embed(self, texts: list[str], query: bool, batch: int = 32):
         out = self._np.zeros((len(texts), self.pin.dim), dtype=self._np.float32)
         for idx, ids, mask in self.plan(texts, query, batch):
             out[idx] = self.run_batch(ids, mask)
         return out
 
 
-def load_embedder(pin: ModelPin, model_root: Optional[str] = None, max_len: int = 512) -> Embedder:
+def load_embedder(pin: ModelPin, model_root: str | None = None, max_len: int = 512) -> Embedder:
     """Verify both pins, then load on CPU. Raises SemanticUnavailable, never anything else."""
     try:
         ort = _import_runtime()

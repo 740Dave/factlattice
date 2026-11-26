@@ -246,23 +246,23 @@ def _refusals(plant):
     from factlattice_engine.reviewer import Override, SiteConfig, resolve_output
     out = []
     # ambiguous: found names
-    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig.ambiguous([f"{plant}-a:X", f"{plant}-b:X"])))
+    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig.ambiguous([f"{plant}-a:X", f"{plant}-b:X"]), all_corpora={}))
     # relative default root, then an absolute root inside the corpus, then conflicting overrides
-    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig("ok", "ref", f"{plant}/relative", ["c"], [], [])))
+    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig("ok", "ref", f"{plant}/relative", ["c"], [], []), all_corpora={}))
     out.append(resolve_output("c", f"/z/{plant}/x.lts", {"roots": [{"path": f"/z/{plant}"}]}, None,
-                              SiteConfig("ok", "ref", f"/z/{plant}/out", ["c"], [], [])))
+                              SiteConfig("ok", "ref", f"/z/{plant}/out", ["c"], [], []), all_corpora={}))
     out.append(resolve_output("c", "/d/x.lts", None, None,
-                              SiteConfig("ok", "ref", None, [], [Override("c", "", f"/a/{plant}/one"), Override("c", "", f"/b/{plant}/two")], [])))
+                              SiteConfig("ok", "ref", None, [], [Override("c", "", f"/a/{plant}/one"), Override("c", "", f"/b/{plant}/two")], []), all_corpora={}))
 
     class P:
         review_output = f"{plant}/rel"
         def resolve_path(self, x): return None
-    out.append(resolve_output("c", "/d/x.lts", None, P(), SiteConfig.none()))
-    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig("ok", "ref", f"/q/{plant}", [], [], [])))   # not listed
-    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig.none()))                                     # nothing at all
+    out.append(resolve_output("c", "/d/x.lts", None, P(), SiteConfig.none(), all_corpora={}))
+    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig("ok", "ref", f"/q/{plant}", [], [], []), all_corpora={}))   # not listed
+    out.append(resolve_output("c", "/d/x.lts", None, None, SiteConfig.none(), all_corpora={}))                                     # nothing at all
     out.append(resolve_output("c", "/elsewhere/x.lts", None, None,
-                              SiteConfig("ok", "ref", None, [], [Override("c", f"sub/{plant}", "/o")], [])))      # outside + prefix overrides
-    out.append(resolve_output("c", "/elsewhere/x.lts", {"roots": [{"path": f"/z/{plant}"}]}, None, SiteConfig.none()))  # outside the root
+                              SiteConfig("ok", "ref", None, [], [Override("c", f"sub/{plant}", "/o")], []), all_corpora={}))      # outside + prefix overrides
+    out.append(resolve_output("c", "/elsewhere/x.lts", {"roots": [{"path": f"/z/{plant}"}]}, None, SiteConfig.none(), all_corpora={}))  # outside the root
     return out
 
 
@@ -293,16 +293,16 @@ def test_the_explanations_table_has_no_interpolation_and_no_path_characters():
 
 def test_ambiguous_site_config_names_go_to_terminal_only_not_reason(tmp_path):
     from factlattice_engine.reviewer import SiteConfig, resolve_output
-    r = resolve_output("c", "/d/x.lts", None, None, SiteConfig.ambiguous(["conv-a:X", "conv-b:X"]))
+    r = resolve_output("c", "/d/x.lts", None, None, SiteConfig.ambiguous(["conv-a:X", "conv-b:X"]), all_corpora={})
     d = r.to_dict()
     assert r.reason == "ambiguous-site-config" and "conv-a" not in json.dumps({k: v for k, v in d.items() if k != "terminal_only"})
     assert d["terminal_only"] == {"site_config_found": ["conv-a:X", "conv-b:X"]} and "NEVER persist" in d["terminal_only_note"]
 
 
 def test_a_resolved_root_has_no_reason_and_no_error_class(ws, capsys):
-    from factlattice_engine.reviewer import Override, SiteConfig, resolve_output
+    from factlattice_engine.reviewer import SiteConfig, resolve_output
     r = resolve_output("pubcorp", str(ws["doc"]), {"roots": [{"path": str(ws["corp"])}]}, None,
-                       SiteConfig("ok", "ref", str(ws["base"] / "out"), ["pubcorp"], [], []))
+                       SiteConfig("ok", "ref", str(ws["base"] / "out"), ["pubcorp"], [], []), all_corpora={})
     assert r.root and r.reason == "" and r.explanation == ""
 
 
@@ -523,6 +523,7 @@ def test_the_usage_error_print_is_guarded_like_the_crash_print(ws, monkeypatch, 
 
 def test_a_closed_stdout_object_does_not_turn_a_usage_error_into_a_traceback(ws, monkeypatch):
     import io
+
     from factlattice_engine.reviewer import __main__ as m
     dead = io.StringIO()
     dead.close()
@@ -584,7 +585,7 @@ def test_the_site_overrides_missing_check_reason_is_a_code_with_the_ids_in_their
     from factlattice_engine.reviewer import SiteConfig, resolve_output
     plant = "zq it's \"x\" üñí秘"
     sc = SiteConfig("ok", f"{plant}-corp:REVIEWER-SITE-CONFIG@sha256:deadbeef", f"/o/{plant}", ["c"], [], [])
-    r = resolve_output("c", "/d/x.lts", None, None, sc)
+    r = resolve_output("c", "/d/x.lts", None, None, sc, all_corpora={})
     assert r.root and r.rule_used == "default"
     (chk,) = r.checks
     assert chk["name"] == "site-overrides-missing" and chk["outcome"] == "errored"

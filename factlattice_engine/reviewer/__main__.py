@@ -44,14 +44,12 @@ import json
 import os
 import stat
 import sys
-from typing import Optional
 
 from factlattice import registry
 from factlattice.hashing import CorpusFileError
 from factlattice.registry import RegistryError
 
 from . import RESOLVE_REFUSALS, UNVERIFIABLE_PRIVATE
-
 
 # ⛔ THE FAILURE CONTRACT OF EVERY HELPER, raised OR in-band (tests/test_reviewer_reasons.py drives all 14 verbs):
 #   * `reason`       a FIXED CODE from HELPER_REASON_CODES (a closed list, kebab-case): never message text, never a path;
@@ -66,7 +64,7 @@ from . import RESOLVE_REFUSALS, UNVERIFIABLE_PRIVATE
 # path with any directory name in it, so a path is reduced by STRUCTURE (it is kept out), never by a pattern over text.
 RAW_NOTE = "raw_error is for the terminal only: NEVER persist it in a review document"
 TERMINAL_NOTE = "terminal_only is for the terminal only: NEVER persist it in a review document"
-# [ISSUE-NONREGULAR-MEMBER] a corpus whose build failed on a member `.lts`: the registry is FINE, so
+# [DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS] a corpus whose build failed on a member `.lts`: the registry is FINE, so
 # this is never `registry-not-found`. The code is the engine's own; the explanation is a FIXED sentence (nothing interpolated),
 # and the root-relative path is deliberately NOT offered (a persisted record carries the code and class only).
 CORPUS_FILE_EXPLANATIONS = {
@@ -75,10 +73,26 @@ CORPUS_FILE_EXPLANATIONS = {
     "corpus-file-unreadable": "a .lts member of the corpus cannot be read by this process",
     "corpus-dir-unreadable": "a directory inside the corpus root cannot be listed by this process",
 }
+# The reviewer reads the same registry entries the engine does, so it stops the same way for a corpus the engine refused to build
+# on an unknown registry key. Kept apart from CORPUS_FILE_EXPLANATIONS, which is pinned to the member-file codes.
+REGISTRY_KEY_EXPLANATIONS = {
+    registry.ENTRY_KEY_CODE: "the registry entry of the corpus that contains this document carries a key the schema does not know",
+    registry.ROOT_KEY_CODE: "a root of the registry entry of the corpus that contains this document carries a key the schema does not know",
+    registry.NAMED_ROOT_UNKNOWN: "the registry entry of the corpus that contains this document refers to a root name the named_roots table does not hold",
+    registry.NAMED_ROOTS_MALFORMED: "the registry entry of the corpus that contains this document uses a name, and the named_roots table is malformed",
+}
+
+
+def _error_class_for(code: str) -> str:
+    if code in CORPUS_FILE_EXPLANATIONS:
+        return "CorpusFileError"
+    return "NamedRootError" if code in registry.NAMED_ROOT_CODES else "RegistryEntryKeyError"
+
+
 HELPER_REASON_CODES = (
     "helper-error", "invalid-argument", "registration-audit-failed", "registrations-not-projected", "frame-read-incomplete",
     "registry-mismatch", registry.CODE, "usage-error", "helper-crashed", "lint-incomplete", "self-gate-failed", "extension-is-the-reviewed-document", "corpus-not-served", "own-corpus-ambiguous",
-) + tuple(RESOLVE_REFUSALS) + tuple(CORPUS_FILE_EXPLANATIONS)
+) + tuple(RESOLVE_REFUSALS) + tuple(CORPUS_FILE_EXPLANATIONS) + tuple(REGISTRY_KEY_EXPLANATIONS)
 
 
 def _class_of_text(raw: str) -> str:
@@ -128,14 +142,15 @@ def _not_a_file() -> int:
     return 2
 
 
-def _corpus_file_stop(ans) -> Optional[int]:
+def _corpus_file_stop(ans) -> int | None:
     """If an engine reply is a corpus-file refusal, print the helper failure contract with the PRECISE code (exit 2) and
     return 2; else None. `raw_error` is the engine's own message (class + code + root-relative path: path-free)."""
     code = ans.get("reason") if isinstance(ans, dict) else None
-    if code not in CORPUS_FILE_EXPLANATIONS:
+    if code not in CORPUS_FILE_EXPLANATIONS and code not in REGISTRY_KEY_EXPLANATIONS:
         return None
-    print(json.dumps({"ok": False, "success": False, "reason": code, "error_class": "CorpusFileError",
-                      "explanation": CORPUS_FILE_EXPLANATIONS[code], "raw_error": str(ans.get("error", ""))[:200],
+    print(json.dumps({"ok": False, "success": False, "reason": code,
+                      "error_class": _error_class_for(code),
+                      "explanation": CORPUS_FILE_EXPLANATIONS.get(code) or REGISTRY_KEY_EXPLANATIONS[code], "raw_error": str(ans.get("error", ""))[:200],
                       "raw_error_note": RAW_NOTE}, indent=1))
     return 2
 
@@ -154,15 +169,20 @@ def _corpus_file_exc_stop(exc: BaseException) -> int:
     return _corpus_file_stop({"reason": exc.code, "error": f"CorpusFileError: {exc}"})
 
 
-def _failed_container_stop(engine, corpora, document) -> Optional[int]:
+def _failed_container_stop(engine, corpora, document) -> int | None:
     """The `dangles` verb's document-side corpus-file stop: if a registered corpus whose root contains `document` FAILED to build on a
-    corpus-file fault ([ISSUE-NONREGULAR-MEMBER]), print the coded helper failure (exit 2) and return 2;
+    corpus-file fault ([DEC-LTS-NONREGULAR-FILE-IN-ROOT-HANGS-OR-MISREPORTS]), print the coded helper failure (exit 2) and return 2;
     else None. The reply is the engine's path-mode refusal (no corpus id, root-relative path), so a private corpus is not named."""
-    from . import corpora_containing
     from ..tools import _corpus_file_refusal
-    failed = getattr(engine.store, "failed_corpora", None) or {}
-    for cid in corpora_containing(document, {c: v for c, v in (corpora or {}).items() if c in failed}):
+    from . import _path_in_untrusted_entry, corpora_containing
+    failed = engine.store.tables()[1]       # every store that reaches this is an `LtsStore` (the reviewer builds its engine with `config.build_store`); a double must give `tables()`
+    bad = {c: v for c, v in (corpora or {}).items() if c in failed}
+    for cid in corpora_containing(document, bad):
         return _corpus_file_stop(_corpus_file_refusal(None, failed[cid]))
+    # An entry whose location cannot be read contains nothing by that test, and may hold this document ([NAMED-ROOTS-EXPAND-ONCE]).
+    for cid in sorted(bad, key=str):
+        if registry.entry_key_problems(bad[cid]) and _path_in_untrusted_entry(os.path.realpath(document), bad[cid]):
+            return _corpus_file_stop(_corpus_file_refusal(None, failed[cid]))
     return None
 
 
@@ -194,11 +214,19 @@ def _example_site_missing() -> RegistryError:
         source="example")
 
 
+def _site_config(engine):
+    """corpora="all": a default scope in this process's environment must not hide the site config, or every review
+    would stop on zero results (specs/37-default-scope.lts)."""
+    from .. import tools
+    from . import lookup_site_config
+    return lookup_site_config(lambda **kw: tools.dispatch("lts_find", {**kw, "corpora": "all"}, tools=engine))
+
+
 def _resolve(corpus, document):
-    from .. import config, tools
-    from ..server import build_tools
     from factlattice.profile import load_profile
-    from . import lookup_site_config, resolve_output
+
+    from ..server import build_tools
+    from . import resolve_output
 
     choice = registry.resolve_registry()            # RegistryError -> exit 2 at main()
     if corpus and choice.source == "example" and corpus not in choice.corpora:
@@ -212,10 +240,20 @@ def _resolve(corpus, document):
         except Exception:                                  # noqa: BLE001 — an unloadable profile supplies no output
             profile = None
     engine = build_tools(watch=False, require_corpora=False)
-    site = lookup_site_config(lambda **kw: tools.dispatch("lts_find", kw, tools=engine))
+    site = _site_config(engine)
     if choice.source == "example" and site.status == "none":
         raise _example_site_missing()                # Q-4: the example source has no site config: a stop, not no-output-root
-    return resolve_output(corpus, os.path.realpath(document) if document else None, spec, profile, site)
+    if not corpus and document:
+        # No corpus was named. If the document lies in a corpus whose entry carries an unknown key, route through THAT entry so
+        # `resolve_output` refuses with the key code (naming nothing: the folder stays `_no-corpus`). Without this an unnamed call
+        # on a `privat: true` corpus's document would find no corpus and fall to the ordinary rules.
+        from . import corpora_containing
+        bad = {c: v for c, v in choice.corpora.items() if registry.entry_key_problems(v)}
+        hit = corpora_containing(document, bad)
+        if hit:
+            spec = bad[hit[0]]
+    return resolve_output(corpus, os.path.realpath(document) if document else None, spec, profile, site,
+                          all_corpora=choice.corpora)    # every container's privacy, not only the named corpus's
 
 
 class UsageError(Exception):
@@ -433,8 +471,7 @@ def _main(argv=None) -> int:
         try:
             from .. import tools
             from ..server import build_tools
-            from . import dangle_check
-            from . import corpora_containing
+            from . import corpora_containing, dangle_check
             choice = registry.resolve_registry()                       # RegistryError -> a stop, before anything is read
             engine = build_tools(watch=False, require_corpora=False)
             corpus = args.corpus
@@ -500,7 +537,7 @@ def _main(argv=None) -> int:
                 # with another corpus's domain by the router that lts_node routes cross-corpus edges through. An ambiguous or
                 # unknown domain, a stale target and a missing node all fail to resolve.
                 if domain and domain != part.domain_suffix:
-                    kind, payload = engine._route({"target": target, "target_domain": domain}, origin_corpus=corpus)
+                    kind, payload = engine._route({"target": target, "target_domain": domain}, corpus, engine.store.snapshot_all())      # one look per resolved ref
                     if kind == "withheld":
                         return False, UNVERIFIABLE_PRIVATE      # a private corpus answers the same stub for any id
                     if kind == "node":
@@ -523,7 +560,7 @@ def _main(argv=None) -> int:
         return 2 if not out["complete"] else (1 if out["true_dangle_count"] or out["other_error_count"] else 0)
     if args.cmd in ("lint-groups", "frame"):
         try:
-            from .. import config, tools
+            from .. import tools
             from ..server import build_tools
             from . import lint_groups, plan_frame
             engine = build_tools(watch=False, require_corpora=False)
@@ -544,7 +581,8 @@ def _main(argv=None) -> int:
                 print(_fail(str(res.get("error", "")), "frame-read-incomplete"))
                 return 2
             spec = registry.resolve_registry().corpora.get(args.corpus) or {}
-            roots = [os.path.realpath(r["path"] if isinstance(r, dict) else r) for r in spec.get("roots") or []]
+            from ..config import served_root_paths
+            roots = served_root_paths(spec)                # what the engine serves: roots, else the single root
             nodes = []
             for n in res.get("digest") or res.get("nodes") or []:
                 n = dict(n)

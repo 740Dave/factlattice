@@ -27,13 +27,11 @@ source files. A synthetic partition would test nothing that matters here.
 from __future__ import annotations
 
 import json
-import os
 
 import pytest
 
 from factlattice import build_index
 from factlattice_engine import LtsEngine, LtsStore, Partition, dispatch
-
 
 # ---------------------------------------------------------------------------
 # THE TERMS, each engineered to occupy exactly one scope

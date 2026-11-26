@@ -25,61 +25,60 @@ from __future__ import annotations
 
 # --- the format core (the one shared parser) ---
 from .constants import FACTLATTICE_PROFILE_VERSION, GENERATOR
-from .hashing import (CORPUS_FILE_CODES, CorpusFileError, content_hash, file_content_hash, files_hash,
-                      list_lts_files)
-from .index_builder import build_index, compute_snapshot_hash, write_index_atomic
-from .parser import (
-    CANONICAL_LAYERS,
-    CORE_EDGE_LAYER,
-    DEFAULT_REGISTERED_NS,
-    ID_TABLE_PROPERTY,
-    PROFILE_DOCUMENT_TAG,
-    Edge,
-    LineCoverage,
-    Node,
-    ParsedFile,
-    is_profile_document,
-    parse_file,
-    parse_text,
-    token_estimate,
+
+# --- net-new §7 wrapper + §5 profile hook ---
+from .corpus import (
+                      CONTRACT_DIAGNOSTIC_CLASSES,
+                      Diagnostic,
+                      ParsedCorpus,
+                      parse,
 )
 
 # --- [FL-LINE-ACCOUNTING] the silent-drop invariant (side-output + classifier) ---
 from .coverage import (
-    IGNORABLE_KINDS,
-    UNACCOUNTED_KINDS,
-    LineVerdict,
-    account_file,
-    account_summary,
-    classify_line,
-    unaccounted_lines,
+                      IGNORABLE_KINDS,
+                      UNACCOUNTED_KINDS,
+                      LineVerdict,
+                      account_file,
+                      account_summary,
+                      classify_line,
+                      unaccounted_lines,
 )
-
-# --- net-new §7 wrapper + §5 profile hook ---
-from .corpus import (
-    CONTRACT_DIAGNOSTIC_CLASSES,
-    Diagnostic,
-    ParsedCorpus,
-    parse,
+from .hashing import CORPUS_FILE_CODES, CorpusFileError, content_hash, file_content_hash, files_hash, list_lts_files
+from .index_builder import build_index, compute_snapshot_hash, write_index_atomic
+from .parser import (
+                      CANONICAL_LAYERS,
+                      CORE_EDGE_LAYER,
+                      DEFAULT_REGISTERED_NS,
+                      ID_TABLE_PROPERTY,
+                      PROFILE_DOCUMENT_TAG,
+                      Edge,
+                      LineCoverage,
+                      Node,
+                      ParsedFile,
+                      is_profile_document,
+                      parse_file,
+                      parse_text,
+                      token_estimate,
 )
 from .profile import (
-    DEFAULT_PROFILE,
-    PROFILE_GLOB,
-    PROFILE_GLOB_LTS,
-    RESOLVED_AUTO_DISCOVERY,
-    RESOLVED_CORPUS_CONFIG,
-    RESOLVED_EXPLICIT,
-    RESOLVED_NONE,
-    LifecycleStages,
-    PrefixSpec,
-    Profile,
-    ProfileResolution,
-    discover_profile,
-    load_corpus_config,
-    load_profile,
-    registered_profile_for_root,
-    resolve_profile,
-    resolve_profile_ex,
+                      DEFAULT_PROFILE,
+                      PROFILE_GLOB,
+                      PROFILE_GLOB_LTS,
+                      RESOLVED_AUTO_DISCOVERY,
+                      RESOLVED_CORPUS_CONFIG,
+                      RESOLVED_EXPLICIT,
+                      RESOLVED_NONE,
+                      LifecycleStages,
+                      PrefixSpec,
+                      Profile,
+                      ProfileResolution,
+                      discover_profile,
+                      load_corpus_config,
+                      load_profile,
+                      registered_profile_for_root,
+                      resolve_profile,
+                      resolve_profile_ex,
 )
 
 __version__ = "0.1.0"

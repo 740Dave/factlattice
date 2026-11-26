@@ -46,12 +46,12 @@ from __future__ import annotations
 
 import difflib
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from factlattice.parser import (
+    _BRACKET_RE,
     FLOW_PROPERTY_EDGES,
     REL_PROPERTY_EDGES,
-    _BRACKET_RE,
     _property_refs,
     classify_bracket_token,
     effective_domain_verbs,
@@ -61,7 +61,7 @@ from factlattice.parser import (
 # Every key that mints, with what it mints. ONE derived table, read from the parser's own
 # two tables — a third hand-written copy here is how a receipt starts telling authors
 # about a vocabulary the parser stopped having.
-MINTING_KEYS: Dict[str, Tuple[str, str, bool]] = {
+MINTING_KEYS: dict[str, tuple[str, str, bool]] = {
     **{k: (v[0], v[1], v[2]) for k, v in REL_PROPERTY_EDGES.items()},
     **{k: (v[0], v[1], v[2]) for k, v in FLOW_PROPERTY_EDGES.items()},
 }
@@ -70,7 +70,7 @@ MINTING_KEYS: Dict[str, Tuple[str, str, bool]] = {
 # where it can be (`X-by` <-> `X`) and enumerated where the pairing is lexical rather
 # than morphological. Used ONLY to sharpen the explanation — a key not here still gets
 # its similarity ranking.
-INVERSE_VOICE: Dict[str, str] = {
+INVERSE_VOICE: dict[str, str] = {
     # "superseded-by" REMOVED 2026-08-15 — it now MINTS (reversed SUPERSEDES).
     "resolved-by": "resolves",
     "implemented-by": "implements",
@@ -100,7 +100,7 @@ INVERSE_VOICE: Dict[str, str] = {
 # KEPT — it carries WHICH STAGE, which no bare edge key can — and the ruled remedy is the
 # DUAL FORM: keep the key AND declare the relationship in `## Relationships`. The summary
 # says exactly that; this table only stops the receipt from being silent.
-SEMANTIC_NEIGHBOURS: Dict[str, Tuple[str, ...]] = {
+SEMANTIC_NEIGHBOURS: dict[str, tuple[str, ...]] = {
     # ⛔ `relates-to` and `related-to` WERE here, pointing at `see-also`. Both became
     # MINTING KEYS on 2026-08-15, so they can never reach the suggestion branch again;
     # leaving them would be a dead entry that reads as live guidance. `superseded-by`
@@ -128,7 +128,7 @@ _SUGGESTION_CUTOFF = 0.45
 _MAX_SUGGESTIONS = 3
 
 
-def minting_keys_for(profile: Any = None) -> Dict[str, Tuple[str, str, bool]]:
+def minting_keys_for(profile: Any = None) -> dict[str, tuple[str, str, bool]]:
     """The EFFECTIVE minting table for a profile — built-ins plus its registered keys,
     on EITHER registration surface.
 
@@ -174,14 +174,14 @@ def minting_keys_for(profile: Any = None) -> Dict[str, Tuple[str, str, bool]]:
     invariant test) still reads `MINTING_KEYS` directly.
     """
     domain_verbs: frozenset = frozenset()
-    registered: Dict[str, Tuple[str, str, bool]] = {}
-    profile_layers: Optional[Dict[str, str]] = None
+    registered: dict[str, tuple[str, str, bool]] = {}
+    profile_layers: dict[str, str] | None = None
     if profile is not None:
         domain_verbs = frozenset(getattr(profile, "domain_verbs", None) or ())
         registered = dict(getattr(profile, "property_edges", None) or {})
         profile_layers = getattr(profile, "edge_types", None) or None
     unified_verbs = effective_domain_verbs(domain_verbs, registered)
-    keys: Dict[str, Tuple[str, str, bool]] = {
+    keys: dict[str, tuple[str, str, bool]] = {
         k: (v[0], v[1], v[2]) for k, v in FLOW_PROPERTY_EDGES.items()
     }
     keys.update(rel_property_edge_map(unified_verbs, profile_layers))
@@ -209,7 +209,7 @@ def canonicalize_edge_key(key: str) -> str:
     return key.strip().casefold().replace("_", "-")
 
 
-def classify_edge_key(key: str, profile: Any = None) -> Tuple[str, Optional[str]]:
+def classify_edge_key(key: str, profile: Any = None) -> tuple[str, str | None]:
     """Classify an edge-shaped property KEY against the EFFECTIVE minting vocabulary —
     core §1.3 relationship verbs UNION this profile's registered `property_edges`
     (The maintainer's ruling 1: "core verbs as defined in the spec, UNION any corpus-defined
@@ -237,7 +237,7 @@ def classify_edge_key(key: str, profile: Any = None) -> Tuple[str, Optional[str]
     return ("undeclared", None)
 
 
-def nearest_minting_alternatives(key: str, *, limit: int = _MAX_SUGGESTIONS) -> List[str]:
+def nearest_minting_alternatives(key: str, *, limit: int = _MAX_SUGGESTIONS) -> list[str]:
     """Minting keys closest to `key`, closest first, inverse-voice partner FIRST.
 
     The inverse-voice partner is promoted unconditionally rather than left to the ratio
@@ -265,7 +265,7 @@ def nearest_minting_alternatives(key: str, *, limit: int = _MAX_SUGGESTIONS) -> 
 # THE DISCRIMINATOR THIS PROJECT ALREADY USED BY HAND (REL_PROPERTY_EDGES's own
 # comment block in `factlattice/parser.py`, applied to seven keys on 2026-08-15),
 # made reusable. "The value contains a bracketed id" is NOT the test -- `rationale`
-# (96 occurrences), `definition` (94), `requirement` (58) all carry bracketed ids
+# (181 occurrences), `definition` (180), `requirement` (127) all carry bracketed ids
 # and are ~0% pure: they cite node ids INSIDE SENTENCES. The test is whether the
 # VALUE IS (near enough) NOTHING BUT references.
 _MAX_GLOSS_CHARS = 40
@@ -305,7 +305,7 @@ def is_pure_reference_list(value: Any) -> bool:
     saw_ref = False
     for item in items:
         last_end = 0
-        segments: List[str] = []
+        segments: list[str] = []
         matched = False
         for m in _BRACKET_RE.finditer(item):
             segments.append(item[last_end:m.start()])
@@ -330,12 +330,12 @@ def is_pure_reference_list(value: Any) -> bool:
     return saw_ref
 
 
-def _format_ref(domain: Optional[str], node_id: str) -> str:
+def _format_ref(domain: str | None, node_id: str) -> str:
     return f"{domain}:{node_id}" if domain else node_id
 
 
 def analyse(key: str, parsed_value: Any, *, node_id: str = "<node>",
-            profile: Any = None) -> Dict[str, Any]:
+            profile: Any = None) -> dict[str, Any]:
     """The binding half of a write receipt for ONE property.
 
     `parsed_value` is the value AS THE PARSER PRODUCED IT — never the submitted string —
@@ -406,7 +406,7 @@ def analyse(key: str, parsed_value: Any, *, node_id: str = "<node>",
     }
 
 
-def analyse_many(properties: Dict[str, Any], *, node_id: str) -> Dict[str, Any]:
+def analyse_many(properties: dict[str, Any], *, node_id: str) -> dict[str, Any]:
     """`analyse` folded over a whole property map — the `lts_add_node` receipt.
 
     The per-key detail is kept (an author needs to know WHICH key lost the reference),

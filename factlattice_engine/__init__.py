@@ -51,14 +51,13 @@ Supporting modules:
 
 from __future__ import annotations
 
-from .lifecycle import is_bare_lifecycle_token, lifecycle_token, status_matches
-from .store import FreshnessResult, LtsStore, Partition, combined_files_hash
-from .router import AclCheck, AllowAllAcl, RouteResult, Router, StalePartitionError
-from .reverse_index import Referrer, ReverseIndex, build_domain_index, snapshot_key
-from .verdict import ContentHashFreshness, FreshnessProvider, PollVerifiedFreshness
-from .kernel import FreshnessKernel, RootState, combine_leaf_map, combine_roots
 from .incremental import CorpusIndex, CorpusMoved, RootIndex
+from .kernel import FreshnessKernel, RootState, combine_leaf_map, combine_roots
+from .lifecycle import is_bare_lifecycle_token, lifecycle_token, status_matches
+from .reverse_index import Referrer, ReverseIndex, build_domain_index, snapshot_key
+from .router import AclCheck, AllowAllAcl, Router, RouteResult, StalePartitionError
 from .selfheal import HealOutcome, SelfHealer
+from .store import FreshnessResult, LtsStore, Partition, combined_files_hash
 from .tools import (
     DEFAULT_DATE_PROPERTY,
     LTS_AGGREGATE_OPS,
@@ -76,6 +75,7 @@ from .tools import (
     reset_server_tools,
     set_server_tools,
 )
+from .verdict import ContentHashFreshness, FreshnessProvider, PollVerifiedFreshness
 
 __version__ = "0.1.0"
 

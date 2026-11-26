@@ -26,8 +26,8 @@ pytest.importorskip("onnx")
 
 from factlattice_engine.semantic import embedder as E  # noqa: E402
 from factlattice_engine.semantic import index as I  # noqa: E402
-from tests.test_semantic_index import CountingEmbedder, _part, _write_corpus  # noqa: E402
 from tests.semantic_helpers import _tiny_model  # noqa: E402
+from tests.test_semantic_index import CountingEmbedder, _part, _write_corpus  # noqa: E402
 
 
 class Wrap(CountingEmbedder):

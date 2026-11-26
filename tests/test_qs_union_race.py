@@ -15,7 +15,7 @@ from factlattice_engine import query_surface as Q
 def test_reader_during_build_never_sees_union_none(monkeypatch):
     """Pause the builder exactly between `_words` being assigned and `_union` being assigned (the
     defect window), by shadowing the module's `frozenset` (the call that publishes `_union`)."""
-    ent = Q._Entry((("title", "tile map version field"), ("id", "xl-m1")))
+    ent = Q._Entry((("title", "zero map version field"), ("id", "xl-m1")))
     in_window = threading.Event()
     release = threading.Event()
     real_frozenset = frozenset
@@ -43,7 +43,7 @@ def test_reader_during_build_never_sees_union_none(monkeypatch):
         release.set()
         t.join(5)
     assert results["reader"] is not None, "reader saw _union None: the publish-order race"
-    assert results["reader"] == results["builder"] == real_frozenset({"tile", "map", "version", "field", "xl", "m1"})
+    assert results["reader"] == results["builder"] == real_frozenset({"zero", "map", "version", "field", "xl", "m1"})
 
 
 def test_many_threads_one_cold_entry_no_exception():

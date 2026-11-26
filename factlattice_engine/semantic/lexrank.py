@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from typing import Dict, List, Tuple
 
 STOP = frozenset(
     "a an the and or of to in on for is are was were be by with at as it its this that "
@@ -30,21 +29,21 @@ def _stem(t: str) -> str:
     return t
 
 
-def tokens(text: str, stem: bool = True) -> List[str]:
+def tokens(text: str, stem: bool = True) -> list[str]:
     out = [t for t in _WORD.findall(text.lower()) if t not in STOP]
     return [_stem(t) for t in out] if stem else out
 
 
 class LexRank:
-    def __init__(self, cards: Dict[str, List[Tuple[str, str]]], stem: bool = True,
+    def __init__(self, cards: dict[str, list[tuple[str, str]]], stem: bool = True,
                  k1: float = 1.2, b: float = 0.75):
         self.stem, self.k1, self.b = stem, k1, b
-        self.ids: List[str] = sorted(cards)
-        self._tf: List[Counter] = []
-        self._len: List[int] = []
-        postings: Dict[str, List[Tuple[int, int]]] = {}
+        self.ids: list[str] = sorted(cards)
+        self._tf: list[Counter] = []
+        self._len: list[int] = []
+        postings: dict[str, list[tuple[int, int]]] = {}
         for i, nid in enumerate(self.ids):
-            toks: List[str] = []
+            toks: list[str] = []
             for kind, text in cards[nid]:
                 toks.extend(tokens(text, stem) * (2 if kind == "head" else 1))
             tf = Counter(toks)
@@ -58,8 +57,8 @@ class LexRank:
         self.idf = {t: math.log(1 + (n - len(p) + 0.5) / (len(p) + 0.5)) for t, p in postings.items()}
         self._index_of = {nid: i for i, nid in enumerate(self.ids)}
 
-    def search(self, query: str, k: int = 10) -> List[Tuple[str, float]]:
-        scores: Dict[int, float] = {}
+    def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
+        scores: dict[int, float] = {}
         for t in sorted(set(tokens(query, self.stem))):
             for i, f in self._postings.get(t, ()):
                 norm = self.k1 * (1 - self.b + self.b * self._len[i] / self._avg)
@@ -67,11 +66,11 @@ class LexRank:
         ranked = sorted(scores.items(), key=lambda kv: (-kv[1], self.ids[kv[0]]))
         return [(self.ids[i], s) for i, s in ranked[:k]]
 
-    def unknown_terms(self, query: str) -> List[str]:
+    def unknown_terms(self, query: str) -> list[str]:
         """Query terms the corpus never uses (a query asking about something it may not have)."""
         return sorted({t for t in tokens(query, self.stem) if t not in self.idf})
 
-    def term_coverage(self, query: str, node_id: str) -> Tuple[List[str], List[str]]:
+    def term_coverage(self, query: str, node_id: str) -> tuple[list[str], list[str]]:
         """(matched, unmatched) query terms for one candidate: the per-candidate evidence."""
         have = self._tf[self._index_of[node_id]] if node_id in self._index_of else {}
         q = sorted(set(tokens(query, self.stem)))

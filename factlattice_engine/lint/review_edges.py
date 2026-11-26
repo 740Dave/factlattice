@@ -16,8 +16,6 @@ edges (one parse, never a re-derivation of the minting rule); the first reads th
 """
 from __future__ import annotations
 
-from typing import Dict, List
-
 import factlattice
 
 from .canonical import _refs_only
@@ -32,7 +30,7 @@ K_SHAPE = "review_edge_wrong_shape"
 # including customer corpora that may already use the generic keys `applies-rule` / `attaches-to-hook` for
 # their own purposes, and a misshapen extension living inside its host must not turn the HOST's lint red
 # (C2). The reviewer's own extension validation is what REFUSES a misshapen extension.
-REVIEW_EDGE_SEVERITY: Dict[str, str] = {K_NOT_REFS: "warning", K_MISSING: "warning", K_SHAPE: "warning"}
+REVIEW_EDGE_SEVERITY: dict[str, str] = {K_NOT_REFS: "warning", K_MISSING: "warning", K_SHAPE: "warning"}
 
 # edge type -> the property key that mints it (the lint is keyed on the parser's own table)
 _KEYS = {"ATTACHES_TO_HOOK": "attaches-to-hook", "APPLIES_RULE": "applies-rule"}
@@ -46,8 +44,8 @@ def _shape_ok(etype: str, source: str, target: str) -> bool:
     return source.startswith("REVRULE-")
 
 
-def find_review_edge_findings(corpus: "factlattice.ParsedCorpus") -> List[dict]:
-    out: List[dict] = []
+def find_review_edge_findings(corpus: factlattice.ParsedCorpus) -> list[dict]:
+    out: list[dict] = []
     for n in corpus.nodes:
         for key in _KEYS.values():
             if key not in n.properties:

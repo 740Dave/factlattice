@@ -10,33 +10,15 @@ from __future__ import annotations
 
 import pytest
 
-from factlattice.parser import BRANCH_PROP_BOLD, BRANCH_PROP_CONT, BRANCH_PROP_KEY_ONLY, BRANCH_PROP_SIMPLE, parse_text
-from factlattice.parser import BRANCH_PROP_ITEM_CONT, BRANCH_PROP_MAPPING_CONT, BRANCH_PROP_MAPPING_ENTRY, BRANCH_PROP_NESTED_ITEM
-
-# The three helpers below (scratch-dir fixture and two builders) are defined locally so this file stands alone.
-
-
-@pytest.fixture()
-def w(tmp_path, monkeypatch):
-    for k in ("FACTLATTICE_STATE_DIR", "LTS_ENGINE_STATE_DIR"):
-        monkeypatch.setenv(k, str(tmp_path / "st"))
-    monkeypatch.setenv("FACTLATTICE_BACKUP_DIR", str(tmp_path / "bak"))
-    monkeypatch.setenv("FACTLATTICE_CODE_WATCH", "0")
-    monkeypatch.chdir(tmp_path)
-    d = tmp_path / "corpus"
-    d.mkdir()
-    return d
-
-
-def put(d, text, name="c.lts", newline=None):
-    f = d / name
-    with open(f, "w", encoding="utf-8", newline=newline) as fh:
-        fh.write(text)
-    return f
-
-
-def doc(*body, eol="\n"):
-    return eol.join(["# Doc [SPEC:RR-ROOT]", "", "## One [RR-ONE]", "", *body, "", "## Two [RR-TWO]", "", "- k: other", ""])
+from factlattice.parser import (
+    BRANCH_PROP_CONT,
+    BRANCH_PROP_ITEM_CONT,
+    BRANCH_PROP_MAPPING_CONT,
+    BRANCH_PROP_MAPPING_ENTRY,
+    BRANCH_PROP_NESTED_ITEM,
+    parse_text,
+)
+from tests.test_rename_remove_round5 import doc, put, w  # noqa: F401  (w is the scratch-dir fixture)
 
 # key-only head + a block the parser refuses / ignores (Diamond's shapes). `meta` is the LAST property of the node.
 UNPARSED = {

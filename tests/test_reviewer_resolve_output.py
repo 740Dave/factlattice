@@ -22,7 +22,6 @@ import pytest
 
 from factlattice.profile import load_profile
 from factlattice_engine.reviewer import (
-    Override,
     Resolution,
     SiteConfig,
     check_extension_paths,
@@ -71,46 +70,46 @@ def _prof(tmp_path, out_root):
 def test_override_beats_profile_and_default(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs",
                  overrides=[f"docs -> {w['out']['special']}"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), site, all_corpora={})
     assert (r.root, r.rule_used) == (os.path.realpath(w["out"]["special"]), "override")
 
 
 def test_unpacks_as_a_pair():
-    r = resolve_output("docs", "/nope", None, None, SiteConfig.none())
+    r = resolve_output("docs", "/nope", None, None, SiteConfig.none(), all_corpora={})
     root, rule = r
     assert (root, rule) == (None, "no-output-root") and isinstance(r, Resolution)
 
 
 def test_profile_beats_default(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs")
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), site, all_corpora={})
     assert (r.root, r.rule_used) == (os.path.realpath(w["out"]["profile"]), "profile")
 
 
 def test_default_only_for_listed_corpora(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs")
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert (r.root, r.rule_used) == (os.path.realpath(w["out"]["general"]), "default")
     r2 = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None,
-                        _site(default=str(w["out"]["general"]), corpora="other"))
+                        _site(default=str(w["out"]["general"]), corpora="other"), all_corpora={})
     assert r2.root is None and r2.rule_used == "no-output-root"
     assert r2.reason == "corpus-not-on-default-root-list" and "default-root-corpora" in r2.explanation
 
 
 def test_default_with_no_corpora_list_applies_to_nobody(w):
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, _site(default=str(w["out"]["general"])))
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, _site(default=str(w["out"]["general"])), all_corpora={})
     assert r.rule_used == "no-output-root"
 
 
 def test_no_site_config_and_no_profile_output_is_no_output_root(w):
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, SiteConfig.none())
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, SiteConfig.none(), all_corpora={})
     assert (r.root, r.rule_used) == (None, "no-output-root")
     assert r.site_config == "none" and r.site_overrides == "MISSING"
 
 
 def test_no_site_config_profile_review_output_still_works(w):
     r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]),
-                       SiteConfig.none())
+                       SiteConfig.none(), all_corpora={})
     assert (r.rule_used) == "profile"
 
 
@@ -118,15 +117,15 @@ def test_the_shipped_empty_config_supplies_nothing(w):
     site = parse_site_config({"default-output-root": "none", "corpus-output-overrides": "none",
                               "default-root-corpora": "none"}, source="factlattice-reviewer:REVIEWER-CONFIG@x")
     assert site.default_output_root is None and site.overrides == () and site.default_root_corpora == ()
-    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site).rule_used == "no-output-root"
+    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={}).rule_used == "no-output-root"
 
 
 # ---------------------------------------------------------------- overrides: keys, prefixes, ties
 def test_path_prefix_override_applies_only_under_that_subtree(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs",
                  overrides=[f"docs:alpha/ -> {w['out']['special']}"])
-    a = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site)
-    b = resolve_output("docs", w["doc"]("beta/b.lts"), w["spec"], None, site)
+    a = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site, all_corpora={})
+    b = resolve_output("docs", w["doc"]("beta/b.lts"), w["spec"], None, site, all_corpora={})
     assert (a.rule_used, a.root) == ("override", os.path.realpath(w["out"]["special"]))
     assert (b.rule_used, b.root) == ("default", os.path.realpath(w["out"]["general"]))
 
@@ -136,7 +135,7 @@ def test_prefix_is_matched_by_component_not_by_string(w):
     (w["corpus"] / "alphabet" / "c.lts").write_text("# x\n")
     site = _site(default=str(w["out"]["general"]), corpora="docs",
                  overrides=[f"docs:alpha -> {w['out']['special']}"])
-    r = resolve_output("docs", w["doc"]("alphabet/c.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("alphabet/c.lts"), w["spec"], None, site, all_corpora={})
     assert r.rule_used == "default"
 
 
@@ -147,23 +146,23 @@ def test_longest_prefix_wins_and_a_corpus_wide_key_is_the_shortest(w):
                             f"docs:alpha/sub/ -> {other}"])
     (w["corpus"] / "alpha" / "sub").mkdir()
     (w["corpus"] / "alpha" / "sub" / "s.lts").write_text("# x\n")
-    r = resolve_output("docs", w["doc"]("alpha/sub/s.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("alpha/sub/s.lts"), w["spec"], None, site, all_corpora={})
     assert r.root == os.path.realpath(other)
-    r = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site, all_corpora={})
     assert r.root == os.path.realpath(w["out"]["special"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.root == os.path.realpath(w["out"]["general"])
 
 
 def test_a_prefixed_override_cannot_match_a_document_outside_the_corpus_roots(w):
     site = _site(overrides=[f"docs:alpha/ -> {w['out']['special']}"])
-    r = resolve_output("docs", str(w["tmp"] / "elsewhere" / "alpha" / "x.lts"), w["spec"], None, site)
+    r = resolve_output("docs", str(w["tmp"] / "elsewhere" / "alpha" / "x.lts"), w["spec"], None, site, all_corpora={})
     assert r.rule_used == "no-output-root"
 
 
 def test_two_overrides_with_the_same_key_and_different_roots_fail_closed(w):
     site = _site(overrides=[f"docs -> {w['out']['special']}", f"docs -> {w['out']['general']}"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.root is None and r.rule_used == "no-output-root"
     # round 7: a reason never echoes an output root (a path); it says how many differ
     assert r.reason == "conflicting-overrides" and "different output roots" in r.explanation and str(w["out"]["special"]) not in r.reason + r.explanation
@@ -173,14 +172,14 @@ def test_override_arrow_spellings_and_a_malformed_item(w):
     site = _site(overrides=[f"docs → {w['out']['special']}", "this has no arrow"])
     assert [o.corpus for o in site.overrides] == ["docs"]
     assert site.unparsed_overrides == ("this has no arrow",)
-    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site).rule_used == "override"
+    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={}).rule_used == "override"
 
 
 def test_tilde_in_a_root_is_expanded(w, monkeypatch):
     monkeypatch.setenv("HOME", str(w["tmp"]))
     (w["tmp"] / "reviews").mkdir()
     site = _site(overrides=["docs -> ~/reviews"])
-    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site).root == \
+    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={}).root == \
         os.path.realpath(w["tmp"] / "reviews")
 
 
@@ -188,13 +187,13 @@ def test_the_returned_root_is_the_realpath_not_the_spelling(w):
     link = w["tmp"] / "out" / "via-link"
     os.symlink(w["out"]["special"], link)
     site = _site(overrides=[f"docs -> {link}/"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.root == os.path.realpath(w["out"]["special"]) and r.root != str(link)
 
 
 def test_a_relative_root_is_refused(w):
     site = _site(overrides=["docs -> relative/dir"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.root is None and r.reason == "override-root-not-absolute" and "absolute" in r.explanation
 
 
@@ -203,7 +202,7 @@ def test_a_relative_root_is_refused(w):
 def test_a_private_corpus_never_uses_the_default_root_even_if_listed(w, cid, spec_extra):
     spec = {**w["spec"], **spec_extra}
     site = _site(default=str(w["out"]["general"]), corpora=cid)
-    r = resolve_output(cid, w["doc"]("top.lts"), spec, None, site)
+    r = resolve_output(cid, w["doc"]("top.lts"), spec, None, site, all_corpora={})
     assert r.root is None and r.rule_used == "no-output-root"
     assert r.reason == "private-corpus-needs-override" and "private" in r.explanation
 
@@ -212,16 +211,16 @@ def test_a_private_corpus_may_use_an_override_or_its_own_profile_output(w):
     spec = {**w["spec"]}
     site = _site(default=str(w["out"]["general"]), corpora="zed-personality",
                  overrides=[f"zed-personality -> {w['out']['special']}"])
-    assert resolve_output("zed-personality", w["doc"]("top.lts"), spec, None, site).rule_used == "override"
+    assert resolve_output("zed-personality", w["doc"]("top.lts"), spec, None, site, all_corpora={}).rule_used == "override"
     r = resolve_output("zed-personality", w["doc"]("top.lts"), spec,
-                       _prof(w["tmp"], w["out"]["profile"]), SiteConfig.none())
+                       _prof(w["tmp"], w["out"]["profile"]), SiteConfig.none(), all_corpora={})
     assert r.rule_used == "profile"
 
 
 def test_private_false_in_the_registry_lifts_the_suffix_default(w):
     spec = {**w["spec"], "private": False}
     site = _site(default=str(w["out"]["general"]), corpora="zed-personality")
-    assert resolve_output("zed-personality", w["doc"]("top.lts"), spec, None, site).rule_used == "default"
+    assert resolve_output("zed-personality", w["doc"]("top.lts"), spec, None, site, all_corpora={}).rule_used == "default"
 
 
 def test_the_privacy_rule_is_the_engines_not_a_second_copy():
@@ -256,7 +255,7 @@ def test_lookup_exactly_one_is_the_config_with_its_hash_in_the_ref():
 def test_lookup_two_is_ambiguous_and_names_both(w):
     s = lookup_site_config(_find_returning([_node("conv-a"), _node("conv-b")]))
     assert s.status == "ambiguous"
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, s)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, s, all_corpora={})
     assert r.root is None and r.rule_used == "no-output-root"
     assert r.reason == "ambiguous-site-config" and "conv-a" not in r.reason + r.explanation
     assert any("conv-a" in x for x in r.terminal_only["site_config_found"]) and any("conv-b" in x for x in r.terminal_only["site_config_found"])
@@ -264,7 +263,7 @@ def test_lookup_two_is_ambiguous_and_names_both(w):
 
 def test_ambiguity_blocks_even_a_profile_output(w):
     s = lookup_site_config(_find_returning([_node("conv-a"), _node("conv-b")]))
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), s)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), s, all_corpora={})
     assert r.rule_used == "no-output-root"
 
 
@@ -282,7 +281,7 @@ def test_lookup_a_find_that_raises_fails_closed():
 # ---------------------------------------------------------------- C3(b): missing overrides are visible
 def test_default_root_with_overrides_missing_adds_the_errored_check(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs")
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.rule_used == "default" and r.site_overrides == "MISSING"
     assert [c["name"] for c in r.checks] == ["site-overrides-missing"]
     assert r.checks[0]["outcome"] == "errored"
@@ -291,14 +290,14 @@ def test_default_root_with_overrides_missing_adds_the_errored_check(w):
 def test_default_root_with_overrides_loaded_adds_no_check(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs",
                  overrides=[f"other:x/ -> {w['out']['special']}"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.rule_used == "default" and r.site_overrides == "1 loaded" and r.checks == []
     assert r.site_config == "conv:REVIEWER-SITE-CONFIG@abc123"
 
 
 def test_an_unreadable_lookup_with_default_unavailable_says_so(w):
     s = lookup_site_config(lambda **kw: {"success": False})
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), s)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], _prof(w["tmp"], w["out"]["profile"]), s, all_corpora={})
     assert r.site_overrides == "MISSING" and r.site_config == "none"
 
 
@@ -329,7 +328,7 @@ def test_an_output_root_inside_the_reviewed_corpus_is_refused_in_every_spelling(
                 site, prof = SiteConfig.none(), _prof(w["tmp"], root)
             else:
                 site, prof = _site(default=root, corpora="docs"), None
-            r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], prof, site)
+            r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], prof, site, all_corpora={})
             assert r.root is None and r.rule_used == "no-output-root", (label, via)
             assert r.reason.endswith("-root-inside-corpus") and "inside the reviewed corpus" in r.explanation, (label, via)
 
@@ -337,18 +336,18 @@ def test_an_output_root_inside_the_reviewed_corpus_is_refused_in_every_spelling(
 def test_the_guard_also_covers_root_plus_the_corpus_folder(w):
     """root = the corpus's PARENT, folder = the corpus id: root/folder IS the corpus root."""
     site = _site(overrides=[f"docs -> {w['corpus'].parent}"])
-    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    r = resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert r.root is None and r.reason.endswith("-root-inside-corpus") and "inside the reviewed corpus" in r.explanation
 
 
 def test_the_negative_control_a_root_beside_the_corpus_is_accepted(w):
     site = _site(overrides=[f"docs -> {w['out']['special']}"])
-    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site).rule_used == "override"
+    assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={}).rule_used == "override"
     # a sibling directory whose NAME merely starts with the corpus directory's name
     sib = w["corpus"].parent / "docs-reviews"
     sib.mkdir()
     assert resolve_output("docs", w["doc"]("top.lts"), w["spec"], None,
-                          _site(overrides=[f"docs -> {sib}"])).rule_used == "override"
+                          _site(overrides=[f"docs -> {sib}"]), all_corpora={}).rule_used == "override"
 
 
 def test_extension_path_equal_to_the_reviewed_document_is_refused_in_every_spelling(w):
@@ -371,7 +370,7 @@ def test_extension_inside_a_nonexistent_document_path_is_still_compared_canonica
 # ---------------------------------------------------------------- C4(d): folder names
 @pytest.mark.parametrize("given,folder", [
     ("acme-docs", "acme-docs"),
-    ("Sample Corpus_LTS", "sample-corpus-lts"),
+    ("Zero Context_LTS", "zero-context-lts"),
     ("a/b", "a-b"),
     ("..", "_no-corpus"),
     ("../../etc", "etc"),
@@ -387,19 +386,19 @@ def test_output_folder(given, folder):
 
 def test_an_unregistered_corpus_and_a_missing_document_still_route(w):
     site = _site(overrides=[f"ghost -> {w['out']['special']}"])
-    r = resolve_output("ghost", "/no/such/doc.lts", None, None, site)
+    r = resolve_output("ghost", "/no/such/doc.lts", None, None, site, all_corpora={})
     assert (r.rule_used, r.folder) == ("override", "ghost")
 
 
 def test_an_unregistered_corpus_is_not_private_unless_its_id_says_so(w):
     site = _site(default=str(w["out"]["general"]), corpora="ghost,spooky-personality")
-    assert resolve_output("ghost", "/x.lts", None, None, site).rule_used == "default"
-    assert resolve_output("spooky-personality", "/x.lts", None, None, site).rule_used == "no-output-root"
+    assert resolve_output("ghost", "/x.lts", None, None, site, all_corpora={}).rule_used == "default"
+    assert resolve_output("spooky-personality", "/x.lts", None, None, site, all_corpora={}).rule_used == "no-output-root"
 
 
 def test_no_corpus_given_resolves_through_the_same_function(w):
     site = _site(overrides=[f"docs -> {w['out']['special']}"])
-    r = resolve_output(None, "/x.lts", None, None, site)
+    r = resolve_output(None, "/x.lts", None, None, site, all_corpora={})
     assert r.folder == "_no-corpus" and r.rule_used == "no-output-root"
 
 
@@ -407,14 +406,14 @@ def test_no_corpus_given_resolves_through_the_same_function(w):
 def test_resolve_output_writes_nothing(w):
     before = sorted(str(p) for p in w["tmp"].rglob("*"))
     site = _site(default=str(w["out"]["general"]), corpora="docs")
-    resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site)
+    resolve_output("docs", w["doc"]("top.lts"), w["spec"], None, site, all_corpora={})
     assert sorted(str(p) for p in w["tmp"].rglob("*")) == before
 
 
 def test_resolve_output_is_deterministic(w):
     site = _site(default=str(w["out"]["general"]), corpora="docs", overrides=[f"docs:alpha/ -> {w['out']['special']}"])
-    a = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site)
-    b = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site)
+    a = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site, all_corpora={})
+    b = resolve_output("docs", w["doc"]("alpha/a.lts"), w["spec"], None, site, all_corpora={})
     assert tuple(a) == tuple(b) and a.reason == b.reason
 
 

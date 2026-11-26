@@ -89,7 +89,6 @@ def test_reference_path_needs_its_arguments_to_be_green():
     import tempfile
 
     from factlattice.parser import parse_file
-
     from factlattice_engine.selfcheck.entry_point_equivalence import CONTROL_DOC
 
     tmp = tempfile.mkdtemp()

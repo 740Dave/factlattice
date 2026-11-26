@@ -200,7 +200,7 @@ import sys
 root = sys.argv[1]
 os.makedirs(os.path.join(root, "deep", "er"), exist_ok=True)
 store = config.build_store(registry.resolve_registry().corpora)
-print(json.dumps({"loaded": sorted(p.corpus_id for p in store.partitions()), "failed": store.failed_corpora}))
+print(json.dumps({"loaded": sorted(p.corpus_id for p in store.partitions()), "failed": store._failed_corpora}))
 """
 
 
@@ -209,4 +209,4 @@ def test_a_directory_eio_at_depth_fails_only_its_corpus_with_the_relative_direct
     assert cp.returncode == 0, cp.stderr[-2000:]
     r = json.loads(cp.stdout.strip().splitlines()[-1])
     assert "ccorp" in r["loaded"] and "acorp" not in r["loaded"], r
-    assert r["failed"]["acorp"] == {"code": "corpus-dir-unreadable", "path": "deep/er", "private": False}, r
+    assert r["failed"]["acorp"] == {"code": "corpus-dir-unreadable", "path": "deep/er", "private": False, "domain_suffix": "p.a"}, r      # slice 4: every failed record carries its domain

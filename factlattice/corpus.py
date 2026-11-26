@@ -27,7 +27,6 @@ import os
 import shutil
 import tempfile
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from .index_builder import build_index
 from .parser import (
@@ -76,11 +75,11 @@ class Diagnostic:
 
     kind: str
     message: str
-    source_file: Optional[str] = None
-    source_line: Optional[int] = None
-    node_id: Optional[str] = None
-    edge: Optional[dict] = None
-    detail: Dict[str, object] = field(default_factory=dict)
+    source_file: str | None = None
+    source_line: int | None = None
+    node_id: str | None = None
+    edge: dict | None = None
+    detail: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -113,9 +112,9 @@ class ParsedCorpus:
     for the authoritative preserve-and-flag verdict.
     """
 
-    nodes: List[Node]
-    edges: List[Edge]
-    diagnostics: List[Diagnostic]
+    nodes: list[Node]
+    edges: list[Edge]
+    diagnostics: list[Diagnostic]
     source_corpus: dict
     profile: Profile = field(default_factory=lambda: DEFAULT_PROFILE)
     # HOW `profile` came to be in scope (explicit / corpus-config / auto-discovery /
@@ -128,25 +127,25 @@ class ParsedCorpus:
     # [FL-LINE-ACCOUNTING] one consumption record per parsed file, in parse order.
     # A pure side-output of the same single parse — it cannot disagree with the
     # graph, because it IS the graph build's own record of what it read.
-    coverage: List[LineCoverage] = field(default_factory=list, repr=False)
+    coverage: list[LineCoverage] = field(default_factory=list, repr=False)
     # Structural ambiguities the parser REFUSED to resolve (today: only the P5
     # list-vs-mapping discrimination). Additive; empty unless a corpus authors an
     # ambiguous `- key:` block. Kept OFF the graph index deliberately — the index is
     # the graph, and a finding is a statement about the SOURCE, not about the graph.
-    property_findings: List[ParseFinding] = field(default_factory=list, repr=False)
+    property_findings: list[ParseFinding] = field(default_factory=list, repr=False)
     # [A1/A2/A3, Era 1] the VOCABULARY channel — version marker, undeclared keys,
     # unregistered verbs. Separate from `property_findings` for the reason
     # `ParsedFile.vocabulary_findings` states: `legacy_document` fires on every
     # unstamped file, i.e. on the entire installed base, and merging it into the
     # structural channel would destroy that channel's only signal.
-    vocabulary_findings: List[ParseFinding] = field(default_factory=list, repr=False)
+    vocabulary_findings: list[ParseFinding] = field(default_factory=list, repr=False)
 
     def to_graph_index(self) -> dict:
         """Return the §4 graph_index.json dict — identical to `build_index`'s output."""
         return self._index
 
     @property
-    def profile_documents(self) -> List[str]:
+    def profile_documents(self) -> list[str]:
         """Files under this corpus that were PARSED but excluded from the content
         graph because they declare themselves domain profiles (`document_tag: PROFILE`).
 
@@ -155,18 +154,18 @@ class ParsedCorpus:
         """
         return list(self._index.get("profile_documents") or [])
 
-    def edges_by_layer(self) -> Dict[str, List[Edge]]:
+    def edges_by_layer(self) -> dict[str, list[Edge]]:
         """Group parse-time edges into the four canonical layers (§7 edges[4 layers])."""
-        out: Dict[str, List[Edge]] = {layer: [] for layer in CANONICAL_LAYERS}
+        out: dict[str, list[Edge]] = {layer: [] for layer in CANONICAL_LAYERS}
         for e in self.edges:
             out.setdefault(e.layer, []).append(e)
         return out
 
-    def diagnostics_of(self, kind: str) -> List[Diagnostic]:
+    def diagnostics_of(self, kind: str) -> list[Diagnostic]:
         return [d for d in self.diagnostics if d.kind == kind]
 
-    def diagnostic_counts(self) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
+    def diagnostic_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
         for d in self.diagnostics:
             counts[d.kind] = counts.get(d.kind, 0) + 1
         return counts
@@ -176,8 +175,8 @@ class ParsedCorpus:
 # parse()
 # ---------------------------------------------------------------------------
 def parse(source=None, *, paths=None, profile=None,
-          corpus_id: str = "corpus", domain_suffix: Optional[str] = None,
-          built_at: Optional[str] = None,
+          corpus_id: str = "corpus", domain_suffix: str | None = None,
+          built_at: str | None = None,
           registered_ns=None) -> ParsedCorpus:
     """Parse a FactLattice corpus into the §7 in-memory model + diagnostics.
 
@@ -277,11 +276,11 @@ def _reparse_dir(corpus_root: str, cfg):
     corpus-relative source_file labels build_index uses (so `.nodes`/`.edges` labels
     line up with the index dict / diagnostics). Same deterministic parse_file call."""
     from .hashing import list_lts_files
-    nodes: List[Node] = []
-    edges: List[Edge] = []
-    coverage: List[LineCoverage] = []
-    prop_findings: List[ParseFinding] = []
-    vocab_findings: List[ParseFinding] = []
+    nodes: list[Node] = []
+    edges: list[Edge] = []
+    coverage: list[LineCoverage] = []
+    prop_findings: list[ParseFinding] = []
+    vocab_findings: list[ParseFinding] = []
     for rel in list_lts_files(corpus_root):
         abs_path = os.path.join(corpus_root, rel)
         try:
@@ -310,7 +309,7 @@ def _reparse_dir(corpus_root: str, cfg):
     return nodes, edges, coverage, prop_findings, vocab_findings
 
 
-def common_root(file_list) -> Optional[str]:
+def common_root(file_list) -> str | None:
     """The deepest directory common to `file_list` — the file-set's implied corpus root.
 
     ONE derivation, TWO readers: `_build_over_files` uses it to lay out its staging
@@ -360,9 +359,9 @@ def _build_over_files(file_list, cfg, corpus_id, dom_suffix, built_at):
     [FL-LINE-ACCOUNTING]: because the staging is deleted here, the coverage record RETAINS
     the source lines — a consumer cannot re-read them from the recorded label.
     """
-    staged: List[tuple] = []  # (rel_name, abs_original)
-    seen: Dict[str, int] = {}
-    abspaths: List[str] = []
+    staged: list[tuple] = []  # (rel_name, abs_original)
+    seen: dict[str, int] = {}
+    abspaths: list[str] = []
     for p in file_list:
         if not os.path.isfile(p):
             raise FileNotFoundError(f"not a file: {p!r}")
@@ -391,11 +390,11 @@ def _build_over_files(file_list, cfg, corpus_id, dom_suffix, built_at):
             shutil.copyfile(abs_orig, dest)
         index = build_index(tmp, corpus_id=corpus_id, domain_suffix=dom_suffix,
                             built_at=built_at, config=cfg)
-        nodes: List[Node] = []
-        edges: List[Edge] = []
-        coverage: List[LineCoverage] = []
-        prop_findings: List[ParseFinding] = []
-        vocab_findings: List[ParseFinding] = []
+        nodes: list[Node] = []
+        edges: list[Edge] = []
+        coverage: list[LineCoverage] = []
+        prop_findings: list[ParseFinding] = []
+        vocab_findings: list[ParseFinding] = []
         for rel, abs_orig in staged:
             pf = parse_file(os.path.join(tmp, rel), rel_source_file=rel, config=cfg)
             # Vocabulary, not content — mirrors build_index over the staging dir.
@@ -415,10 +414,10 @@ def _build_over_files(file_list, cfg, corpus_id, dom_suffix, built_at):
 # ---------------------------------------------------------------------------
 # diagnostics derivation (single source of truth = the index dict)
 # ---------------------------------------------------------------------------
-def _diagnostics_from_index(index: dict) -> List[Diagnostic]:
+def _diagnostics_from_index(index: dict) -> list[Diagnostic]:
     """Unify the core's scattered preserve-and-flag signals into first-class
     Diagnostics, read straight off the (authoritative, whole-corpus) index dict."""
-    diags: List[Diagnostic] = []
+    diags: list[Diagnostic] = []
 
     # collisions (contract §3): duplicate node IDs across the corpus.
     for coll in index.get("id_collisions", []):

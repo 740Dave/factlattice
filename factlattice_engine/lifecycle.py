@@ -80,7 +80,7 @@ just move the invisibility, not remove it.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple
+from typing import Any
 
 # --- THE LIFECYCLE KEY SET ([FL-RECALL-TWO-VOCABULARIES]) --------------------------
 # ⛔ A LIFECYCLE QUERY SWEEPS THE UNION AND SAYS WHICH KEYS IT CONSULTED.
@@ -106,7 +106,7 @@ LIFECYCLE_PROPERTY_ALT = "lifecycle_position"
 # Order is the REPORTED order in `keys_consulted`, and it is search order too: `status`
 # first because it is the field the engine has always matched on, so a caller comparing
 # an old answer to a new one sees the old answer's key named first.
-LIFECYCLE_KEYS: Tuple[str, ...] = (
+LIFECYCLE_KEYS: tuple[str, ...] = (
     LIFECYCLE_STATUS_KEY, LIFECYCLE_PROPERTY, LIFECYCLE_PROPERTY_ALT,
 )
 
@@ -116,7 +116,7 @@ _TOKEN_RE = re.compile(r"[a-z]+(?:-[a-z]+)*")
 
 # The character classes that may legally TERMINATE a lifecycle token. Every one of these
 # is present in the measured corpus values; see the module docstring.
-_BOUNDARY_CHARS: FrozenSet[str] = frozenset(
+_BOUNDARY_CHARS: frozenset[str] = frozenset(
     " \t\n\r\f\v"      # `proposed — awaiting ratify`, `operational (2026-07-07)`
     ";"                # `resolved; amended 2026-07-26 (…)`
     ".,:"              # `resolved.`, `open, pending`, `open: blocked on …`
@@ -125,7 +125,7 @@ _BOUNDARY_CHARS: FrozenSet[str] = frozenset(
 )
 
 
-def lifecycle_token(value: object) -> Optional[str]:
+def lifecycle_token(value: object) -> str | None:
     """The normalized lifecycle token of a status value, or None when there isn't one.
 
     Returns None (never guesses) for: a non-string; an empty/whitespace value; a value
@@ -194,7 +194,7 @@ def status_matches(raw_status: object, query: object) -> bool:
 # THE UNION SWEEP ([FL-RECALL-TWO-VOCABULARIES] / [FL-RECALL-PROPOSALS] item 2)
 # ---------------------------------------------------------------------------------
 
-def _values(raw: object) -> List[object]:
+def _values(raw: object) -> list[object]:
     """A property value as a list of scalars. A repeated key accumulates into a list
     (parser `_maybe_multivalue`), and a lifecycle sweep that read only the first entry
     would reproduce the halving one level down."""
@@ -203,7 +203,7 @@ def _values(raw: object) -> List[object]:
     return [] if raw is None else [raw]
 
 
-def lifecycle_values(node: Dict[str, Any]) -> Dict[str, List[object]]:
+def lifecycle_values(node: dict[str, Any]) -> dict[str, list[object]]:
     """`{key: [values]}` for every lifecycle-bearing key this node actually carries.
 
     Reads the node's TOP-LEVEL `status` and its `lifecycle-position` /
@@ -213,7 +213,7 @@ def lifecycle_values(node: Dict[str, Any]) -> Dict[str, List[object]]:
     did not have.
     """
     props = node.get("properties") or {}
-    out: Dict[str, List[object]] = {}
+    out: dict[str, list[object]] = {}
     for key in LIFECYCLE_KEYS:
         raw = node.get("status") if key == LIFECYCLE_STATUS_KEY else props.get(key)
         vals = [v for v in _values(raw) if v is not None]
@@ -222,7 +222,7 @@ def lifecycle_values(node: Dict[str, Any]) -> Dict[str, List[object]]:
     return out
 
 
-def lifecycle_matches(node: Dict[str, Any], query: object) -> Optional[str]:
+def lifecycle_matches(node: dict[str, Any], query: object) -> str | None:
     """The FIRST lifecycle key on `node` whose value matches `query`, or None.
 
     ⛔ THE UNION, NOT `status` ALONE. Each key is matched through `status_matches`, so

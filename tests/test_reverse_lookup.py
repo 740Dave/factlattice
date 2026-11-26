@@ -25,8 +25,13 @@ from __future__ import annotations
 import pytest
 
 from factlattice_engine import (
-    FreshnessResult, LtsEngine, LtsStore, Partition, ReverseIndex,
-    build_domain_index, dispatch,
+    FreshnessResult,
+    LtsEngine,
+    LtsStore,
+    Partition,
+    ReverseIndex,
+    build_domain_index,
+    dispatch,
 )
 
 

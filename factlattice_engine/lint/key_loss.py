@@ -51,8 +51,6 @@ legal key under `_coerce_key` with no authoring decision required.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 import factlattice
 
 from ..key_loss import HIGH, MEDIUM, NONE, SHAPES, Dropped, scan_text
@@ -65,7 +63,7 @@ KIND_HIGH = "key_loss_high"        # mechanical: coerces to a legal key, no choi
 KIND_MEDIUM = "key_loss_choice"    # needs an authoring decision (a rename), not a fix
 KIND_SUMMARY = "key_loss_summary"  # the always-emitted counter — see the docstring
 
-KEY_LOSS_SEVERITY: Dict[str, str] = {
+KEY_LOSS_SEVERITY: dict[str, str] = {
     KIND_HIGH: "warning",
     KIND_MEDIUM: "warning",
     KIND_SUMMARY: "info",
@@ -83,7 +81,7 @@ def _message(d: Dropped) -> str:
             f"The text survives for a human reader; the graph never sees it.")
 
 
-def find_key_losses(corpus: "factlattice.ParsedCorpus") -> List[Dropped]:
+def find_key_losses(corpus: factlattice.ParsedCorpus) -> list[Dropped]:
     """Every intent-carrying dropped bullet in `corpus`, deterministic in file order.
 
     ⛔ Re-scans from `LineCoverage.lines` rather than re-reading the file. In
@@ -91,14 +89,14 @@ def find_key_losses(corpus: "factlattice.ParsedCorpus") -> List[Dropped]:
     that is deleted before the caller sees the result, so re-reading from the label is
     not merely wasteful, it is wrong. (Same reason `LineCoverage` retains `lines`.)
     """
-    out: List[Dropped] = []
+    out: list[Dropped] = []
     for cov in corpus.coverage:
         rep = scan_text("\n".join(cov.lines), cov.source_file)
         out += [d for d in rep.dropped if d.confidence != NONE]
     return out
 
 
-def key_loss_stats(corpus: "factlattice.ParsedCorpus") -> Dict[str, int]:
+def key_loss_stats(corpus: factlattice.ParsedCorpus) -> dict[str, int]:
     """authored-vs-minted for the whole corpus. Emitted on EVERY run, clean or not.
 
     The RATIO is the honest framing, and it is the number that can fall. A rule that
@@ -118,7 +116,7 @@ def key_loss_stats(corpus: "factlattice.ParsedCorpus") -> Dict[str, int]:
             "minted_properties": minted, "lost_bullets": lost, "flagged": flagged}
 
 
-def summary_line(stats: Dict[str, int]) -> str:
+def summary_line(stats: dict[str, int]) -> str:
     return (f"-- key loss: {stats['lost_bullets']} top-level bullet(s) in node bodies "
             f"minted no property ({stats['flagged']} carrying an intent signal) "
             f"— {stats['authored_bullets']} authored / {stats['minted_properties']} minted")

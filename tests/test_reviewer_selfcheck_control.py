@@ -45,7 +45,7 @@ def _case(r, cid):
 def test_the_control_passes_and_carries_the_two_reviewer_cases():
     r = run_selfcheck()
     assert r["verdict"] == VERDICT_PASS and r["digest_ok"] is True, r.get("error")
-    assert r["case_count"] == r["passed"] == 58          # 56 -> 58
+    assert r["case_count"] == r["passed"] == 62          # 56 -> 58; 58 -> 62 with SL-41 (spec 39)
     for cid in CASES:
         c = _case(r, cid)
         assert c["result"] == VERDICT_PASS and c["checks"] >= 4, c

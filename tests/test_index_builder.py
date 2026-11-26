@@ -5,7 +5,9 @@ import json
 import os
 
 from factlattice.index_builder import (
-    build_index, compute_snapshot_hash, write_index_atomic,
+    build_index,
+    compute_snapshot_hash,
+    write_index_atomic,
 )
 from tests import snippets
 

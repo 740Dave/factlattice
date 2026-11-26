@@ -24,7 +24,7 @@
     "  If you are here because the self-check went red: the parser is the suspect, not this",
     "  file. Change this file only as a deliberate, reviewed diff that carries a REASON in its",
     "  commit message -- the same discipline DELIBERATELY_UNMAPPED carries in",
-    "  tools/tests/test_gate_reachability.py, where adding an entry is a",
+    "  python/tests/render/test_precommit_gate_reachability.py, where adding an entry is a",
     "  decision that a diff surfaces to a reviewer.",
     "",
     "THE RECORD IS TWO-LEVEL, and the levels are NOT 1:1.",
@@ -50,9 +50,9 @@
     "",
     "ORACLE v2 (2026-08-11) -- FIVE cases and 33 lines ADDED, none changed. The control had",
     "  neither a WRAPPED property value nor an ID TABLE among its live shapes, and both",
-    "  classes were bleeding in the corpora while all 24 cases passed: 41-example-wrapped-",
-    "  values.lts captured 23% of its authored bytes, and its `[ACME-SUB-ACCEPT]`",
-    "  -- a 14-row acceptance contract -- captured 7%. A control cannot measure a class it",
+    "  classes were bleeding in the corpora while all 24 cases passed: 57-substrate-agnostic-",
+    "  subscription-filtering.lts captured 18% of its authored bytes, and its `[ACME-SUB-ACCEPT]`",
+    "  -- an 18-row acceptance contract -- captured 5%. A control cannot measure a class it",
     "  does not contain, so the classes were added as LIVE SHAPES (SL-19 wrapped value, SL-20",
     "  ID table) with an EXCLUSION beside each: an indented BULLET that must not be folded",
     "  (line 168) and a decorative table that must not be promoted (lines 179-182). The",
@@ -63,8 +63,8 @@
     "ORACLE v3 (2026-08-11) -- FOUR cases and 12 lines ADDED, none changed. Same story as v2,",
     "  one grammar over: the control contained no property-shaped bullet whose KEY REGION",
     "  carried a qualifier, so SL-21 (parenthetical) and SL-22 (en/em-dash) bled through 27",
-    "  green cases. Measured on the day they were named: 163 occurrences across the Acme",
-    "  corpora, 151 parenthetical and 12 dashed, in 21 files -- and FOUR of them inside",
+    "  green cases. Measured on the day they were named: 281 occurrences across the Acme",
+    "  corpora, 272 parenthetical and 9 dashed, in 30 files -- and SEVEN of them inside",
     "  tests/fixtures/preview/spec29-clean-control.lts, the file whose entire job was to be",
     "  the CLEAN negative control. `lts_preview` reported it at 100.0% coverage, 0 lost.",
     "  Both classes are added as LIVE SHAPES with an EXCLUSION BESIDE EACH, one line below its",
@@ -85,8 +85,8 @@
     "  consequences of the appended lines.",
     "",
     "ORACLE v4 (2026-08-15, RECORDED RETROSPECTIVELY) -- FIVE cases and 21 lines were added",
-    "  by 3f9a2c1 for the property-KEY minting classes SL-24..SL-28 (`relates-to` mapped to",
-    "  nothing across 140 occurrences while this control was GREEN at 34/34). That commit",
+    "  by 9819d48 for the property-KEY minting classes SL-24..SL-28 (`relates-to` mapped to",
+    "  nothing across 222 occurrences while this control was GREEN at 34/34). That commit",
     "  updated CONTROL_DIGEST correctly but left BOTH provenance fields stale: no v4 note",
     "  here, and `measured_against` still claiming `SL-1 .. SL-23`. The consequence is",
     "  narrow but is exactly the failure this artifact exists to prevent -- `measured_against`",
@@ -148,7 +148,7 @@
     "  DISAPPEAR; ERA1-ENTRY-POINT-EQUIVALENCE carries `negative_control: true`, which",
     "  starves one path and requires the instrument to notice."
   ],
-  "measured_against": "silent-loss-classes v10 (2026-10-07), SL-1 .. SL-40 -- SL-23 is the first SUBSTITUTION class (every other class up to it makes something DISAPPEAR; SL-23 makes something LIE); SL-24..SL-28 are the property-KEY minting classes; SL-29..SL-32 are the EDGE-TYPE NAMESPACE classes and are the first cases here whose subject is the PROFILE LOADER rather than the document parser; SL-33 is the MALFORMED-REF class (Era 0 / PARSER-ENGINEERING-SPEC.md rev 2 C1, SPEC A4): a bracket that is id-SHAPED but not a well-formed id, at a ref-expecting position, is now a `malformed_ref` finding instead of silence; SL-34..SL-37 are the ERA 1 RATIFICATION classes and are the first cases whose subject is the document's MODE rather than its bytes -- SL-34 the format-version marker (absence=legacy, presence=strict, and the GRAPH identical across both), SL-35 the A2 declared-or-marked key regime (core / profile-declared / x-marked / undeclared, with edit-distance suggestion), SL-36 the A3 verb regime including the prose-target path that was silent and unspecified, SL-37 entry-point equivalence (the V5/V5b/V5c wiring, green as of C3/C4 and guarded by its own negative control); SL-39 is the review-extension EDGE class (2026-10-07): `attaches-to-hook` (REVPROC -> REVHOOK) and `applies-rule` (REVPROC -> REVRULE, REVRULE -> existing rule) mint forward edges, `order` stays a property, and the look-alikes `applies-to` / `attaches-to` mint nothing (SL-39b); SL-38 is the `canonical-node` minting class (2026-10-03): a legacy node pointing at its canonical node, a FORWARD CANONICAL edge that is NOT supersession; SL-38b pins that BARE `canonical` (free-text status prose on 10 live nodes) mints nothing; SL-40 is the REVIEW-SHAPE class (2026-10-07, A-E4): a review or extension node must carry its required properties and declare its keys under the shipped reviewer profile, judged by counting V3 findings because every profile finding is a warning, with a stripped twin so that an emptied required list is visible; its subject is the reviewer PROFILE, not the document parser",
+  "measured_against": "silent-loss-classes v10 (2026-10-07), SL-1 .. SL-40 -- SL-23 is the first SUBSTITUTION class (every other class up to it makes something DISAPPEAR; SL-23 makes something LIE); SL-24..SL-28 are the property-KEY minting classes; SL-29..SL-32 are the EDGE-TYPE NAMESPACE classes and are the first cases here whose subject is the PROFILE LOADER rather than the document parser; SL-33 is the MALFORMED-REF class (Era 0 / PARSER-ENGINEERING-SPEC.md rev 2 C1, SPEC A4): a bracket that is id-SHAPED but not a well-formed id, at a ref-expecting position, is now a `malformed_ref` finding instead of silence; SL-34..SL-37 are the ERA 1 RATIFICATION classes and are the first cases whose subject is the document's MODE rather than its bytes -- SL-34 the format-version marker (absence=legacy, presence=strict, and the GRAPH identical across both), SL-35 the A2 declared-or-marked key regime (core / profile-declared / x-marked / undeclared, with edit-distance suggestion), SL-36 the A3 verb regime including the prose-target path that was silent and unspecified, SL-37 entry-point equivalence (the V5/V5b/V5c wiring, green as of C3/C4 and guarded by its own negative control); SL-39 is the review-extension EDGE class (2026-10-07): `attaches-to-hook` (REVPROC -> REVHOOK) and `applies-rule` (REVPROC -> REVRULE, REVRULE -> existing rule) mint forward edges, `order` stays a property, and the look-alikes `applies-to` / `attaches-to` mint nothing (SL-39b); SL-38 is the `canonical-node` minting class (2026-10-03): a legacy node pointing at its canonical node, a FORWARD CANONICAL edge that is NOT supersession; SL-38b pins that BARE `canonical` (free-text status prose on 10 live nodes) mints nothing; SL-40 is the REVIEW-SHAPE class (2026-10-07, A-E4): a review or extension node must carry its required properties and declare its keys under the shipped reviewer profile, judged by counting V3 findings because every profile finding is a warning, with a stripped twin so that an emptied required list is visible; its subject is the reviewer PROFILE, not the document parser; SL-41 is the NORMATIVE-CONTENT class (spec 39): normative_effective is minted on every node, a source statement and a confirmation are always non-normative, restates/confirmation-of/checked-against mint forward RESTATES/CONFIRMS/CHECKED_AGAINST edges, and each misuse of the keys is a finding whose severity the mode decides (SL-41 positive cases live in control.lts, the finding cases carry their documents inline)",
   "control_corpus": "control.lts",
   "oracle_version": 10,
   "graph": {
@@ -161,7 +161,7 @@
         "domain": "met.selfcheck",
         "audience": "engine",
         "status": "active",
-        "created": "2025-06-02"
+        "created": "2026-08-11"
       }
     },
     "node_count": 35,
@@ -179,7 +179,8 @@
         "properties": {
           "id_table": {
             "CTRL-T3": "Requirement: an ID table under an untagged heading lands on its ANCESTOR node; verify.machine: test_orphan_id_table_attaches_to_ancestor"
-          }
+          },
+          "normative_effective": "true"
         }
       },
       "CASE-P1-SIMPLE": {
@@ -191,7 +192,8 @@
         "definition_form": "header",
         "properties": {
           "status": "active",
-          "owner": "selfcheck"
+          "owner": "selfcheck",
+          "normative_effective": "true"
         }
       },
       "CASE-P2-BOLD": {
@@ -202,7 +204,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "audience": "architect"
+          "audience": "architect",
+          "normative_effective": "true"
         }
       },
       "CASE-P3-MULTI": {
@@ -213,7 +216,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "see-also": "[CASE-P1-SIMPLE], [CASE-P2-BOLD]"
+          "see-also": "[CASE-P1-SIMPLE], [CASE-P2-BOLD]",
+          "normative_effective": "true"
         }
       },
       "CASE-P4-NESTED": {
@@ -227,7 +231,8 @@
           "depends-on": [
             "[CASE-P1-SIMPLE]",
             "[CASE-P3-MULTI]"
-          ]
+          ],
+          "normative_effective": "true"
         }
       },
       "CASE-P5-MAPPING": {
@@ -240,8 +245,9 @@
         "properties": {
           "provenance": {
             "authored_by": "selfcheck",
-            "authored_at": "2025-06-02"
-          }
+            "authored_at": "2026-08-11"
+          },
+          "normative_effective": "true"
         }
       },
       "CASE-CONFIDENCE": {
@@ -257,8 +263,9 @@
             "blast_radius": "high",
             "rationale": "measured against silent-loss-classes v4",
             "assessed_by": "ui-architect",
-            "assessed_at": "2025-06-02T00:00:00Z"
-          }
+            "assessed_at": "2026-08-11T00:00:00Z"
+          },
+          "normative_effective": "true"
         }
       },
       "CASE-CONTEXT-FOR-CHANGE": {
@@ -278,7 +285,8 @@
             "counter_response": "a list is not queryable by sub-field, which is the whole point",
             "invalidating_assumption": "that SPEC 2.2's four enumerated forms are exhaustive",
             "implication": "sub-fields become first-class queryable fields"
-          }
+          },
+          "normative_effective": "true"
         }
       },
       "CASE-FLOW-DECISION": {
@@ -292,7 +300,8 @@
           "condition": "did the indented block parse?",
           "actor": "lts-engine",
           "if-true": "[CASE-FLOW-PASS]",
-          "if-false": "[CASE-FLOW-FAIL]"
+          "if-false": "[CASE-FLOW-FAIL]",
+          "normative_effective": "true"
         }
       },
       "CASE-FLOW-PASS": {
@@ -303,7 +312,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "next-step": "[CASE-FLOW-DONE]"
+          "next-step": "[CASE-FLOW-DONE]",
+          "normative_effective": "true"
         }
       },
       "CASE-FLOW-FAIL": {
@@ -314,7 +324,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "next-step": "[CASE-FLOW-DONE]"
+          "next-step": "[CASE-FLOW-DONE]",
+          "normative_effective": "true"
         }
       },
       "CASE-FLOW-DONE": {
@@ -325,7 +336,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "terminal"
+          "status": "terminal",
+          "normative_effective": "true"
         }
       },
       "CASE-SL18-NAMESPACE": {
@@ -336,7 +348,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "note": "the edge for this case is authored in the triples section below"
+          "note": "the edge for this case is authored in the triples section below",
+          "normative_effective": "true"
         }
       },
       "CASE-SL11-SUBSTRING": {
@@ -347,7 +360,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "note": "the edge for this case is authored in the triples section below"
+          "note": "the edge for this case is authored in the triples section below",
+          "normative_effective": "true"
         }
       },
       "CASE-TARGET-SUPERSEDES-55": {
@@ -358,7 +372,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "note": "nothing may be minted from the verb substring inside this node id"
+          "note": "nothing may be minted from the verb substring inside this node id",
+          "normative_effective": "true"
         }
       },
       "CASE-REL-BULLETED": {
@@ -369,7 +384,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "note": "the triple naming this node carries a leading hyphen bullet"
+          "note": "the triple naming this node carries a leading hyphen bullet",
+          "normative_effective": "true"
         }
       },
       "CASE-REL-UNBULLETED": {
@@ -380,7 +396,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "note": "the triple naming this node has no leading bullet"
+          "note": "the triple naming this node has no leading bullet",
+          "normative_effective": "true"
         }
       },
       "CASE-SL1-SYMBOL": {
@@ -391,7 +408,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-SL2-CAPS": {
@@ -402,7 +420,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-SL13-DASH": {
@@ -413,7 +432,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-SL14-NOSPACE": {
@@ -424,7 +444,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-MIXED-BLOCK": {
@@ -435,7 +456,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-LOWER-BRACKET": {
@@ -447,7 +469,8 @@
         "definition_form": "header",
         "properties": {
           "see-also": "[not-an-id]",
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-WRAPPED-VALUE": {
@@ -459,7 +482,8 @@
         "definition_form": "header",
         "properties": {
           "requirement": "a wrapped value is ONE value -- the parser joins each continuation line to the head, collapsing the newline to a single space and keeping the author's internal spacing verbatim",
-          "status": "active"
+          "status": "active",
+          "normative_effective": "true"
         }
       },
       "CASE-WRAPPED-EXCLUSION": {
@@ -470,7 +494,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "boundary": "the indented bullet below opens its own structure and must not be folded into this value"
+          "boundary": "the indented bullet below opens its own structure and must not be folded into this value",
+          "normative_effective": "true"
         }
       },
       "CASE-ID-TABLE": {
@@ -484,7 +509,8 @@
           "id_table": {
             "CTRL-T1": "Requirement: a wrapped value is joined, not truncated; verify.machine: test_wrapped_value_is_joined",
             "CTRL-T2": "Requirement: an ID table reaches the graph; verify.machine: test_id_table_rows_become_properties"
-          }
+          },
+          "normative_effective": "true"
         }
       },
       "CASE-PLAIN-TABLE": {
@@ -494,7 +520,9 @@
         "status": null,
         "document_tag": "SELFCHECK",
         "definition_form": "header",
-        "properties": {}
+        "properties": {
+          "normative_effective": "true"
+        }
       },
       "CASE-QUAL-PAREN": {
         "title": "SL-21 a PARENTHETICAL qualifier in the KEY REGION",
@@ -505,7 +533,8 @@
         "definition_form": "header",
         "properties": {
           "delta": "(leading paren in value) form (measured): the paren is in the VALUE, so it parses",
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-QUAL-DASH": {
@@ -517,7 +546,8 @@
         "definition_form": "header",
         "properties": {
           "boundary": "an em-dash inside a value — and a colon after it: both stay in the value",
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-CITED-NOT-DECLARED": {
@@ -529,7 +559,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-RELATES-TO": {
@@ -540,7 +571,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "relates-to": "[CASE-P1-SIMPLE]"
+          "relates-to": "[CASE-P1-SIMPLE]",
+          "normative_effective": "true"
         }
       },
       "CASE-SUPERSEDED-BY": {
@@ -551,7 +583,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "superseded-by": "[CASE-P1-SIMPLE]"
+          "superseded-by": "[CASE-P1-SIMPLE]",
+          "normative_effective": "true"
         }
       },
       "CASE-VERIFY": {
@@ -562,7 +595,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "verify": "[CASE-P2-BOLD]"
+          "verify": "[CASE-P2-BOLD]",
+          "normative_effective": "true"
         }
       },
       "CASE-SPAWNS": {
@@ -573,7 +607,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "spawns": "[CASE-P2-BOLD]"
+          "spawns": "[CASE-P2-BOLD]",
+          "normative_effective": "true"
         }
       },
       "CASE-PROSE-CITES": {
@@ -585,7 +620,8 @@
         "definition_form": "header",
         "properties": {
           "rationale": "chosen because [CASE-P1-SIMPLE] already owns it, so the leaf pays once",
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-MALFORMED-REF": {
@@ -597,7 +633,8 @@
         "definition_form": "header",
         "properties": {
           "relates-to": "[Mixed-Case-Attempt]",
-          "status": "negative-case"
+          "status": "negative-case",
+          "normative_effective": "true"
         }
       },
       "CASE-CANONICAL": {
@@ -608,7 +645,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "canonical-node": "[CASE-P1-SIMPLE]"
+          "canonical-node": "[CASE-P1-SIMPLE]",
+          "normative_effective": "true"
         }
       },
       "CASE-CANONICAL-BARE": {
@@ -619,7 +657,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "canonical": "false -- NOT yet canonical/live; see [CASE-P1-SIMPLE]"
+          "canonical": "false -- NOT yet canonical/live; see [CASE-P1-SIMPLE]",
+          "normative_effective": "true"
         }
       },
       "CASE-REV-HOOK": {
@@ -630,7 +669,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "role": "the target of an attaches-to-hook edge"
+          "role": "the target of an attaches-to-hook edge",
+          "normative_effective": "true"
         }
       },
       "CASE-REV-PROC": {
@@ -643,7 +683,8 @@
         "properties": {
           "attaches-to-hook": "[CASE-REV-HOOK]",
           "applies-rule": "[CASE-REV-RULE]",
-          "order": "1"
+          "order": "1",
+          "normative_effective": "true"
         }
       },
       "CASE-REV-RULE": {
@@ -654,7 +695,8 @@
         "document_tag": "SELFCHECK",
         "definition_form": "header",
         "properties": {
-          "applies-rule": "[CASE-P1-SIMPLE]"
+          "applies-rule": "[CASE-P1-SIMPLE]",
+          "normative_effective": "true"
         }
       },
       "CASE-REV-BARE": {
@@ -666,7 +708,76 @@
         "definition_form": "header",
         "properties": {
           "applies-to": "[CASE-REV-HOOK]",
-          "attaches-to": "[CASE-REV-HOOK]"
+          "attaches-to": "[CASE-REV-HOOK]",
+          "normative_effective": "true"
+        }
+      },
+      "CASE-NS-SECTION": {
+        "title": "SL-41 a section marked non-normative: everything below it is non-normative, with no override",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "normative": "false",
+          "normative_effective": "false"
+        }
+      },
+      "CASE-NS-CHILD": {
+        "title": "SL-41 a descendant with no key inherits the state",
+        "type_prefix": "CASE",
+        "parent_section": "CASE-NS-SECTION",
+        "status": "active",
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "status": "active",
+          "normative_effective": "false"
+        }
+      },
+      "CASE-NS-STATEMENT": {
+        "title": "SL-41 a node carrying source-text is a source statement, non-normative inside a normative section",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "source-text": "the words as they were said",
+          "source-locator": "transcript line 1",
+          "source-kind": "typed",
+          "source-role": "stakeholder",
+          "normative_effective": "false"
+        }
+      },
+      "CASE-NS-GOAL": {
+        "title": "SL-41 restates mints a RESTATES edge to the source statement it restates",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "restates": "[CASE-NS-STATEMENT]",
+          "normative_effective": "true"
+        }
+      },
+      "CASE-NS-CONFIRM": {
+        "title": "SL-41 a confirmation CONFIRMS one statement and is CHECKED_AGAINST the normative node",
+        "type_prefix": "CASE",
+        "parent_section": "CTRL-DOC",
+        "status": null,
+        "document_tag": "SELFCHECK",
+        "definition_form": "header",
+        "properties": {
+          "confirmation-of": "[CASE-NS-STATEMENT]",
+          "checked-against": "[CASE-NS-GOAL]",
+          "confirmation-verdict": "confirmed",
+          "confirmation-by": "reviewer",
+          "confirmation-date": "2026-11-15T21:40:01Z",
+          "confirmation-locator": "transcript line 9",
+          "normative_effective": "false"
         }
       }
     },
@@ -2543,7 +2654,7 @@
       "variant": "qualified_dash",
       "key": "requirement",
       "near_branch": "_PROP_SIMPLE_RE",
-      "_note": "SL-22. Same ruling and same reasoning as line 192, DIFFERENT KIND -- the two are kept apart because their incidences are measured apart (151 parenthetical vs 12 dashed across the Acme corpora on the day they were named). Note this is NOT SL-13: there the en-dash IS the bullet marker and `_BULLET_RE` never matches; here the bullet is a proper hyphen and the dash sits inside the key region."
+      "_note": "SL-22. Same ruling and same reasoning as line 192, DIFFERENT KIND -- the two are kept apart because their incidences are measured apart (272 parenthetical vs 9 dashed across the Acme corpora on the day they were named). Note this is NOT SL-13: there the en-dash IS the bullet marker and `_BULLET_RE` never matches; here the bullet is a proper hyphen and the dash sits inside the key region."
     },
     "199": {
       "disposition": "CONSUMED",
@@ -2658,7 +2769,7 @@
           "key": "relates-to"
         }
       ],
-      "_note": "SL-24. The defect that opened the 2026-08-15 work: `relates-to` is the natural spelling of RELATED_TO and appeared 140 times across 11 files in the acme corpora, minting NOTHING, while `lts_lint` reported every one of those files CLEAN and `lts_selfcheck` returned PASS 34/34 with a matching digest. The class was not on the list, so the control was green and the graph was wrong."
+      "_note": "SL-24. The defect that opened the 2026-08-15 work: `relates-to` is the natural spelling of RELATED_TO and appeared 222 times across 19 files in the acme corpora, minting NOTHING, while `lts_lint` reported every one of those files CLEAN and `lts_selfcheck` returned PASS 34/34 with a matching digest. The class was not on the list, so the control was green and the graph was wrong."
     },
     "209": {
       "disposition": "IGNORABLE",
@@ -2851,7 +2962,7 @@
           "key": "rationale"
         }
       ],
-      "_note": "SL-28. ⛔ THE ANTI-OVER-REACH CONTROL, and it is as load-bearing as the four above. `rationale` carries a bracketed id INSIDE A SENTENCE. Measured over the acme corpora, `rationale` (96 occurrences), `definition` (94) and `requirement` (58) are 0% pure reference lists. This line MUST mint no edge: a table that harvested every bracketed id would turn every inline citation into a graph edge and destroy what a traversal means. `contributes` carries the property and NO edge, so a regression in either direction fails here."
+      "_note": "SL-28. ⛔ THE ANTI-OVER-REACH CONTROL, and it is as load-bearing as the four above. `rationale` carries a bracketed id INSIDE A SENTENCE. Measured over the acme corpora, `rationale` (181 occurrences), `definition` (180) and `requirement` (127) are 0% pure reference lists. This line MUST mint no edge: a table that harvested every bracketed id would turn every inline citation into a graph edge and destroy what a traversal means. `contributes` carries the property and NO edge, so a regression in either direction fails here."
     },
     "225": {
       "disposition": "CONSUMED",
@@ -3005,7 +3116,7 @@
           "key": "canonical"
         }
       ],
-      "_note": "SL-38b. `canonical` is ALREADY free-text status prose on 7 acme-docs nodes (`canonical: true -- cutover accepted...`, `canonical: false -- NOT yet canonical/live ... see [ID]`). Minting it would turn that prose into a wrong edge (review F1, 2026-10-03). The property is stored as literal text and no edge exists."
+      "_note": "SL-38b. `canonical` is ALREADY free-text status prose on 10 acme-docs nodes (`canonical: true -- cutover accepted...`, `canonical: false -- NOT yet canonical/live ... see [ID]`). Minting it would turn that prose into a wrong edge (review F1, 2026-10-03). The property is stored as literal text and no edge exists."
     },
     "239": {
       "disposition": "IGNORABLE",
@@ -3233,6 +3344,322 @@
         }
       ],
       "_note": "SL-39b. A near-miss of `attaches-to-hook`: stored as text, mints nothing."
+    },
+    "258": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "259": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-NS-SECTION"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-NS-SECTION",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-41. `normative: false` marks this node and everything below it along the parent-section chain; the minted state is normative_effective."
+    },
+    "260": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "261": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-SECTION",
+          "key": "normative"
+        }
+      ]
+    },
+    "262": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "263": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-NS-CHILD"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-NS-SECTION",
+          "type": "CONTAINS",
+          "target": "CASE-NS-CHILD",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "264": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "265": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CHILD",
+          "key": "status"
+        }
+      ]
+    },
+    "266": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "267": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-NS-STATEMENT"
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-NS-STATEMENT",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ]
+    },
+    "268": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "269": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-STATEMENT",
+          "key": "source-text"
+        }
+      ]
+    },
+    "270": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-STATEMENT",
+          "key": "source-locator"
+        }
+      ]
+    },
+    "271": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-STATEMENT",
+          "key": "source-kind"
+        }
+      ]
+    },
+    "272": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-STATEMENT",
+          "key": "source-role"
+        }
+      ]
+    },
+    "273": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "274": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-NS-GOAL"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-NS-GOAL",
+          "type": "RESTATES",
+          "target": "CASE-NS-STATEMENT",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-NS-GOAL",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-41. FORWARD: the edge runs normative node -> source statement, minted by the key `restates`; edge provenance is the heading line."
+    },
+    "275": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "276": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-GOAL",
+          "key": "restates"
+        }
+      ]
+    },
+    "277": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "278": {
+      "disposition": "CONSUMED",
+      "branch": "heading_node",
+      "contributes": [
+        {
+          "artifact": "node",
+          "id": "CASE-NS-CONFIRM"
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-NS-CONFIRM",
+          "type": "CONFIRMS",
+          "target": "CASE-NS-STATEMENT",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CASE-NS-CONFIRM",
+          "type": "CHECKED_AGAINST",
+          "target": "CASE-NS-GOAL",
+          "layer": "semantic",
+          "inference": "property",
+          "flags": [],
+          "label": null
+        },
+        {
+          "artifact": "edge",
+          "source": "CTRL-DOC",
+          "type": "CONTAINS",
+          "target": "CASE-NS-CONFIRM",
+          "layer": "entity",
+          "inference": "structural",
+          "flags": [],
+          "label": null
+        }
+      ],
+      "_note": "SL-41. Two forward edges: the confirmation -> its one source statement (CONFIRMS) and -> each node the quote was checked against (CHECKED_AGAINST)."
+    },
+    "279": {
+      "disposition": "IGNORABLE",
+      "kind": "blank"
+    },
+    "280": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "confirmation-of"
+        }
+      ]
+    },
+    "281": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "checked-against"
+        }
+      ]
+    },
+    "282": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "confirmation-verdict"
+        }
+      ]
+    },
+    "283": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "confirmation-by"
+        }
+      ]
+    },
+    "284": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "confirmation-date"
+        }
+      ]
+    },
+    "285": {
+      "disposition": "CONSUMED",
+      "branch": "property_simple",
+      "contributes": [
+        {
+          "artifact": "property",
+          "node": "CASE-NS-CONFIRM",
+          "key": "confirmation-locator"
+        }
+      ]
     }
   },
   "cases": [
@@ -3862,7 +4289,7 @@
           "node": "CASE-WRAPPED-VALUE",
           "key": "requirement",
           "value": "a wrapped value is ONE value -- the parser joins each continuation line to the head, collapsing the newline to a single space and keeping the author's internal spacing verbatim",
-          "reason": "the whole point is the EXACT joined string. `starts_with` would pass on a parser that had gone back to keeping only the first physical line, which is the defect being pinned: measured on 41-example-wrapped-values.lts, 61 of 61 wrapped properties truncated to their first line and line accounting still reported 100.0% / 0 unaccounted."
+          "reason": "the whole point is the EXACT joined string. `starts_with` would pass on a parser that had gone back to keeping only the first physical line, which is the defect being pinned: measured on 57-substrate-agnostic-subscription-filtering.lts, 93 of 93 wrapped properties truncated to their first line and line accounting still reported 100.0% / 0 unaccounted."
         }
       ]
     },
@@ -3991,7 +4418,7 @@
           "key": "id_table",
           "subkey": "CTRL-T3",
           "value": "Requirement: an ID table under an untagged heading lands on its ANCESTOR node; verify.machine: test_orphan_id_table_attaches_to_ancestor",
-          "reason": "a node body ends at the NEXT heading of any level, so this table sits in no node body. The live shape it copies is `29-example-embedded.lts`'s `## 4. Compliance` -- a 12-row acceptance table under an untagged heading, which reached the graph as nothing while that file was cited as the CLEAN control."
+          "reason": "a node body ends at the NEXT heading of any level, so this table sits in no node body. The live shape it copies is `29-embedded-reactive.lts`'s `## 4. Compliance` -- a 19-row acceptance table under an untagged heading, which reached the graph as nothing while that file was cited as the CLEAN control."
         }
       ]
     },
@@ -4171,11 +4598,11 @@
       "assertions": [
         {
           "assert": "node_count",
-          "value": 42
+          "value": 47
         },
         {
           "assert": "edge_count",
-          "value": 63
+          "value": 71
         },
         {
           "assert": "finding_count",
@@ -4187,7 +4614,7 @@
         },
         {
           "assert": "line_count",
-          "value": 257
+          "value": 285
         }
       ]
     },
@@ -4235,7 +4662,7 @@
     },
     {
       "case_id": "MINT-RELATES-TO",
-      "title": "SL-24 `relates-to` mints RELATED_TO — the 140-occurrence silent loss",
+      "title": "SL-24 `relates-to` mints RELATED_TO — the 222-occurrence silent loss",
       "kind": "positive",
       "sl_classes": [
         "SL-24"
@@ -4576,7 +5003,7 @@
             "source": "CASE-PROSE-CITES",
             "type": "RELATED_TO"
           },
-          "reason": "`rationale` is prose that CITES. 0% of its 96 live occurrences are pure reference lists. If a future table harvested every bracketed id, this fires."
+          "reason": "`rationale` is prose that CITES. 0% of its 181 live occurrences are pure reference lists. If a future table harvested every bracketed id, this fires."
         },
         {
           "assert": "no_edge_matching",
@@ -4753,7 +5180,7 @@
             "semantic",
             "entity"
           ],
-          "reason": "The two profiles use DIFFERENT property keys, which is exactly why the key-level guard shipped in 3f9a2c1 stayed silent on this. corpora/acme-specs/ is a root of THREE registered corpora, so this is live, not hypothetical."
+          "reason": "The two profiles use DIFFERENT property keys, which is exactly why the key-level guard shipped in 9819d48 stayed silent on this. corpora/acme-specs/ is a root of THREE registered corpora, so this is live, not hypothetical."
         },
         {
           "assert": "profiles_merge_refused",
@@ -5411,6 +5838,281 @@
           ],
           "expect_undeclared_keys": [],
           "reason": "A-E4. All V1-V10 findings are WARNINGS (F3), so required fields are enforced by counting V3 findings, never by a lint exit code. The expected list is written here, in the oracle, from the spec's section 4.2 and the addendum (C3b, C4b, ruling B); it is NOT read from the profile it checks. If the profile loses a required key this list is longer than what is produced and the case goes red; if it gains one, shorter."
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-NORMATIVE-STATE",
+      "title": "SL-41 normative_effective is minted per node: a marked section, its descendant and a source statement read false, everything else true",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-41"
+      ],
+      "lines": [
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273
+      ],
+      "nodes": [
+        "CASE-NS-SECTION",
+        "CASE-NS-CHILD",
+        "CASE-NS-STATEMENT"
+      ],
+      "assertions": [
+        {
+          "assert": "property_value",
+          "node": "CASE-NS-SECTION",
+          "key": "normative_effective",
+          "value": "false"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-NS-CHILD",
+          "key": "normative_effective",
+          "value": "false"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-NS-STATEMENT",
+          "key": "normative_effective",
+          "value": "false"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-NS-GOAL",
+          "key": "normative_effective",
+          "value": "true"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-NS-CONFIRM",
+          "key": "normative_effective",
+          "value": "false"
+        },
+        {
+          "assert": "property_value",
+          "node": "CASE-P1-SIMPLE",
+          "key": "normative_effective",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "case_id": "MINT-RESTATES-CONFIRMS",
+      "title": "SL-41 restates, confirmation-of and checked-against mint FORWARD RESTATES, CONFIRMS and CHECKED_AGAINST edges (never the reverse)",
+      "kind": "positive",
+      "sl_classes": [
+        "SL-41"
+      ],
+      "lines": [
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285
+      ],
+      "nodes": [
+        "CASE-NS-GOAL",
+        "CASE-NS-CONFIRM"
+      ],
+      "assertions": [
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-NS-STATEMENT",
+            "type": "RESTATES"
+          },
+          "reason": "forward only: the source statement never points back at the node that restates it"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-NS-STATEMENT",
+            "type": "CONFIRMS"
+          },
+          "reason": "forward only: the statement never points at its confirmation"
+        },
+        {
+          "assert": "no_edge_matching",
+          "where": {
+            "source": "CASE-NS-GOAL",
+            "type": "CHECKED_AGAINST"
+          },
+          "reason": "CHECKED_AGAINST runs confirmation -> normative node, never the reverse"
+        }
+      ]
+    },
+    {
+      "case_id": "NS-FINDINGS-STRICT",
+      "title": "SL-41 strict mode: each normative-content misuse is its own finding, at error severity",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-41"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kinds": [
+            "confirmation_bad_value",
+            "confirmation_missing_key",
+            "node_is_both_kinds",
+            "normative_bad_value",
+            "normative_in_frontmatter",
+            "normative_override",
+            "reserved_key_authored",
+            "source_kind_bad_value",
+            "source_statement_missing_key"
+          ]
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "confirmation_bad_value",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "confirmation_missing_key",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "node_is_both_kinds",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_bad_value",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_in_frontmatter",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_override",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "reserved_key_authored",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "source_kind_bad_value",
+          "severity": "error"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "source_statement_missing_key",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "case_id": "NS-FINDINGS-LEGACY",
+      "title": "SL-41 legacy twin of the same bytes: the same findings at warning severity and the same graph, normative_effective included",
+      "kind": "negative",
+      "sl_classes": [
+        "SL-41"
+      ],
+      "lines": [],
+      "nodes": [],
+      "assertions": [
+        {
+          "assert": "parse_mode",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "format_version": null,
+          "mode": "legacy",
+          "graph_identical_to": "---\nlts: \"1.1\"\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "confirmation_bad_value",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "confirmation_missing_key",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "node_is_both_kinds",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_bad_value",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_in_frontmatter",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "normative_override",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "reserved_key_authored",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "source_kind_bad_value",
+          "severity": "warning"
+        },
+        {
+          "assert": "vocabulary_findings",
+          "given_document": "---\ntitle: T\nnormative: false\n---\n# T [SPEC:NS-DOC]\n\n## Sec [NS-SEC]\n\n- normative: false\n\n### Kid [NS-KID]\n\n- normative: true\n- normative_effective: true\n\n## Bad [NS-BAD]\n\n- normative: maybe\n\n## Stmt [NS-STMT]\n\n- source-text: words\n- source-kind: heard\n\n## Conf [NS-CONF]\n\n- confirmation-of: [NS-STMT] [NS-BAD]\n- confirmation-verdict: heard\n- confirmation-date: yesterday\n- source-text: also\n",
+          "kind": "source_statement_missing_key",
+          "severity": "warning"
         }
       ]
     }

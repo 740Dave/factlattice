@@ -21,13 +21,13 @@ np = pytest.importorskip("numpy")
 pytest.importorskip("onnxruntime")
 pytest.importorskip("onnx")
 
-from factlattice_engine.semantic import embedder as E  # noqa: E402
 from factlattice_engine.semantic import embedd as D  # noqa: E402
+from factlattice_engine.semantic import embedder as E  # noqa: E402
 from factlattice_engine.semantic.suggest import SemanticService  # noqa: E402
 from tests.semantic_helpers import _tiny_model  # noqa: E402
 
-TEXTS = ["hello world", "tile map version field", "hello", "tile map", "version field !",
-         "world world world hello tile map version", "sw", "field ?"] * 9      # 72 texts, 3 batches
+TEXTS = ["hello world", "zero map version field", "hello", "zero map", "version field !",
+         "world world world hello zero map version", "sw", "field ?"] * 9      # 72 texts, 3 batches
 
 
 @pytest.fixture()
@@ -98,7 +98,7 @@ def test_a_killed_service_is_restarted_by_the_next_call(env):
     first = c.server_pid
     os.kill(first, signal.SIGKILL)
     time.sleep(0.2)
-    assert c.embed(["tile map"], query=True).shape == (1, env[2].dim)
+    assert c.embed(["zero map"], query=True).shape == (1, env[2].dim)
     assert c.server_pid != first
 
 
@@ -342,7 +342,7 @@ def test_a_service_killed_under_another_engine_comes_back_within_the_deadline(en
         time.sleep(0.2)
         b = _client(env, frame_deadline_s=5.0)
         t0 = time.monotonic()
-        assert b.embed(["tile map"], query=True).shape == (1, pin.dim)
+        assert b.embed(["zero map"], query=True).shape == (1, pin.dim)
         assert time.monotonic() - t0 < 8 and b.server_pid != victim
     finally:
         a.kill(); a.wait()
@@ -384,14 +384,14 @@ def test_an_interactive_doc_embed_rides_the_query_lane(env):
     engine = _client(env)
     tb = threading.Thread(target=lambda: engine.embed(TEXTS, query=False)); tb.start()
     time.sleep(0.5)
-    t0 = time.monotonic(); engine.embed(["tile map"], query=False, interactive=True)
+    t0 = time.monotonic(); engine.embed(["zero map"], query=False, interactive=True)
     assert time.monotonic() - t0 < 0.5
     tb.join(30); srv.shutdown()
 
 
 def test_suggest_tops_up_interactively(env, monkeypatch, tmp_path):
-    from tests.test_semantic_index import _part, _write_corpus
     from factlattice_engine.semantic import index as I
+    from tests.test_semantic_index import _part, _write_corpus
     root, models, pin = env
     _write_corpus(tmp_path / "corpus")
     seen = []
@@ -432,7 +432,7 @@ def _fake_service(env, script):
         while not stop.is_set():
             try:
                 conn, _ = srv.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             threading.Thread(target=handle, args=(conn,), daemon=True).start()
         srv.close()

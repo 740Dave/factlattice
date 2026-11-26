@@ -3,7 +3,6 @@ loaded rule behind it'. Code first (each with a negative control run by mutation
 pinned in the definition AND the procedure."""
 from __future__ import annotations
 
-from tests._shapes import j as _j
 import json
 import os
 import re
@@ -13,7 +12,7 @@ import sys
 import pytest
 
 from factlattice_engine import reviewer
-from factlattice_engine.tools import dispatch
+from tests._shapes import j as _j
 from tests.test_reviewer_cli import cli as _cli
 from tests.test_reviewer_resolve_output import _site
 
@@ -35,21 +34,21 @@ def test_a_vaultsvc_document_under_a_default_listed_WRONG_corpus_id_never_gets_t
     site = _site(default=str(gen), corpora="cx,cy", overrides=[f"cx:vaultsvc/ -> {res}"])
     spec_y = {"roots": [{"path": str(cy), "area": "s"}]}
     doc = cx / "vaultsvc" / "d.lts"
-    r = reviewer.resolve_output("cy", str(doc), spec_y, None, site)
+    r = reviewer.resolve_output("cy", str(doc), spec_y, None, site, all_corpora={})
     assert r.root is None and r.rule_used == "no-output-root", r
     assert r.reason == "document-not-under-corpus-root" and "not under a root of the named corpus" in r.explanation
     # the right corpus id still routes to the override, and an ordinary document of cy still takes the default
     spec_x = {"roots": [{"path": str(cx), "area": "s"}]}
-    assert reviewer.resolve_output("cx", str(doc), spec_x, None, site).rule_used == "override"
+    assert reviewer.resolve_output("cx", str(doc), spec_x, None, site, all_corpora={}).rule_used == "override"
     (cy / "ok.lts").write_text("# x\\n")
-    assert reviewer.resolve_output("cy", str(cy / "ok.lts"), spec_y, None, site).rule_used == "default"
+    assert reviewer.resolve_output("cy", str(cy / "ok.lts"), spec_y, None, site, all_corpora={}).rule_used == "default"
     # also with a profile review-output: a wrong corpus is refused before any rule
-    assert reviewer.resolve_output("cy", str(doc), spec_y, None, _site(overrides=[f"cy -> {res}"])).root is None
+    assert reviewer.resolve_output("cy", str(doc), spec_y, None, _site(overrides=[f"cy -> {res}"]), all_corpora={}).root is None
 
 
 def test_a_registered_corpus_with_no_roots_in_its_spec_is_not_refused_on_this_ground(tmp_path):
     site = _site(overrides=[f"c -> {tmp_path}"])
-    assert reviewer.resolve_output("c", "/anywhere/x.lts", {"roots": []}, None, site).rule_used == "override"
+    assert reviewer.resolve_output("c", "/anywhere/x.lts", {"roots": []}, None, site, all_corpora={}).rule_used == "override"
 
 
 # ------------------------------------------------------------------------------------ P2-C the detector, both directions
@@ -82,16 +81,16 @@ MUST_WITHHOLD = {
     "serial-digits": _j('ABCD', '1-EF', 'GH2-', 'IJKL', '3-MN', 'OP4-', 'QRST', '5'),
 }
 MUST_QUOTE = {
-    "node-id": "see DEC-ACME-ARCHIVE-FILES-ARE-READ-ONLY-2027-03-14 for the decision",
-    "id-list": "[DEC-WIDGET-FEED-IS-THE-DEFAULT-SOURCE], [DEC-ONE-RUN-IS-THE-REPORTED-FIGURE-2027-03-14]",
-    "qualified-id": "AC-417-WIDGET-CACHE-IS-UPSTREAM-OF-THREE-READERS-AND-MORE-XYZ:ANOTHER-NODE-ID-THAT-IS-LONG-2026",
+    "node-id": "see DEC-LIB-STORED-DATA-IS-A-PROTECTED-TEMPLATE-2026-10-02 for the decision",
+    "id-list": "[DEC-INDEX-IS-THE-PRODUCTION-REPRESENTATION], [DEC-SINGLE-PROBE-IS-THE-CUSTOMER-METRIC-2026-10-02]",
+    "qualified-id": "FL-029-DUPLICATE-SCREEN-IS-UPSTREAM-OF-TWO-CONSUMERS-AND-MORE:ANOTHER-NODE-ID-THAT-IS-LONG-2026",
     "git-sha-40": "commit 148ff7933e5a63233a0bc212099caa20cb70a62b (a fast-forward)",
     "git-sha-7": "commit 09b80e9 landed",
     "sha256-prefixed": "hash sha256:1cbd16085464f53b332601015a412a679d970a9135a9a295a456a95556a28141 recorded",
-    "abs-path": "written to /Users/you/projdata/reports/ac_widget_throughput_summary_2027-01-15xxxxxx/INVENTORY.md today",
-    "tilde-path": "~/projdata/reports/ac417_cost_vs_rating_2026-01-15/idx_vs_rating_binned.csv",
-    "dot-rel-path": "./reports/ac_widget_throughput_summary_2027-01-15xxxxxx/INVENTORY_of_everything.md",
-    "kebab-slug": "release-notes-2027-01-15-draft-only-as-of-the-widget-pipeline-layout-reviewxxxxxxxxxxx",
+    "abs-path": "written to /Users/you/projdata/reports/fl_substrate_conformance_inventory_2026-09-12/INVENTORY.md today",
+    "tilde-path": "~/projdata/reports/fl029_frr_cost_vs_ofiq_2026-09-09/czi_vs_ofiq_binned.csv",
+    "dot-rel-path": "./reports/fl_substrate_conformance_inventory_2026-09-12/INVENTORY_of_everything.md",
+    "kebab-slug": "implementation-status-2026-09-12-design-only-as-of-the-substrate-structure-conformance",
     "prose-password-policy": "the password policy requires rotation every 90 days",
     "plain": "latency fell by 40 percent after the change",
 }
@@ -340,7 +339,7 @@ def test_ruling_site_overrides_missing_is_recorded_but_never_decides_the_verdict
     corpus = tmp_path / "c"
     corpus.mkdir()
     site = _site(default=str(out), corpora="c")
-    r = reviewer.resolve_output("c", str(corpus / "d.lts"), {"roots": [{"path": str(corpus)}]}, None, site)
+    r = reviewer.resolve_output("c", str(corpus / "d.lts"), {"roots": [{"path": str(corpus)}]}, None, site, all_corpora={})
     assert r.rule_used == "default" and r.site_overrides == "MISSING"
     assert [(c["name"], c["outcome"]) for c in r.checks] == [("site-overrides-missing", "errored")]   # still present
     checks = [{"rule": c["name"], "outcome": c["outcome"]} for c in r.checks]
@@ -351,7 +350,6 @@ def test_ruling_site_overrides_missing_is_recorded_but_never_decides_the_verdict
     # ... while an errored RULE beside it still decides
     assert reviewer.decide_verdict([], checks + [{"rule": "GEN-3", "outcome": "errored"}])["verdict"] == "inconclusive"
     assert reviewer.CONFIG_CHECKS == ("site-overrides-missing",)
-    from factlattice_engine.reviewer import review_verdict_inputs
     f = tmp_path / "REVIEW-K1.lts"
     f.write_text('---\nlts: "1.1"\ntitle: r\n---\n# R [REVIEW-K1]\n\n- verdict: in-progress\n\n## [REVCHECK-K1-1] c\n\n'
                  "- rule: site-overrides-missing\n- outcome: errored\n- part-of: [REVIEW-K1]\n")
@@ -385,8 +383,8 @@ SAFE = {
     "sha256-prefixed": "hash sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 recorded",
     "short-sha": "commit 09b80e9 landed",
     "abs-path": "/Users/you/projdata/reports/some_directory_2026-09-12/INVENTORY.md",
-    "tilde-path": "~/projdata/reports/ac417_cost_vs_rating_2026-01-15/binned.csv",
-    "dot-path": "./reports/ac_widget_throughput_summary_2027-01-15xxxxxx/x.md",
+    "tilde-path": "~/projdata/reports/fl029_frr_cost_vs_ofiq_2026-09-09/binned.csv",
+    "dot-path": "./reports/fl_substrate_conformance_inventory_2026-09-12/x.md",
 }
 
 
@@ -417,7 +415,8 @@ def test_final_delta_P21_authorization_key_withholds_whatever_the_value():
 
 
 def test_final_delta_P21_a_base64_string_with_slashes_is_not_a_path():
-    import base64, random
+    import base64
+    import random
     rnd = random.Random(20261007)
     seen = 0
     for _ in range(4000):

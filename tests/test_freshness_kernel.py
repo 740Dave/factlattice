@@ -24,7 +24,11 @@ import pytest
 import factlattice.hashing as _hashing
 from factlattice import files_hash
 from factlattice_engine import (
-    FreshnessKernel, LtsEngine, LtsStore, combine_leaf_map, combine_roots,
+    FreshnessKernel,
+    LtsEngine,
+    LtsStore,
+    combine_leaf_map,
+    combine_roots,
     combined_files_hash,
 )
 from factlattice_engine.config import build_merged_partition, build_partition
@@ -292,10 +296,53 @@ def _rewrite_preserving_mtime_and_size(path: str, new_text: str) -> None:
     assert os.stat(path).st_mtime_ns == st.st_mtime_ns
 
 
-def test_backstop_catches_change_the_watch_path_missed(corpus):
+def _hint_without_ctime(monkeypatch):
+    """Simulate a filesystem whose ctime and inode cannot be trusted (the hint the kernel used before the inode and ctime joined it): the only way left to
+    make an edit invisible to the fast poll, so the backstop still has something to catch."""
+    def old_hint(abs_path):
+        st = os.stat(abs_path)
+        return (st.st_mtime, st.st_size, st.st_mode)
+    monkeypatch.setattr(FreshnessKernel, "_stat_hint", staticmethod(old_hint))
+
+
+def test_fast_poll_catches_an_edit_that_keeps_mtime_and_size(corpus):
+    """The hint carries the inode and ctime, which no ordinary tool can set (utime, `touch -r` and `cp -p` all move
+    ctime to now; an atomic rename makes a new inode). An edit that restores mtime and keeps the size is seen by the NEXT
+    fast poll, not only by the backstop (measured before: ~30 s and ~118 stale answers per edit through build_tools)."""
+    part = build_partition("c", str(corpus), "proj.c")
+    kernel = _seated(part)
+    _rewrite_preserving_mtime_and_size(str(corpus / "a.lts"), _lts("A", "alphX"))
+    assert kernel.poll_once(part) is True
+    assert part.freshness().fresh is False
+
+
+def test_fast_poll_catches_a_rename_into_place_even_without_ctime(corpus, monkeypatch):
+    """Pins the INODE leg of the hint on its own (Diamond P3): with ctime removed from the hint, an atomic rename into place that
+    restores mtime and size is still seen by the next poll, because the file is a new inode."""
+    real_hint = FreshnessKernel._stat_hint
+    def hint_with_ctime_blanked(abs_path):          # the PRODUCT's hint, with only its ctime field zeroed
+        h = real_hint(abs_path)
+        return h[:-1] + (0,)
+    monkeypatch.setattr(FreshnessKernel, "_stat_hint", staticmethod(hint_with_ctime_blanked))
+    part = build_partition("c", str(corpus), "proj.c")
+    kernel = _seated(part)
+    path = str(corpus / "a.lts")
+    st = os.stat(path)
+    tmp = str(corpus / "a.lts.tmp-rename")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(_lts("A", "alphX"))
+    os.utime(tmp, ns=(st.st_atime_ns, st.st_mtime_ns))
+    os.rename(tmp, path)
+    assert os.stat(path).st_size == st.st_size and os.stat(path).st_mtime_ns == st.st_mtime_ns
+    assert kernel.poll_once(part) is True
+    assert part.freshness().fresh is False
+
+
+def test_backstop_catches_change_the_watch_path_missed(corpus, monkeypatch):
     """(b) A hint-invisible edit is MISSED by the fast poll but CAUGHT by the periodic
     full re-verify — so a missed/unavailable fs event can never leave the server
-    silently serving stale."""
+    silently serving stale. (The edit is invisible only where ctime cannot be trusted; simulated here.)"""
+    _hint_without_ctime(monkeypatch)
     part = build_partition("c", str(corpus), "proj.c")
     kernel = _seated(part)
     assert part.freshness().fresh is True
@@ -312,8 +359,9 @@ def test_backstop_catches_change_the_watch_path_missed(corpus):
     assert part.freshness().fresh is False
 
 
-def test_backstop_runs_on_schedule_via_tick(corpus):
+def test_backstop_runs_on_schedule_via_tick(corpus, monkeypatch):
     """The watcher's tick loop runs the full re-verify every `backstop_every` ticks."""
+    _hint_without_ctime(monkeypatch)
     part = build_partition("c", str(corpus), "proj.c")
     kernel = FreshnessKernel(backstop_every=5)
     kernel.seat_partition(part)

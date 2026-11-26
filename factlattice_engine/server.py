@@ -20,23 +20,29 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from factlattice import registry
 from factlattice.authoring.edit import WRITER_REFUSAL_CODES
 from factlattice.registry import RegistryError
 
 from . import config
+from . import query_surface as _qs
+from .build_stamp import SERVING_LOCK
 from .kernel import FreshnessKernel
 from .selfheal import (
-    SelfHealer, _ENV_DISABLE as _ENV_SELF_HEAL, _ENV_VERIFY_ON_QUERY, _env_flag,
+    _ENV_DISABLE as _ENV_SELF_HEAL,
 )
-from . import query_surface as _qs
+from .selfheal import (
+    _ENV_VERIFY_ON_QUERY,
+    SelfHealer,
+    _env_flag,
+)
+from .store import LtsStore
 from .tiers import DIGEST_FIELDS, DIGEST_MAX_NODES, TIERS
 from .tools import DEFAULT_TOKEN_BUDGET, LtsEngine, dispatch
-from .build_stamp import SERVING_LOCK
-from .store import LtsStore
 from .verdict import PollVerifiedFreshness
 
 logger = logging.getLogger(__name__)
@@ -173,9 +179,16 @@ _EXPLAIN = {"type": "boolean", "description": (
     "add `query_interpreted` (what the engine actually evaluated) to the response of ANY call, "
     "including a plain `text` call. Always present when a terms/where/fields/source_file/"
     "document_tag parameter is used.")}
+_SINCE = {**_STR, "description": "ISO date lower bound, e.g. 2026-07-20"}
+_UNTIL = {**_STR, "description": "ISO date upper bound"}
 _QS_PROPS = {"all_of": _ALL_OF, "any_of": _ANY_OF, "none_of": _NONE_OF, "match": _MATCH,
              "where": _WHERE, "fields": _FIELDS, "source_file": _SOURCE_FILE,
              "document_tag": _DOCUMENT_TAG, "explain": _EXPLAIN}
+_CORPORA = {"oneOf": [{"type": "array", "items": _STR}, {"enum": ["all"], "type": "string"}], "description": (
+                "a list of corpus ids to read in place of a server's default scope, or \"all\" for every public corpus. "
+                "Exclusive with `corpus` and `path`. A corpus-omitted search on a server started with LTS_DEFAULT_CORPORA "
+                "reads that list only, and the reply's `extent.search_scope` says so: left_out_count, unknown_count, "
+                "zero_in_scope and how to widen. It is a default, not a wall: `corpus` reaches any corpus")}
 _PREFIX_NOTE = {**_STR, "description": (
     "id prefix filter. A TYPE filter needs the trailing hyphen ('PROC-'): 'PROC' also matches ids "
     "such as 'PROCESS-...'.")}
@@ -202,7 +215,7 @@ _FIND_DESC_BASE = (
             "LTS_SEMANTIC_ON_MISS).\n""Find decision/spec nodes by taxonomy/prefix/status/free-text, "
                         "optionally scoped to one corpus (project) and a since/until time "
                         "window over a date property (default 'decided-in-session'). "
-                        "Omit `corpus` to search every loaded project. "
+                        "Omit `corpus` to search every loaded project, or a server's default scope if it has one (`corpora`, `extent.search_scope`). "
                         "⛔ `text` MATCHES STRUCTURE ONLY — id, title and STRING property "
                         "values. The WHOLE `text` is matched as ONE case-insensitive substring "
                         "within a single field (the id, the title, or one property value; list "
@@ -224,10 +237,19 @@ _FALLBACK_SENTENCE = (
     "not an exact match).")
 
 
+_OVERSIZE_NOTE = (" A single match larger than `token_budget` is never sent whole: it is skipped and listed in "
+                  "`oversize_skipped`, each entry saying how to read it (`truncated` is then true).")
+
+
+_MINTED_KEYS_NOTE = (" Every node object in a reply carries `minted_keys` beside `properties`: the keys of "
+                     "`properties` the engine minted rather than the author wrote (today `normative_effective`).")
+
+
 def _find_description() -> str:
     """lts_find's description, built at startup: the fallback sentence is advertised ONLY when the
     server process starts with LTS_FIND_WORD_FALLBACK=on (never advertised where it is not live)."""
-    return _FIND_DESC_BASE + _FAILED_CORPORA_NOTE + (_FALLBACK_SENTENCE if _qs.fallback_enabled() else "")
+    return (_FIND_DESC_BASE + _FAILED_CORPORA_NOTE + _OVERSIZE_NOTE + _MINTED_KEYS_NOTE
+            + (_FALLBACK_SENTENCE if _qs.fallback_enabled() else ""))
 
 
 # --- SERVER-SIDE TOOL PROMINENCE -------------------------------------------------
@@ -293,6 +315,7 @@ TOOLS = [
         "name": "lts_find",
         "description": _find_description(),
         "inputSchema": {"type": "object", "properties": {
+            "corpora": _CORPORA,
             "rank": {"type": "string", "enum": ["default", "relevance"], "description": (
                 "relevance: order the SAME exact matches by deterministic BM25 against `text` "
                 "(most relevant first; membership and counts unchanged). Needs `corpus` and "
@@ -312,8 +335,7 @@ TOOLS = [
                 "applies. A refusal never echoes the path; the response carries `file_source` "
                 "(sha256, bytes) of the bytes parsed, and the query log keeps only a digest of the path.")},
             "status": _STATUS, "function": _STR, "service": _STR,
-            "since": {**_STR, "description": "ISO date lower bound, e.g. 2026-07-20"},
-            "until": {**_STR, "description": "ISO date upper bound"},
+            "since": _SINCE, "until": _UNTIL,
             "date_property": {**_STR, "description": "property key to filter on (default decided-in-session)"},
             "area": {**_STR, "description": "restrict to one labeled root, e.g. 'decisions'/'specs'/'artifacts'"},
             "token_budget": _BUDGET, "offset": _INT, "tier": _TIER,
@@ -354,12 +376,13 @@ TOOLS = [
     {
         "name": "lts_report_miss",
         "description": (
-            "FILE A KNOWN-ITEM MISS. Use it when you looked for something by a real query, you "
-            "KNOW the node exists in the corpus (you have its id, from memory or because you found "
+            "FILE A KNOWN-ITEM MISS (refused `corpus-roots-unknown` while any corpus has failed to build). Use it when you looked for something by a real query, you "
+            "are sure the node exists in the corpus (you have its id, from memory or because you found "
             "it another way), and the search did not return it. It records your query, the node id(s) "
             "you expected and why, plus the evidence captured at report time: each expected id's rank "
             "in the exact `lts_find` result (relevance order) and in `lts_semantic_find` (k=50), or "
             "null if absent. The record goes to the engine's miss log (state dir, never a corpus); "
+            "an UNQUOTED placeholder clock time (such as 04:2xZ) in `query`, `why`, `tool_used` or `found_via` is refused with reason `unread_time_placeholder` and nothing is recorded (quote a token meant on purpose in backticks). If the placeholder check itself faults, the write is NOT blocked: it lands, and the receipt's `warnings` carries `unread_time_guard_fault` with the exception class name (never its message) and says whether a ledger record was made (a report has none). OFF SWITCH: the operator can turn this check off with the environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any other value leaves it ON and adds a receipt warning); a write made with the check off carries `unread_time_guard: off` on its receipt. "
             "humans and agents use it to fix aliases, titles and recall fixtures. It is READ-ONLY on "
             "every corpus: it edits nothing and fixes nothing.\n"
             "`corpus`, `query`, `expected_ids` (1-10 node ids) and `why` (at most 2,000 characters) are "
@@ -407,6 +430,7 @@ TOOLS = [
             "and NEVER a line of body text. A corpus-OMITTED call names every corpus it could not read in `corpora_skipped` (`{corpus, reason: corpus-file-not-regular|corpus-file-broken-link|corpus-file-unreadable|corpus-dir-unreadable}`; a failed PRIVATE corpus is counted as `{reason: private-corpus-failed, count}`, never named)."),
         "inputSchema": {"type": "object", "properties": {
             "text": {**_STR, "description": "the term to find in body text (required, non-empty)"},
+            "corpora": _CORPORA,
             "corpus": _STR, "prefix": _PREFIX_NOTE, "domain": _STR, "status": _STATUS,
             "function": _STR, "service": _STR,
             "area": {**_STR, "description": "restrict to one labeled root, e.g. 'decisions'/'specs'"},
@@ -427,7 +451,9 @@ TOOLS = [
                         "and a source excerpt. `tier='digest'` returns the node's routing "
                         "row + a COMPLETE edge map and no body at all. A legacy-label or superseded node "
                         "also carries a top-level `caution` naming the canonical node; it annotates, "
-                        "never changes rank, and exact `lts_find` results do not carry it (v1)."),
+                        "never changes rank, and exact `lts_find` results do not carry it (v1). "
+                        "The node's `properties` include keys the engine minted that the author did not write; "
+                        "`minted_keys` beside `properties` names them."),
         "inputSchema": {"type": "object", "properties": {
             "corpus": _STR, "node_id": _STR, "token_budget": _BUDGET, "tier": _TIER,
             "include_reverse_digest": _INCLUDE_REVERSE_DIGEST},
@@ -550,6 +576,15 @@ TOOLS = [
             "corpus-scoped tool answers `registry-not-found` with zero data, and only a "
             "server restart ends the mode. The field is ABSENT on a server that predates it "
             "(read that as 'server too old', never as 'nothing to report'). "
+            "An entry carries `root_health` ONLY when it is not healthy: `missing_roots` (a registered root that is "
+            "not a directory, or whose only_file pin is absent: skipped), `empty_roots` (no .lts), `unindexed_roots` "
+            "(appeared after the index was built; served after the next heal), `own_content` (false when every "
+            "contributing root is also registered by another corpus) and `status` (degraded | shared-only | no-roots). "
+            "`missing_roots` also carries a registered profile that does not exist (reason `profile-missing`). A corpus whose "
+            "every root is missing is listed with status no-roots and zero nodes, is not served, and is counted in "
+            "`private_failed` if private; a tool that names it answers `{success: false, reason: no-roots, corpus, missing_roots}`. A corpus "
+            "whose registered roots on disk differ from the roots its index was built from is NOT fresh (reason "
+            "`root-set-changed`) until a heal re-seats it. "
             "A corpus whose build FAILED LOUD because one of its files cannot be read safely is NOT served "
             "(never a partial view) and is reported here, not as a registry problem: `failed_corpora` = "
             "[{corpus_id, code, path}] with `code` one of `corpus-file-not-regular` (a FIFO, socket or device, or a "
@@ -559,7 +594,22 @@ TOOLS = [
             "(`{corpus, reason: <code>}`). A failed PRIVATE corpus is never named on an unnamed call: it is "
             "counted in `private_failed` and as `{reason: private-corpus-failed, count}`. Every other corpus keeps "
             "serving. A corpus-scoped tool called on a failed corpus answers `{success: false, reason: <code>, "
-            "error_class: CorpusFileError, corpus, path}`."),
+            "error_class: CorpusFileError, corpus, path}`. A corpus whose registry ENTRY carries a key the schema does not "
+            "know fails the same way, with `code` `registry-entry-unknown-key` (an entry key) or `registry-root-unknown-key` "
+            "(a key of one `roots` item): its `failed_corpora` item is `{corpus_id, code, key, nearest}` (no `path`) and a "
+            "corpus-scoped tool answers `{success: false, reason: <code>, error_class: RegistryEntryKeyError, corpus, key, "
+            "nearest}`; a key ending `_note` is free text and never refused. A corpus whose entry names a root the "
+            "`named_roots` table does not hold, or uses a malformed table, fails the same way with `named-root-unknown` "
+            "(item `{corpus_id, code, name}`) or `named-roots-malformed` (item `{corpus_id, code, detail}`), and a "
+            "corpus-scoped tool answers `{success: false, reason: <code>, error_class: NamedRootError, corpus, name | detail}`. A corpus whose "
+            "registered profile the loader refuses fails ONLY that corpus (never the registry) with `corpus-load-error`: its `failed_corpora` item is "
+            "`{corpus_id, code, error: ProfileCollisionError, reason: profile-collision, names}` when a NAME the engine reserves or owns collided, or "
+            "`{corpus_id, code, error, reason: profile-invalid, detail}` (a short fixed phrase, no `names`) for a malformed profile, with no path; a "
+            "corpus-scoped tool answers `{success: false, reason: corpus-load-error, error_class: CorpusLoadError, corpus, profile_failure: "
+            "profile-collision | profile-invalid, names | detail}`, and `lts_register_corpus` answers the same with `registered: false`. A failed corpus is counted, not named, as "
+            "private when its entry or any of its roots carries an unknown key that is `private` in any case or a "
+            "near-miss of `private`, whatever its value (the match is generous and fails safe: such a corpus is "
+            "hidden, never exposed)."),
         "inputSchema": {"type": "object", "properties": {
             "heal": {"type": "boolean", "description": (
                 "self-heal stale corpora before reporting (default true). false = "
@@ -588,7 +638,9 @@ TOOLS = [
             "SURFACE CHANGE: the server pushes `notifications/tools/list_changed` right "
             "after the response, so a connected client re-lists without being asked. "
             "A root under the OS temp dir is allowed (a temp sample corpus) but the "
-            "response carries `warnings` (EPHEMERAL ROOT): writes there are NOT ledgered."),
+            "response carries `warnings` (EPHEMERAL ROOT): writes there are NOT ledgered. A registered `profile` the loader "
+            "refuses registers NOTHING and answers `{success: false, registered: false, reason: corpus-load-error, error_class: "
+            "CorpusLoadError, profile_failure: profile-collision | profile-invalid, names | detail}`, the same reasons as boot."),
         "inputSchema": {"type": "object", "properties": {
             "corpus_id": {**_STR, "description": "the corpus id to register (must not already be loaded)"},
             "spec": {"type": "object", "description": (
@@ -676,7 +728,10 @@ TOOLS = [
             "required_property": {**_STR, "description": "a property to check for conformance, e.g. invalidating_assumption"},
             "required_scope": {"oneOf": [_STR, {"type": "object"}], "description": "node filter for the conformance check: 'prefix=DEC' or an object of find filters, e.g. {\"prefix\": \"DEC-\", \"where\": [{\"key\": \"status\", \"has\": true}]}"},
             "tail_threshold": {**_INT, "description": "property-frequency core/tail split (default 5)"},
-            "prefix": _STR, "domain": _STR, "status": _STATUS, "area": _STR, "text": _STR}},
+            "prefix": _STR, "domain": _STR, "status": _STATUS, "area": _STR, "text": _STR,
+            # the find-family filters this tool has always honoured (`tools._AGG_FILTER_KEYS`), declared with the SAME
+            # definitions lts_find and lts_aggregate use
+            "function": _STR, "service": _STR, "since": _SINCE, "until": _UNTIL, **_QS_PROPS}},
     },
     # --- LINT layer -----------------------------------------------------------
     {
@@ -819,6 +874,8 @@ TOOLS = [
             "choosing one is authoring, not normalisation. ⛔ NOTHING PAST THE FIRST "
             "COLON IS EVER TOUCHED: values legitimately hold mixed-case identifiers, sha "
             "digests and pictographs.\n"
+            "BACKUPS ARE PRUNED: the pre-edit copy named by `backup_path` is kept only while it is among the newest N backups of that file (default 20; the operator sets N with the environment variable FACTLATTICE_BACKUP_KEEP, an integer of 1 or more, or `all` to keep every backup). A prune failure is a receipt warning, never a write failure.\n"
+            "NO BACKUP UNDER AN EPHEMERAL ROOT: a file under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the node-change ledger treats them) gets no pre-edit copy; its receipt has `backup_path: null` and `backup: {status: skipped, reason: backup-skipped-ephemeral}`. The operator sets the environment variable FACTLATTICE_BACKUP_EPHEMERAL=keep to make backups of such files anyway.\n"
             "THE GATE: after the surgical insert, the file is re-parsed and the parsed "
             "property set must differ from the pre-edit set by EXACTLY this change and "
             "NOTHING ELSE, per node, ACROSS THE WHOLE FILE. That catches an insertion "
@@ -829,6 +886,8 @@ TOOLS = [
             "authored and as written with every coercion, the value AS THE PARSER "
             "PRODUCED IT, the whole-file per-node delta, the line in situ, and the backup "
             "path. You should not need to run a second tool to believe it.\n"
+            "LINE BREAKS: any text input (node id, key, value and, where the tool takes them, title, section, doc_title, domain, doctype) holding a character at which the parser ends a line (LF, CR, VT, FF, U+001C-U+001E, NEL U+0085, U+2028, U+2029) is REFUSED with code `line_break_in_input` (evidence: `field`, `codepoint`, `index`); nothing is written. Such a key is no longer hyphenated; join the parts with a space.\n"
+            "UNREAD TIMES: a text this call adds (value, title and every property value; also doc_title, domain, doctype on a create) holding an UNQUOTED placeholder clock time (digits mixed with x, X or ?, for example 04:2xZ, meaning the clock was not read) is REFUSED with code `unread_time_placeholder` (evidence: `field`, `count` and `hits`, each with field, token, line and column); nothing is written. Read the clock with `date -u` and type the real time, or write \"time unread\". A token meant on purpose goes inside backticks, double quotes or single quotes (each pairs only with its own kind, on one line). Only text the call adds is checked: `lts_repair_property` with no `value` keeps the value already on the line, slip or not. The ledger metadata `reason`, `proposer` and `approver`, and the text after `clerk:` in `via`, are checked the same way. The check runs on the arguments before the file lock is taken. Keys and node ids cannot hold a time. If the placeholder check itself faults, the write is NOT blocked: it lands, and the receipt's `warnings` carries `unread_time_guard_fault` with the exception class name (never its message) and says whether a ledger record was made. OFF SWITCH: the operator can turn this check off with the environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any other value leaves it ON and adds a receipt warning); a write made with the check off carries `unread_time_guard: off` on its receipt.\n"
             "TO RENAME A KEY OR REMOVE A LINE that already parses, this is the wrong tool (it "
             "adds or replaces a value; it can do neither): use `lts_rename_property` / "
             "`lts_remove_property`.\n"
@@ -894,10 +953,14 @@ TOOLS = [
             "bracket is not id-shaped mints NO NODE, silently, and the properties under "
             "it are then attributed to the PRECEDING node — a substitution, which is "
             "worse than a loss because it looks well-formed.\n"
+            "BACKUPS ARE PRUNED: the pre-edit copy named by `backup_path` is kept only while it is among the newest N backups of that file (default 20; the operator sets N with the environment variable FACTLATTICE_BACKUP_KEEP, an integer of 1 or more, or `all` to keep every backup). A prune failure is a receipt warning, never a write failure.\n"
+            "NO BACKUP UNDER AN EPHEMERAL ROOT: a file under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the node-change ledger treats them) gets no pre-edit copy; its receipt has `backup_path: null` and `backup: {status: skipped, reason: backup-skipped-ephemeral}`. The operator sets the environment variable FACTLATTICE_BACKUP_EPHEMERAL=keep to make backups of such files anyway.\n"
             "THE GATE: the file must gain EXACTLY this node with EXACTLY these "
             "properties, and NOTHING may move on any existing node. Refusal writes "
             "nothing. The receipt carries the heading line number, the properties AS "
             "PARSED, the whole-file per-node delta, and the block in situ.\n"
+            "LINE BREAKS: any text input (node id, key, value and, where the tool takes them, title, section, doc_title, domain, doctype) holding a character at which the parser ends a line (LF, CR, VT, FF, U+001C-U+001E, NEL U+0085, U+2028, U+2029) is REFUSED with code `line_break_in_input` (evidence: `field`, `codepoint`, `index`); nothing is written. Such a key is no longer hyphenated; join the parts with a space. An LF in a property VALUE keeps its older multi-line-value refusal.\n"
+            "UNREAD TIMES: a text this call adds (value, title and every property value; also doc_title, domain, doctype on a create) holding an UNQUOTED placeholder clock time (digits mixed with x, X or ?, for example 04:2xZ, meaning the clock was not read) is REFUSED with code `unread_time_placeholder` (evidence: `field`, `count` and `hits`, each with field, token, line and column); nothing is written. Read the clock with `date -u` and type the real time, or write \"time unread\". A token meant on purpose goes inside backticks, double quotes or single quotes (each pairs only with its own kind, on one line). Only text the call adds is checked: `lts_repair_property` with no `value` keeps the value already on the line, slip or not. The ledger metadata `reason`, `proposer` and `approver`, and the text after `clerk:` in `via`, are checked the same way. The check runs on the arguments before the file lock is taken. Keys and node ids cannot hold a time. If the placeholder check itself faults, the write is NOT blocked: it lands, and the receipt's `warnings` carries `unread_time_guard_fault` with the exception class name (never its message) and says whether a ledger record was made. OFF SWITCH: the operator can turn this check off with the environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any other value leaves it ON and adds a receipt warning); a write made with the check off carries `unread_time_guard: off` on its receipt.\n"
             "Insertion stops before `## Relationships` / `## Causal Graph` regardless of "
             "level: those sections' bullets are edge triples read by a different grammar, "
             "and a node appended after them parses but is misfiled."),
@@ -908,7 +971,7 @@ TOOLS = [
                 "it already exists in the file")},
             "title": {**_STR, "description": "heading text; the id is appended in brackets"},
             "properties": {"type": "object", "description": (
-                "key -> value map. Keys coerced as in lts_add_property; values untouched")},
+                "key -> value map. Keys coerced as in lts_add_property; values untouched. Every value must be a string: anything else is refused `non_string_value`, nothing written")},
             "section": {**_STR, "description": (
                 "id of the section node to append INSIDE. Omit for the document tail")},
             "level": {**_INT, "description": (
@@ -1016,6 +1079,8 @@ TOOLS = [
             "Where neither exists the tool REFUSES and asks for `value`, rather than "
             "guessing where the key ends: a guessed value is a SUBSTITUTION, and a "
             "substitution is worse than a loss because the result looks well-formed.\n"
+            "BACKUPS ARE PRUNED: the pre-edit copy named by `backup_path` is kept only while it is among the newest N backups of that file (default 20; the operator sets N with the environment variable FACTLATTICE_BACKUP_KEEP, an integer of 1 or more, or `all` to keep every backup). A prune failure is a receipt warning, never a write failure.\n"
+            "NO BACKUP UNDER AN EPHEMERAL ROOT: a file under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the node-change ledger treats them) gets no pre-edit copy; its receipt has `backup_path: null` and `backup: {status: skipped, reason: backup-skipped-ephemeral}`. The operator sets the environment variable FACTLATTICE_BACKUP_EPHEMERAL=keep to make backups of such files anyway.\n"
             "THE GATE IS `lts_add_property`'s, EXACTLY: after the surgical replacement "
             "the file is re-parsed and the parsed property set must differ from the "
             "pre-edit set by EXACTLY this change and NOTHING ELSE, per node, across the "
@@ -1028,7 +1093,9 @@ TOOLS = [
             "not inside the named node's body (repairing it there would move the field "
             "onto the WRONG NODE), the line is indented (it belongs to a nested block), "
             "the node already carries the target key, or the key needs an invented "
-            "prefix."),
+            "prefix.\n"
+            "LINE BREAKS: any text input (node id, key, value and, where the tool takes them, title, section, doc_title, domain, doctype) holding a character at which the parser ends a line (LF, CR, VT, FF, U+001C-U+001E, NEL U+0085, U+2028, U+2029) is REFUSED with code `line_break_in_input` (evidence: `field`, `codepoint`, `index`); nothing is written. Such a key is no longer hyphenated; join the parts with a space.\n"
+            "UNREAD TIMES: a text this call adds (value, title and every property value; also doc_title, domain, doctype on a create) holding an UNQUOTED placeholder clock time (digits mixed with x, X or ?, for example 04:2xZ, meaning the clock was not read) is REFUSED with code `unread_time_placeholder` (evidence: `field`, `count` and `hits`, each with field, token, line and column); nothing is written. Read the clock with `date -u` and type the real time, or write \"time unread\". A token meant on purpose goes inside backticks, double quotes or single quotes (each pairs only with its own kind, on one line). Only text the call adds is checked: `lts_repair_property` with no `value` keeps the value already on the line, slip or not. The ledger metadata `reason`, `proposer` and `approver`, and the text after `clerk:` in `via`, are checked the same way. The check runs on the arguments before the file lock is taken. Keys and node ids cannot hold a time. If the placeholder check itself faults, the write is NOT blocked: it lands, and the receipt's `warnings` carries `unread_time_guard_fault` with the exception class name (never its message) and says whether a ledger record was made. OFF SWITCH: the operator can turn this check off with the environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any other value leaves it ON and adds a receipt warning); a write made with the check off carries `unread_time_guard: off` on its receipt."),
         "inputSchema": {"type": "object", "properties": {
             "path": {**_STR, "description": "the .lts file to repair (arbitrary path)"},
             "node_id": {**_STR, "description": (
@@ -1069,6 +1136,8 @@ TOOLS = [
             "RECORDED in the receipt (`coercions`, `new_key_as_authored`); a digit-initial key needs "
             "an INVENTED prefix, which is authoring, so it is refused. `key` is NOT coerced: it names "
             "an existing line and must match it.\n"
+            "BACKUPS ARE PRUNED: the pre-edit copy named by `backup_path` is kept only while it is among the newest N backups of that file (default 20; the operator sets N with the environment variable FACTLATTICE_BACKUP_KEEP, an integer of 1 or more, or `all` to keep every backup). A prune failure is a receipt warning, never a write failure.\n"
+            "NO BACKUP UNDER AN EPHEMERAL ROOT: a file under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the node-change ledger treats them) gets no pre-edit copy; its receipt has `backup_path: null` and `backup: {status: skipped, reason: backup-skipped-ephemeral}`. The operator sets the environment variable FACTLATTICE_BACKUP_EPHEMERAL=keep to make backups of such files anyway.\n"
             "THE GATE IS `lts_add_property`'s, EXACTLY: after the surgical edit the whole file is "
             "re-parsed and the parsed delta must be EXACTLY {that node: `key` loses that one value, "
             "`new_key` gains the IDENTICAL value} and NOTHING ELSE on any node. A refusal writes "
@@ -1095,7 +1164,8 @@ TOOLS = [
             "no profile can be determined the receipt says `edge_check: built-in tables only "
             "(no profile applied: <code>)` (and, except for `corpus_registers_no_profile`, a warning), <code> one "
             "of `outside_every_corpus`, `registry_unavailable`, `profile_file_missing`, `profile_load_failed`, "
-            "`corpus_not_in_registry`, `corpus_registers_no_profile`: then ONLY the built-in edge keys are "
+            "`corpus_not_in_registry`, `membership_partial` (a registered root is pending or unresponsive: which "
+            "corpora hold the file is not fully known, so which profile applies is not known; a candidate that does not confirm refuses the write instead), `corpus_registers_no_profile`: then ONLY the built-in edge keys are "
             "protected, and the receipt says so instead of staying silent. FAIL CLOSED: when a corpus that "
             "contains the file has an undeterminable profile (missing, unloadable, or seated but absent from "
             "the registry, or there is no registry at all: `registry_unavailable`), a rename or remove of a key that COULD be an edge key is REFUSED with "
@@ -1107,6 +1177,12 @@ TOOLS = [
             "which takes precedence over `edge-context-incomplete`. A plain key still proceeds with the receipt "
             "note and a warning; `outside_every_corpus` is complete (no corpus, no profile) and does not refuse.\n"
             "A REFUSAL'S top-level `reason` IS the fixed code (the same value as `evidence.refusal`); the path-free sentence is `explanation`; text that may name a path is `live_detail`. EVERY REFUSAL CODE: " + ", ".join(f"`{c}`" for c in WRITER_REFUSAL_CODES) + ".\n"
+            "UNREAD TIMES: the ledger metadata `reason`, `proposer` and `approver`, and the text after `clerk:` in `via`, "
+            "holding an UNQUOTED placeholder clock time (digits mixed with x, X or ?, for example 04:2xZ) is REFUSED with code "
+            "`unread_time_placeholder`; nothing is written. OFF SWITCH: the operator can turn this check off with the "
+            "environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any "
+            "other value leaves it ON and adds a receipt warning); a write made with the check off carries "
+            "`unread_time_guard: off` on its receipt.\n"
             "THE RECEIPT PROVES ITSELF: the absolute path, the line number, BOTH lines (`-` and `+`), "
             "the key as authored and as written, the value AS THE PARSER PRODUCED IT under the new key, "
             "the whole-file per-node delta, the edges that moved, the ledger outcome and the backup path."),
@@ -1151,6 +1227,8 @@ TOOLS = [
             "'remove the confidence line' and 'remove the confidence line that says low'.\n"
             "A key that appears more than once on the node (a list) needs `line`, exactly as in "
             "`lts_rename_property`.\n"
+            "BACKUPS ARE PRUNED: the pre-edit copy named by `backup_path` is kept only while it is among the newest N backups of that file (default 20; the operator sets N with the environment variable FACTLATTICE_BACKUP_KEEP, an integer of 1 or more, or `all` to keep every backup). A prune failure is a receipt warning, never a write failure.\n"
+            "NO BACKUP UNDER AN EPHEMERAL ROOT: a file under an ephemeral root (the OS temp dir, /tmp, or a configured ephemeral root, as the node-change ledger treats them) gets no pre-edit copy; its receipt has `backup_path: null` and `backup: {status: skipped, reason: backup-skipped-ephemeral}`. The operator sets the environment variable FACTLATTICE_BACKUP_EPHEMERAL=keep to make backups of such files anyway.\n"
             "THE GATE IS `lts_add_property`'s, EXACTLY: the whole file is re-parsed and the parsed delta "
             "must be EXACTLY that one value gone from that node and NOTHING ELSE on any node. A refusal "
             "writes nothing. Same per-file lock, compare-and-swap atomic write, backup and ONE ledger "
@@ -1170,7 +1248,8 @@ TOOLS = [
             "no profile can be determined the receipt says `edge_check: built-in tables only "
             "(no profile applied: <code>)` (and, except for `corpus_registers_no_profile`, a warning), <code> one "
             "of `outside_every_corpus`, `registry_unavailable`, `profile_file_missing`, `profile_load_failed`, "
-            "`corpus_not_in_registry`, `corpus_registers_no_profile`: then ONLY the built-in edge keys are "
+            "`corpus_not_in_registry`, `membership_partial` (a registered root is pending or unresponsive: which "
+            "corpora hold the file is not fully known, so which profile applies is not known; a candidate that does not confirm refuses the write instead), `corpus_registers_no_profile`: then ONLY the built-in edge keys are "
             "protected, and the receipt says so instead of staying silent. FAIL CLOSED: when a corpus that "
             "contains the file has an undeterminable profile (missing, unloadable, or seated but absent from "
             "the registry, or there is no registry at all: `registry_unavailable`), a rename or remove of a key that COULD be an edge key is REFUSED with "
@@ -1182,6 +1261,12 @@ TOOLS = [
             "which takes precedence over `edge-context-incomplete`. A plain key still proceeds with the receipt "
             "note and a warning; `outside_every_corpus` is complete (no corpus, no profile) and does not refuse.\n"
             "A REFUSAL'S top-level `reason` IS the fixed code (the same value as `evidence.refusal`); the path-free sentence is `explanation`; text that may name a path is `live_detail`. EVERY REFUSAL CODE: " + ", ".join(f"`{c}`" for c in WRITER_REFUSAL_CODES) + ".\n"
+            "UNREAD TIMES: the ledger metadata `reason`, `proposer` and `approver`, and the text after `clerk:` in `via`, "
+            "holding an UNQUOTED placeholder clock time (digits mixed with x, X or ?, for example 04:2xZ) is REFUSED with code "
+            "`unread_time_placeholder`; nothing is written. OFF SWITCH: the operator can turn this check off with the "
+            "environment variable FACTLATTICE_UNREAD_TIME_GUARD=off (not a tool argument; `on` or unset leaves it on, and any "
+            "other value leaves it ON and adds a receipt warning); a write made with the check off carries "
+            "`unread_time_guard: off` on its receipt.\n"
             "THE RECEIPT PROVES ITSELF: the absolute path, the line number, every removed line verbatim, "
             "the value removed AS THE PARSER PRODUCED IT, what the key holds now, the whole-file "
             "per-node delta, the edges that moved, the ledger outcome and the backup path."),
@@ -1235,7 +1320,11 @@ TOOLS.append({
         "`ledger: \"none\"` and `history_complete: false` (unknown, not 'nothing happened'); "
         "`ledger_since` is the first record's ts, and changes before it are unknown. `reconciled` is "
         "true when the last record's file hash equals the file on disk now; false means someone edited "
-        "the file outside the writers since (reported, not blocked)."),
+        "the file outside the writers since (reported, not blocked). `ledger_files` names every ledger that counts; "
+        "after a move, ledgers under the table's old spellings count, a meeting of two is in `chain_file_breaks` with "
+        "`ledger_file_boundary: true`, and one left out is in `ledger_left_out`. `ledger: \"state-unavailable\"`: the history "
+        "cannot be reached now; `named-root-state-inside-corpus` or `named-root-state-unprovable`: a fault in the registry means where it lives cannot be proved. "
+        "In each, writes to this file are refused and `note` says what clears it. `history_partial: true`: records are served and may be only part of the history (a ledger that cannot be read; with `write_refused`, a malformed table, an unreadable old location or a case variant of a state root)."),
     "inputSchema": {"type": "object", "properties": {
         "corpus": _STR,
         "node_id": {**_STR, "description": "the node id, bare (no doctype prefix)"},
@@ -1278,9 +1367,9 @@ class Server:
 
     def __init__(self, tools: LtsEngine):
         self.tools = tools
-        self.pending_notifications: List[dict] = []
+        self.pending_notifications: list[dict] = []
 
-    def handle(self, req: dict) -> Optional[dict]:
+    def handle(self, req: dict) -> dict | None:
         method = req.get("method")
         rid = req.get("id")
         # Notifications (no id) get no response.
@@ -1311,7 +1400,7 @@ class Server:
             return self._ok(rid, {})
         return self._err(rid, -32601, f"method not found: {method}")
 
-    def drain_notifications(self) -> List[dict]:
+    def drain_notifications(self) -> list[dict]:
         """Pop every notification queued by the request just handled (FIFO, and empty
         after — a `serve()` that forgets to drain would otherwise re-send old
         notifications on the next request it happens to handle)."""
@@ -1327,42 +1416,39 @@ class Server:
         return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": message}}
 
 
-def build_tools(watch: bool = True, require_corpora: bool = True) -> LtsEngine:
-    """The composition root. `require_corpora=False` is for the command-line door
-    (`callcli`): a newcomer's first run has no corpora, and the store-free tools (selfcheck,
-    lint, preview, the typed writers) must still answer. The server keeps the default.
+def _registry_load_error(exc: Exception, choice) -> RegistryError:
+    """EVERY exception raised while INTERPRETING the registry (a wrong-shaped entry, an int where a path belongs, ...) is a registry problem, not a
+    crash: v3.1(a) says the server never refuses to boot over a registry. The reason carries the exception CLASS and the registry path only, never
+    a key, a value or a message from the file."""
+    cls = type(exc).__name__
+    if choice.path:
+        return registry._error("the registry {path!r} could not be loaded (" + cls + ": it, or one of its corpora, "
+                               "could not be loaded)", choice.source, path=choice.path)
+    msg = f"the built-in example registry could not be loaded ({cls}: its corpora could not be loaded)"
+    return RegistryError(msg, source=choice.source, persist=msg)
 
-    ⛔ THE REGISTRY IS RESOLVED ONCE, HERE, BY THE ONE LOOKUP (`registry.resolve_registry`), and the SAME
-    resolution both builds the store and is recorded on the engine (`seat_registry`): the hash reported as
-    `sha256_at_boot` is the hash of the bytes the store was actually built from, not a second read that
-    could have raced an edit. A broken configured registry RAISES `RegistryError` (no example fallback);
-    `boot_engine` below turns that into REGISTRY-ERROR MODE for the long-running server, while `call` and
-    the reviewer helpers let it stop the run (exit 2)."""
-    choice = registry.resolve_registry()
-    # ⛔ EVERY exception raised while INTERPRETING the registry (a wrong-shaped entry, an int where a path belongs, ...)
-    # is a registry problem, not a crash: v3.1(a) says the server never refuses to boot over a registry. The reason
-    # carries the exception CLASS and the registry path only, never a key, a value or a message from the file.
-    try:
-        store = config.build_store(choice.corpora)
-    except Exception as exc:  # noqa: BLE001
-        cls = type(exc).__name__
-        if choice.path:
-            raise registry._error("the registry {path!r} could not be loaded (" + cls + ": it, or one of its corpora, "
-                                  "could not be loaded)", choice.source, path=choice.path) from None
-        msg = f"the built-in example registry could not be loaded ({cls}: its corpora could not be loaded)"
-        raise RegistryError(msg, source=choice.source, persist=msg) from None
-    none_loaded = not store.partitions()
-    if require_corpora and none_loaded and choice.source == "example" and not store.failed_corpora:
+
+def _none_loaded_error(store, choice, require_corpora: bool) -> RegistryError | None:
+    """The registry-error verdict for a store in which nothing could be loaded: nothing configured under the example registry, or a registry that
+    parses but whose every root is missing or empty. A corpus that FAILED to load with a code is not 'no corpus' (it is reported by name), and
+    neither is one still PENDING (stuck at boot): it is registered, not read, and says so ([MECH-BR-BOOT] x-build-traps 1)."""
+    if not require_corpora:
+        return None
+    served, pending, failed, _no_roots = store.snapshot_all()      # one snapshot: a corpus moving between the tables is neither missed nor counted twice
+    if served or failed or pending:
+        return None
+    if choice.source == "example":
         # the newcomer's commonest case: nothing configured and nothing under the cwd. That is a REGISTRY problem, so
         # it takes the registry-error path (the server boots, lists its tools, and says why), never a bare crash.
-        raise registry._error(
+        return registry._error(
             "no corpus registry is configured (set " + registry.env_var_name() + " or create " + registry.pointer_display()
             + ") and the built-in example found no files under {root}", "example", root=choice.root)
-    if require_corpora and none_loaded and not store.failed_corpora:
-        # (a corpus that FAILED to load with a corpus-file code is not 'no corpus': it is reported by name, see list_corpora)
-        # a registry that parses but yields ZERO loadable corpora (every root missing or empty) is error mode too
-        raise registry._error("the registry {path!r} parses but none of its corpora could be loaded (every "
-                              "root is missing or holds no .lts files)", choice.source, path=choice.path)
+    # a registry that parses but yields ZERO loadable corpora (every root missing or empty) is error mode too
+    return registry._error("the registry {path!r} parses but none of its corpora could be loaded (every "
+                           "root is missing or holds no .lts files)", choice.source, path=choice.path)
+
+
+def _announce_profile_split(store) -> None:
     # --- the profile/content split, announced at BOOT -------------------------
     # Domain profiles are excluded from every content graph by their own
     # `document_tag: PROFILE`. Say so once at startup, and say it again louder if the
@@ -1380,14 +1466,48 @@ def build_tools(watch: bool = True, require_corpora: bool = True) -> LtsEngine:
                            finding["kind"], finding["message"])
     except Exception:  # noqa: BLE001
         logger.exception("[lts-engine] profile-registration audit failed (non-fatal)")
-    # --- [LEC-FRESHNESS] seat the incremental freshness kernel ----------------
-    # ONE full re-hash here establishes each partition's content-hash leaves + root.
-    # After this, every query's freshness check is an O(1) compare against the
-    # maintained root (no per-query corpus re-hash). The daemon watcher keeps the root
-    # current: a fast mtime-hinted poll each tick, plus a periodic FULL re-verify as
-    # the missed-event backstop so a hint-invisible change can never serve stale.
-    kernel = FreshnessKernel()
-    kernel.seat_store(store)
+
+
+def _pin_ledger_table_provisional(choice, guard=None) -> None:
+    """[INV-NR-ONE-TABLE] The booted table, pinned at once (no disk): until the final pin lands, every read of the table goes by the bytes the server
+    booted from, not by the registry file as it is now."""
+    from factlattice import ledger as _ledger
+    if choice.path and choice.source != "example":
+        (guard or (lambda f: f()))(lambda: _ledger.pin_table(_ledger.context_provisional(choice), final=False))
+
+
+def _pin_ledger_table_bounded(choice, retry: bool = False, guard=None) -> bool:
+    """[MECH-BR-BOOT] A server goes by the table it booted from ([INV-NR-ONE-TABLE]), in the ledger as in everything else. The table is built from
+    `choice`, the registry bytes the store was built from (`ledger.context_deferred`), never from a second read of the file; only the resolving of each
+    declared root, which a hung root can stop, is deferred, and it runs on a worker with the root deadline (`boundedfs.bounded_call`). The async boot
+    does it AFTER the first pass of the boot loader. True iff it is pinned. Until it is, the ledger goes by the table it reads at each call (as a
+    short-lived process does), bounded by that call's reading of the roots. Not pinned yet is retried at each watcher cycle.
+
+    `guard(fn)` runs each pin (the server passes one that takes the registry-error step's lock and runs `fn` only while the mode has not begun), so a pin that was slow
+    (the bounded read above can wait a deadline on a hung root) never replaces the "no table" pin a registry-error verdict set meanwhile."""
+    from factlattice import ledger as _ledger
+
+    from . import boundedfs
+    run = guard or (lambda f: f())
+    if retry and _ledger.pin_is_final():                # a retry from the watcher: once pinned for good (by this or anything else) it is done
+        return True
+    if not choice.path or choice.source == "example":
+        run(lambda: _ledger.pin_table(_ledger.TableContext()))
+        return True
+    if not retry:
+        _pin_ledger_table_provisional(choice, guard)
+    try:
+        ctx = boundedfs.bounded_call(choice.path + "#ledger-table-pin", _ledger.context_deferred(choice), None)
+    except registry.RegistryError:
+        ctx = _ledger.TableContext()
+    if ctx is None:
+        return False
+    run(lambda: _ledger.pin_table(ctx))
+    return True
+
+
+def _wire_engine(store, kernel, choice, watch: bool, pin: bool = True) -> LtsEngine:
+    """The part of the composition root after the store and its kernel exist: watcher, self-heal, code-currency sentinel, the engine."""
     store.kernel = kernel
     if watch:
         kernel.start()
@@ -1409,8 +1529,8 @@ def build_tools(watch: bool = True, require_corpora: bool = True) -> LtsEngine:
         healer = SelfHealer(store, kernel=kernel, freshness_provider=provider)
     # --- [MECH-BUILD-STAMP] make a stale CODE snapshot self-reconcile ---------
     # The self-heal above makes a stale DATA verdict transient — but ONLY if this process
-    # is running the current engine code. A long-running server never reloads: if the engine
-    # library is updated on disk under it (as [MECH-SELFHEAL] itself was), the running
+    # is running the current engine and core-package code. A long-running server never reloads: if
+    # either package is updated on disk under it (as [MECH-SELFHEAL] itself was), the running
     # process keeps executing its start-time snapshot and the on-disk fix is inert. This
     # sentinel stamps the loaded build, watches the on-disk build, and on divergence
     # reconciles by an AUTOMATIC, invisible relaunch (never a manual bounce) — the code
@@ -1420,14 +1540,151 @@ def build_tools(watch: bool = True, require_corpora: bool = True) -> LtsEngine:
         CodeCurrencySentinel().start()
     engine = LtsEngine(store, healer=healer, freshness_provider=provider)
     engine.seat_registry(choice)
+    if pin and not _pin_ledger_table_bounded(choice):
+        kernel.add_tick_hook(lambda: _pin_ledger_table_bounded(choice, retry=True))      # a declared root did not answer in time: retried each watcher cycle
     return engine
+
+
+def _enter_registry_error(engine, store, kernel, err) -> None:
+    """Registry-error mode, in ONE store step: the store is emptied and the engine seats the error under the store's one lock (`LtsStore.clear_all(also=)`), so
+    a listing (which reads both under that lock) never shows the error beside a corpus, nor an empty store with no error. The unseating of the kernel's
+    partitions follows; it touches no reader's view. ([STORE-TABLES-ONE-SNAPSHOT-ONE-STEP])
+
+    WHAT HOLDS, AND NO MORE. The `also` step is everything-or-nothing for a raise in seating the error and for a raise in the seal's computation: if seating the error raises, nothing else has changed; if the
+    seal's computation raises (`seal` computes first and then retires the strings and sets the seal in one locked step, so the kernel is unsealed and unchanged), the engine's state is put back.
+    A raise AFTER that locked step (the idle-slot drop) is not covered: see SDLC `Injected-fault limits`. The step ENDS at `clear_all`. The unseat loop after it is
+    memory-only and a fault in it is logged (class only) and does not stop the loop: A CORPUS WHOSE UNSEAT FAULTED MAY BE LEFT WITH PARTIAL BOOKKEEPING IN THE SEALED KERNEL (its tables may or may not still hold it), AND `tick()` KEEPS PROBING ITS ROOT, UNTIL A RESTART; the store is already empty and sealed, so nothing is served from it. A stated limit, not a repair."""
+    def also():
+        """EVERYTHING OR NOTHING. The engine seats the error FIRST (if that raises, nothing else has changed: the kernel is not sealed and the store, which runs this before it
+        empties itself, is untouched); then the kernel is sealed, still before the store is emptied (a seat after this is refused, one before it is unseated below). If the
+        seal raises, the engine's state is put back, so no reply can claim registry-error mode while the server is not in it."""
+        before = engine._reg_state
+        engine.seat_registry_error(err)
+        try:
+            if hasattr(kernel, "seal"):
+                kernel.seal()
+        except BaseException:
+            engine._reg_state = before
+            raise
+    for cid in store.clear_all(also=also):      # error mode serves and lists NO corpus (the synchronous boot made a fresh, empty store)
+        try:
+            kernel.unseat_partition(cid)       # memory-only. "Everything or nothing" ends at `clear_all`: the mode IS entered by now, so a fault here is logged (class only)
+        except Exception as exc:  # noqa: BLE001 -- and does not stop the loop or the rest of the first pass; a sealed kernel serves nothing either way
+            logger.error("[lts-engine] unseating a corpus after registry-error mode began raised %s; the mode was entered", type(exc).__name__)
+
+
+def _build_tools_async(choice, watch: bool, require_corpora: bool) -> LtsEngine:
+    """[MECH-BR-BOOT] x-server: the engine WITHOUT reading a root. Every corpus starts PENDING; a loader reads them in the background on the
+    process's root workers and each corpus joins the store when its read ends. A call naming one waits for it (up to the root deadline), a listing
+    reports it pending, and a root that never answers costs its corpus only. What `build_tools` does after the reads (the profile announcement,
+    and the registry-error verdict when nothing at all could be loaded) is done when the first pass ends, on the loader's thread; the verdict
+    then puts THIS engine into registry-error mode, with the same words, instead of raising."""
+    from .bootload import StoreLoader
+    holder: dict = {}
+    try:
+        corpora = {cid: registry.expand_adhoc_entry(spec) for cid, spec in choice.corpora.items()}
+        store = LtsStore()
+        kernel = FreshnessKernel()
+        store.kernel = kernel
+
+        enter_lock = threading.Lock()
+
+        def enter_once(engine, err) -> bool:
+            """Registry-error mode, at most once and never on top of itself: the first pass and a late retry may both reach a verdict."""
+            with enter_lock:
+                if engine.registry_error is not None:
+                    return False
+                logger.error("[lts-engine] REGISTRY-ERROR MODE: %s. No corpus data will be served until the "
+                             "registry is fixed and the server is restarted.", err)
+                _enter_registry_error(engine, store, kernel, err)
+                _pin_ledger_none()
+                return True
+
+        def pin_guard(fn) -> None:
+            """Run a ledger pin only while registry-error mode has not begun, under the lock that step takes, so the mode's "no table" pin is never replaced."""
+            with enter_lock:
+                eng = holder.get("engine")
+                if eng is None or eng.registry_error is None:
+                    fn()
+
+        def after_late_fatal(loader) -> None:
+            """A retry load met an entry-shape verdict after the first pass began: the release refuses this registry, so enter the mode now, through the same step."""
+            engine = holder.get("engine")
+            if engine is not None and loader.fatal is not None:
+                enter_once(engine, _registry_load_error(loader.fatal, choice))
+
+        def after_first_pass(loader) -> None:
+            engine = holder.get("engine")
+            if loader.fatal is not None:                  # an entry's SHAPE met on a loader thread (as af4cfc2): the registry could not be loaded
+                err = _registry_load_error(loader.fatal, choice)
+            else:
+                _announce_profile_split(store)
+                err = _none_loaded_error(store, choice, require_corpora)
+            if err is not None and engine is not None:
+                enter_once(engine, err)
+                return
+            if not _pin_ledger_table_bounded(choice, guard=pin_guard):
+                kernel.add_tick_hook(lambda: _pin_ledger_table_bounded(choice, retry=True, guard=pin_guard))      # retried each watcher cycle until it answers
+
+        loader = StoreLoader(store, corpora, profile=config.engine_profile_config(), kernel=kernel, retry=True, adaptive=True,
+                             on_first_pass=after_first_pass, on_late_fatal=after_late_fatal)
+        loader.declare()                                  # memory only: no root is read here
+        _pin_ledger_table_provisional(choice)             # the booted table from the first instant (the final pin follows the first pass)
+    except Exception as exc:  # noqa: BLE001
+        raise _registry_load_error(exc, choice) from None
+    engine = _wire_engine(store, kernel, choice, watch, pin=False)
+    holder["engine"] = engine
+    engine.boot_loader = loader
+    loader.start()
+    return engine
+
+
+def build_tools(watch: bool = True, require_corpora: bool = True, async_boot: bool = False) -> LtsEngine:
+    """The composition root. `require_corpora=False` is for the command-line door
+    (`callcli`): a newcomer's first run has no corpora, and the store-free tools (selfcheck,
+    lint, preview, the typed writers) must still answer. The server keeps the default.
+
+    `async_boot=True` is the long-running SERVER's ([MECH-BR-BOOT] x-server): it returns before any root is read (see `_build_tools_async`). The
+    default reads every root first, BOUNDED (`config.build_store`, `kernel.seat_store`), as a process that needs its corpora at once does.
+
+    ⛔ THE REGISTRY IS RESOLVED ONCE, HERE, BY THE ONE LOOKUP (`registry.resolve_registry`), and the SAME
+    resolution both builds the store and is recorded on the engine (`seat_registry`): the hash reported as
+    `sha256_at_boot` is the hash of the bytes the store was actually built from, not a second read that
+    could have raced an edit. A broken configured registry RAISES `RegistryError` (no example fallback);
+    `boot_engine` below turns that into REGISTRY-ERROR MODE for the long-running server, while `call` and
+    the reviewer helpers let it stop the run (exit 2)."""
+    choice = registry.resolve_registry()
+    if async_boot:
+        return _build_tools_async(choice, watch, require_corpora)
+    try:
+        store = config.build_store(choice.corpora)
+    except Exception as exc:  # noqa: BLE001
+        raise _registry_load_error(exc, choice) from None
+    err = _none_loaded_error(store, choice, require_corpora)
+    if err is not None:
+        raise err
+    _announce_profile_split(store)
+    # --- [LEC-FRESHNESS] seat the incremental freshness kernel ----------------
+    # ONE full re-hash here establishes each partition's content-hash leaves + root.
+    # After this, every query's freshness check is an O(1) compare against the
+    # maintained root (no per-query corpus re-hash). The daemon watcher keeps the root
+    # current: a fast mtime-hinted poll each tick, plus a periodic FULL re-verify as
+    # the missed-event backstop so a hint-invisible change can never serve stale.
+    kernel = FreshnessKernel()
+    kernel.seat_store(store)
+    return _wire_engine(store, kernel, choice, watch)
+
+
+def _pin_ledger_none() -> None:
+    from factlattice import ledger as _ledger
+    _ledger.pin_table(_ledger.TableContext())
 
 
 BOOT_RETRY_DELAY_S = 0.5
 
 
 def boot_engine(*, retry_delay_s: float = BOOT_RETRY_DELAY_S, sleep=time.sleep,
-                watch: bool = True, require_corpora: bool = True) -> LtsEngine:
+                watch: bool = True, require_corpora: bool = True, async_boot: bool = False) -> LtsEngine:
     """The MCP server's boot: `build_tools`, except that a registry that cannot be resolved does NOT stop the
     server. It boots in REGISTRY-ERROR MODE ([v3.1]):
 
@@ -1447,6 +1704,8 @@ def boot_engine(*, retry_delay_s: float = BOOT_RETRY_DELAY_S, sleep=time.sleep,
         kw["watch"] = False
     if not require_corpora:
         kw["require_corpora"] = False
+    if async_boot:
+        kw["async_boot"] = True
     for attempt in (1, 2):
         try:
             return build_tools(**kw)
@@ -1460,6 +1719,7 @@ def boot_engine(*, retry_delay_s: float = BOOT_RETRY_DELAY_S, sleep=time.sleep,
                          "registry is fixed and the server is restarted.", exc)
             engine = LtsEngine(LtsStore())
             engine.seat_registry_error(exc)
+            _pin_ledger_none()
             if watch:
                 from .build_stamp import CodeCurrencySentinel
                 CodeCurrencySentinel().start()
@@ -1470,7 +1730,7 @@ def boot_engine(*, retry_delay_s: float = BOOT_RETRY_DELAY_S, sleep=time.sleep,
 def _iter_requests(stdin, seed: bytes = b""):
     """Yield request lines from a REAL fd without ever exposing a request to a re-exec.
 
-    Defect (ISSUE-UNBOUNDED-READ, part 2): `for line in stdin` consumed
+    Defect (LTS-CODE-RECONCILE-TEST-UNBOUNDED-READ, part 2): `for line in stdin` consumed
     a request from the pipe BEFORE `serve()` took SERVING_LOCK, so a code-reconcile re-exec
     landing in that window destroyed a request the kernel had already handed over (measured
     ~6% of reconciles under CPU load).
@@ -1485,6 +1745,7 @@ def _iter_requests(stdin, seed: bytes = b""):
     """
     import os
     import select
+
     from .build_stamp import set_stdin_carry
     fd = stdin.fileno()
     buf = seed
@@ -1518,7 +1779,7 @@ def serve(stdin=None, stdout=None) -> None:
         from .build_stamp import sweep_stale_carry, take_inherited_stdin_carry
         seed = take_inherited_stdin_carry()
         sweep_stale_carry()                      # after take: never sweeps what we inherited
-    server = Server(boot_engine())
+    server = Server(boot_engine(async_boot=True))     # [MECH-BR-BOOT] x-server: the handshake does not wait for a root
     lines = _iter_requests(stdin, seed) if real_fd else stdin
     for line in lines:
         line = line.strip()

@@ -63,7 +63,7 @@ What it does:
 - **Typed writers.** `lts_add_node`, `lts_add_property`, `lts_repair_property`,
   `lts_rename_property` and `lts_remove_property` refuse a property key that would silently turn
   into prose, re-parse the whole file after the edit, and write nothing unless the parsed properties,
-  values included, changed only by the intended edit. For an add or append, the stored value is also compared with what the parser makes of the submitted line on its own; a replaced or repaired value is not compared, and replacing a wrapped value keeps the old continuation lines. Neither check catches a character `str.splitlines` treats as a line break (for example U+2028, U+2029, U+0085, a vertical tab, a form feed or a carriage return): the value is written and parses cut off there, unless the rest parses as a property or heading, which the gate refuses. The receipt's `value_as_parsed` shows it. Each applied write is recorded in a hash-chained ledger
+  values included, changed only by the intended edit. For an add or append, the stored value is also compared with what the parser makes of the submitted line on its own; a replaced or repaired value is not compared, and replacing a wrapped value keeps the old continuation lines. A value, key, node id or title holding a character `str.splitlines` treats as a line break (for example U+2028, U+2029, U+0085, a vertical tab, a form feed or a carriage return) is refused with `line_break_in_input`, and nothing is written. Each applied write is recorded in a hash-chained ledger
   (`lts_history`); writes to files under a temporary directory (the OS temp directory, `/tmp`,
   `/private/tmp`) are not ledgered, and if a ledger append fails the write stands and the receipt says
   so. `lts_preview` shows what a draft would become before it is written.
@@ -74,8 +74,8 @@ What it does:
   profiles shipped here (see Domain profiles below).
 - **Diagrams.** `lts_flow` draws a Mermaid diagram from the live graph and stores nothing.
 - **When structure is not enough.** `lts_find` searches structured fields only and says so;
-  `lts_find_in_prose` searches body text and labels each hit. An optional `semantic` extra adds
-  `lts_semantic_find`, which returns suggestions in a separate field and never changes an exact
+  `lts_find_in_prose` searches body text and labels each hit. `lts_semantic_find` is always listed;
+  the optional `semantic` extra supplies the model stack it needs. It returns suggestions in a separate field and never changes an exact
   answer.
 
 ### Quick start
@@ -85,7 +85,7 @@ whose only loadable corpus, `alpha`, is this repository's own specification in `
 example entries point at directories that do not exist and are skipped):
 
 ```bash
-pip install .     # Python 3.9+; installs the one required dependency, pydantic
+pip install .     # Python 3.11+; installs the one required dependency, pydantic
 python3 -m factlattice_engine call lts_find --args-json '{"corpus": "alpha", "text": "stale", "rank": "relevance"}'
 python3 -m factlattice_engine call lts_traverse --args-json '{"corpus": "alpha", "start_node": "INV-FRESH", "direction": "reverse", "max_depth": 1}'
 ```
@@ -106,7 +106,10 @@ To give an agent the same tools, register the server in an MCP client:
 `{"mcpServers": {"factlattice": {"command": "python3", "args": ["-m", "factlattice_engine.server"]}}}`.
 `call` is read-only unless you add `--allow-write`. [docs/TRY-BEFORE-YOU-DEPLOY.md](docs/TRY-BEFORE-YOU-DEPLOY.md)
 walks through a ten-minute trial; `factlattice_engine/config.py` documents the registry shape,
-and `factlattice/registry.py` the order in which the registry is found.
+and `factlattice/registry.py` the order in which the registry is found. A relative root path in
+the registry resolves against the registry file's directory, or `FACTLATTICE_CORPUS_ROOT` when that
+is set, and a top-level `named_roots` table lets a corpus move by editing one location
+(`specs/36-named-roots.lts`).
 
 ### factlattice-engine as agent memory
 
@@ -247,7 +250,7 @@ The cheap answer routes; it never satisfies — the same rule the `digest` tier 
 #### ANALYTICS — how many, grouped how
 
 `count`, `group_by`, `numeric` (`sum`/`avg`/`min`/`max`), `distinct`, `cross_tab`, `top_k`,
-`degree`, `top_by_degree`, `count_by_edge_type`, `orphans`.
+`degree`, `top_by_degree`, `count_by_edge_type`, `orphans`, `exemplifies_coverage`.
 
 ```
 lts_aggregate(op="count", corpus="payments", prefix="REQ", group_by="status")
@@ -462,7 +465,8 @@ experiments (rounds 1-2 reproducible from this repository; rounds 3-4 reported).
 To adopt FactLattice for a domain of your own:
 
 1. Write a domain profile. `domain-profiles/` has reference examples (software engineering,
-   clinical records, hardware, agentic artifacts and decisions); they are written for people. For
+   clinical records, third-party company intelligence, agentic artifacts and decisions); they
+   are written for people. For
    the linter's profile rules to run, a profile must use the `.lts` profile encoding described in
    `factlattice/profile.py`; `factlattice_engine/reviewer/shipped/reviewer-profile.lts` is a
    working example.
@@ -480,7 +484,7 @@ README.md                This file: start here
 EXEC-SUMMARY.md          The short account of the approach
 FOR-LLMS.md              A summary of this repository for a language model
 USE-CASES.md             Five worked use cases with their current support level
-SPEC.md                  Normative FactLattice 1.0 specification (22 sections, §0 to §21)
+SPEC.md                  Normative FactLattice 1.0 specification (23 sections, §0 to §22)
 SDLC.md                  Development lifecycle with dispatch orchestration
 SESSION-LIFECYCLE.md     Manifest-driven bootstrap, hooks, engineering logs
 APPENDIX-VERSIONING.md   DELTAs, snapshots, semantic diff system
@@ -491,6 +495,10 @@ specs/                   FactLattice specified IN FactLattice (the dogfood corpu
   10-abstract-model.lts           [SPEC:FL-MODEL] — nodes, edges, properties, layers
   20-engine-layers.lts            [SPEC:FL-ENGINE] — QUERY / ANALYTICS / LINT / RENDER
   30-freshness-and-self-heal.lts  [SPEC:FL-FRESHNESS] — the correctness contract
+  36-named-roots.lts              [FL-NAMED-ROOTS] — a corpus moves by configuration alone
+  37-default-scope.lts            [FL-DEFAULT-SCOPE] — an unnamed search reads a named list
+  38-bounded-root-reads.lts       [FL-BOUNDED-ROOTS] — one hung root costs one corpus
+  39-normative-and-source-statements.lts  [FL-NORMATIVE-SOURCE] — normative content vs source statements
   40-domain-profiles.lts          [SPEC:FL-PROFILES] — the extensibility mechanism
   50-decisions.lts                [DECISION:FL-DECISIONS] — why it is shaped this way
 
@@ -501,7 +509,7 @@ docs/                    Additional documentation (try-before-you-deploy guide; 
 case-studies/            Reproducible and reported experiments (specification ambiguity)
 agents/                  Agent definitions + the Quality Event Protocol
 tests/                   Test suite
-tools/                   Small maintenance tools: freshness_bench.py (freshness benchmark),
+tools/                   Maintenance and benchmark tools, including freshness_bench.py (freshness benchmark),
                          disclosure_guard.py + disclosure-denylist.example.tsv (a commit-time check
                          for text you must not publish; copy the TSV and fill in your own terms),
                          and land-time helpers (key_prior_use.py, run_bounded.py, commit-if-green,
@@ -516,8 +524,8 @@ python3 -m factlattice_engine.lint lint specs/ --dangle
 ```
 
 The command exits 0 and prints a summary line of the form `-- <N> finding(s): 0 error(s),
-<N> warning(s)`, followed by per-rule summary lines. The warnings are style findings (documents still in legacy mode, undeclared
-keys), and the output says `profile: NONE IN SCOPE`: with no domain profile in scope the
+<N> warning(s)`, followed by per-rule summary lines. The warnings are documents still in legacy mode, undeclared keys, orphan
+nodes and key-loss findings, and the output says `profile: NONE IN SCOPE`: with no domain profile in scope the
 profile-driven rules do not run, so read the result as "parses and resolves", not "fully
 checked".
 
